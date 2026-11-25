@@ -93,11 +93,29 @@ func _physics_process(_delta: float) -> bool:
 		VoxelStage.view_index = int(_args.view)
 	if _args.get("clean", "0") == "1" and _main.hud.history_panel != null:
 		_main.hud.history_panel.visible = false
+	if _args.has("hurt") and _follow >= 0:  # --hurt=F1,F2,F3: damage, more damage, retire
+		var fr := String(_args.hurt).split(",")
+		var dw: DamageWorld = _main.damage
+		var maxc: float = dw.rules.max_condition
+		if _frame == int(fr[0]):
+			dw.damage(_follow, maxc * 0.35)
+		if fr.size() > 1 and _frame == int(fr[1]):
+			dw.damage(_follow, maxc * 0.3)
+		if fr.size() > 2 and _frame == int(fr[2]):
+			if dw.damage(_follow, maxc):
+				_main._retire(_follow)
 	if _shots.has(_frame):
 		var img := root.get_viewport().get_texture().get_image()
 		var path := "%s_%05d.png" % [_out, _frame]
 		img.save_png(path)
 		print("saved ", path)
+		if _args.has("debug_car") and _main.voxel != null:
+			var k := int(_args.debug_car)
+			var d: Dictionary = _main.voxel.cars3d[k]
+			var c: Car = _main.cars[k]
+			print("DEBUG car ", k, " 2d ", c.global_position, " vis ", c.visible, " root ", (d.root as Node3D).global_position, " rootvis ", (d.root as Node3D).visible,
+				" bodyvis ", (d.body as Node3D).visible, " aabb ", (d.body as MeshInstance3D).get_aabb(), " cam ", _main.camera.get_screen_center_position(),
+				" loss ", _main.voxel.race_fx.damage[k].loss(), " tint ", c.sprite.modulate)
 		if _args.has("decal_dump") and _main.voxel != null:
 			_main.voxel.decal_vp.get_texture().get_image().save_png("%s_%05d_decals.png" % [_out, _frame])
 	return _frame > _shots.max() + 1

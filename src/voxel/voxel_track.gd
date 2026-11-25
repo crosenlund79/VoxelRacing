@@ -64,14 +64,14 @@ var _decal_sources: Array[Node] = []
 ## Terrain top height (px) at a 2D point (0 off the map).
 func height_px_at(p: Vector2) -> float:
 	var c := Vector2i(((p - origin_px) / CELL).floor())
-	if c.x < 0 or c.y < 0 or c.x >= nx or c.y >= nz:
+	if c.x < 0 or c.y < 0 or c.x >= nx or c.y >= nz or heights.size() < nx * nz:
 		return 0.0
 	return heights[c.y * nx + c.x] * CELL
 
 
 func class_at(p: Vector2) -> int:
 	var c := Vector2i(((p - origin_px) / CELL).floor())
-	if c.x < 0 or c.y < 0 or c.x >= nx or c.y >= nz:
+	if c.x < 0 or c.y < 0 or c.x >= nx or c.y >= nz or classes.size() < nx * nz:
 		return C_GRASS
 	return classes[c.y * nx + c.x]
 

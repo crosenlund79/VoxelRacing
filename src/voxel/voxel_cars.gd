@@ -48,9 +48,27 @@ static func body_mesh(tex: Texture2D, layout: WheelLayout = null, body_logical: 
 	var key := "%s|%s" % [_tex_key(tex), body_logical]
 	if _bodies.has(key):
 		return _bodies[key]
-	var mesh := _build_body(tex, layout, body_logical)
+	var mesh := VoxelMesher.build_mesh(body_grid(tex, layout, body_logical), material(), pivot(), 0.05)
 	_bodies[key] = mesh
 	return mesh
+
+
+static var _grids: Dictionary = {}
+
+
+## The pristine voxel model of a car drawing (shared; copy it before changing).
+## Damage, debris and destruction all derive from it, so any car (packaged or
+## the user's own art) gets them without extra assets.
+static func body_grid(tex: Texture2D, layout: WheelLayout = null, body_logical: String = "") -> VoxelGrid:
+	var key := "%s|%s" % [_tex_key(tex), body_logical]
+	if not _grids.has(key):
+		_grids[key] = _build_body(tex, layout, body_logical)
+	return _grids[key]
+
+
+## Model-space offset of a body grid (centred on the car, standing on y = 0).
+static func pivot() -> Vector3:
+	return Vector3(DISPLAY.x, 0.0, DISPLAY.y) * 0.5 * Vox.PX
 
 
 ## Cache key of a drawing: its file (packaged art), else the texture itself
@@ -63,7 +81,7 @@ static func _tex_key(tex: Texture2D) -> String:
 	return str(tex.get_instance_id())
 
 
-static func _build_body(tex: Texture2D, layout: WheelLayout, body_logical: String) -> ArrayMesh:
+static func _build_body(tex: Texture2D, layout: WheelLayout, body_logical: String) -> VoxelGrid:
 	var nx := int(DISPLAY.x / Vox.CAR_VOXEL_PX)
 	var nz := int(DISPLAY.y / Vox.CAR_VOXEL_PX)
 	var n := nx * nz
@@ -251,22 +269,85 @@ static func _build_body(tex: Texture2D, layout: WheelLayout, body_logical: Strin
 					g.set_v(cx, y, cz, Vox.GLASS, Color(0.15, 0.2, 0.27))  # side windows
 				else:
 					g.set_v(cx, y, cz, Vox.SOLID, base)
-	# lamps at the game's anchors (LightingPilot): the nose and the tail
+	# a rear wing where the drawing has one: rear columns wider than the body
+	var ref_lo := 99
+	var ref_hi := -1
+	for cx in range(4, 7):
+		for cz in nz:
+			if occ[cz * nx + cx] == 1:
+				ref_lo = mini(ref_lo, cz)
+				ref_hi = maxi(ref_hi, cz)
+	for cx in range(0, 4):
+		var lo := 99
+		var hi := -1
+		for cz in nz:
+			if occ[cz * nx + cx] == 1:
+				lo = mini(lo, cz)
+				hi = maxi(hi, cz)
+		if hi < 0 or ref_hi < 0 or (hi - lo) < (ref_hi - ref_lo) + 2:
+			continue
+		for cz in range(lo, hi + 1):
+			var i := cz * nx + cx
+			if occ[i] == 0:
+				continue
+			var paint: Color = cols[i]
+			for y in range(0, CABIN_TOP + 2):
+				g.set_v(cx, y, cz, Vox.AIR, Color.BLACK)
+			if cz >= ref_lo + 1 and cz <= ref_hi - 1:
+				for y in range(BOTTOM, 5):
+					g.set_v(cx, y, cz, Vox.SOLID, paint.darkened(0.12))
+			g.set_v(cx, 7, cz, Vox.SOLID, paint.lightened(0.05))  # the wing plate
+			if cx == 1 and absi(cz - (ref_lo + ref_hi) / 2) == 3:
+				g.set_v(cx, 5, cz, Vox.METAL, Color(0.2, 0.2, 0.22))  # struts
+				g.set_v(cx, 6, cz, Vox.METAL, Color(0.2, 0.2, 0.22))
+	# bumpers: a dark strip along the bottom of the nose and the tail
+	for cz in nz:
+		var xf := _front_most(occ, nx, nz, cz)
+		var xr := _rear_most(occ, nx, nz, cz)
+		if xf >= 0 and g.get_m(xf, BOTTOM, cz) != Vox.AIR:
+			g.set_v(xf, BOTTOM, cz, Vox.METAL, Color(0.22, 0.22, 0.24))
+		if xr >= 0 and g.get_m(xr, BOTTOM, cz) != Vox.AIR:
+			g.set_v(xr, BOTTOM, cz, Vox.METAL, Color(0.22, 0.22, 0.24))
+	# lamps at the game's anchors (LightingPilot), on the nose and tail faces:
+	# the anchor row, or the nearest row inwards that reaches the face, at the
+	# highest body voxel of the lamp band (y 2..5)
+	var x_front := 0
+	var x_rear := nx - 1
+	for z in nz:
+		for x in nx:
+			for y in range(2, 6):
+				if g.get_m(x, y, z) != Vox.AIR:
+					x_front = maxi(x_front, x)
+					x_rear = mini(x_rear, x)
 	for side in [-1.0, 1.0]:
-		var hz := int((DISPLAY.y * 0.5 + side * LightingPilot.HEAD_LAMP.y) / Vox.CAR_VOXEL_PX)
-		var tz := int((DISPLAY.y * 0.5 + side * absf(LightingPilot.TAIL_LAMP.y)) / Vox.CAR_VOXEL_PX)
-		var xf := _front_most(occ, nx, nz, hz)
-		if xf >= 0:
-			for y in [3, 4]:
-				g.set_v(xf, y, hz, Vox.HEAD, Color(1.0, 0.92, 0.62))
-				g.set_v(xf, y, hz - int(side), Vox.HEAD, Color(1.0, 0.92, 0.62))
-		var xr := _rear_most(occ, nx, nz, tz)
-		if xr >= 0:
-			for y in [3, 4]:
-				g.set_v(xr, y, tz, Vox.TAIL, Color(0.75, 0.08, 0.06))
-				g.set_v(xr, y, tz - int(side), Vox.TAIL, Color(0.75, 0.08, 0.06))
-	var pivot := Vector3(DISPLAY.x, 0.0, DISPLAY.y) * 0.5 * Vox.PX
-	return VoxelMesher.build_mesh(g, material(), pivot, 0.05)
+		var inward := -int(side)
+		for front in [true, false]:
+			var anchor: float = LightingPilot.HEAD_LAMP.y if front else absf(LightingPilot.TAIL_LAMP.y)
+			var z0 := clampi(int((DISPLAY.y * 0.5 + side * anchor) / Vox.CAR_VOXEL_PX), 0, nz - 1)
+			var placed := false
+			for step in 5:
+				var z := z0 + inward * step
+				var xs: Array = range(x_front, x_front - 3, -1) if front else range(x_rear, x_rear + 3)
+				for x in xs:
+					var ly := -1
+					for y in range(5, 1, -1):
+						if g.get_m(x, y, z) != Vox.AIR:
+							ly = y
+							break
+					if ly < 0:
+						continue
+					var m := Vox.HEAD if front else Vox.TAIL
+					var c := Color(1.0, 0.92, 0.62) if front else Color(0.78, 0.07, 0.05)
+					for y in [ly, ly - 1]:
+						if y >= BOTTOM:
+							g.set_v(x, y, z, m, c)
+							if g.get_m(x, y, z + inward) != Vox.AIR:
+								g.set_v(x, y, z + inward, m, c)
+					placed = true
+					break
+				if placed:
+					break
+	return g
 
 
 static func _front_most(occ: PackedByteArray, nx: int, nz: int, cz: int) -> int:

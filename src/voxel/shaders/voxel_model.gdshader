@@ -17,7 +17,6 @@ instance uniform float tail_glow = 0.0;
 instance uniform float lamp_glow = 0.0;
 instance uniform vec4 tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
 instance uniform vec4 head_tint : source_color = vec4(1.0, 0.93, 0.74, 1.0);
-instance uniform float wear = 0.0;
 // Wind sway of tall props: displacement (model units) at height 1 unit.
 instance uniform float sway = 0.0;
 
@@ -39,11 +38,6 @@ void fragment() {
 	vec3 c = to_linear(COLOR.rgb) * tint.rgb;
 	float rnd = fract(UV.y) / 0.9;
 	float glossy = step(1.0, UV.y);
-	// soot and scuffs on damaged cars: darker voxels, chosen per voxel
-	if (wear > 0.0) {
-		float w = step(rnd, wear * 0.85);
-		c = mix(c, c * vec3(0.32, 0.29, 0.27), w);
-	}
 	vec2 e2 = min(UV2, 1.0 - UV2);
 	float edge = min(e2.x, e2.y);
 	float px = length(fwidth(UV2));
@@ -60,11 +54,11 @@ void fragment() {
 	float kind = UV.x;
 	vec3 em = vec3(0.0);
 	if (kind > 0.5 && kind < 1.5) {
-		em = to_linear(head_tint.rgb) * (0.35 + head_glow * 6.0);
+		em = to_linear(head_tint.rgb) * (0.3 + head_glow * 3.2);
 	} else if (kind > 1.5 && kind < 2.5) {
-		em = to_linear(tail_color) * (0.25 + tail_glow * 5.0);
+		em = to_linear(tail_color) * (0.3 + tail_glow * 3.6);
 	} else if (kind > 2.5) {
-		em = to_linear(lamp_color) * (lamp_glow * 7.0);
+		em = c * (lamp_glow * 6.0);  // glow voxels light up in their own colour
 	}
 	EMISSION = em;
 }

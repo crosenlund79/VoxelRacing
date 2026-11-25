@@ -56,6 +56,7 @@ var world_env: WorldEnvironment
 var decal_vp: SubViewport
 var ready_3d := false
 var cars3d: Array[Dictionary] = []
+var race_fx: VoxelRaceFx
 var lamps3d: Array[Light3D] = []
 var _night := -1
 var _hint: Label
@@ -105,6 +106,11 @@ func setup(p_main: Node2D) -> void:
 	_tilt.position = Vector3(0, 0, -2.0)
 	_build_cars()
 	_setup_decals()
+	race_fx = VoxelRaceFx.new()
+	add_child(race_fx)
+	race_fx.setup(self)
+	if main.effects != null:
+		main.effects.celebrated.connect(_confetti)
 	_hint = Label.new()
 	_hint.add_theme_font_size_override("font_size", 18)
 	_hint.add_theme_color_override("font_color", Color(1, 0.95, 0.8))
@@ -312,6 +318,13 @@ func _build_cars() -> void:
 		var body := MeshInstance3D.new()
 		body.mesh = VoxelCars.body_mesh(c.sprite.texture, layout, body_logical)
 		tilt.add_child(body)
+		var marker := MeshInstance3D.new()
+		marker.mesh = _marker_mesh()
+		marker.position = Vector3(0, 2.6, 0)
+		marker.visible = false
+		marker.set_instance_shader_parameter("lamp_glow", 0.35)
+		marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(marker)
 		var wheels: Array[Node3D] = []
 		var spins: Array[MeshInstance3D] = []
 		var at := layout.positions(body_logical)
@@ -352,7 +365,8 @@ func _build_cars() -> void:
 		cars3d.append({
 			"root": root, "tilt": tilt, "body": body, "wheels": wheels, "spins": spins, "lights": lights,
 			"roll": 0.0, "pitch": 0.0, "spin": 0.0, "h": 0.0, "prev_v": Vector2.ZERO, "prev_pos": c.global_position,
-			"brake": 0.0,
+			"brake": 0.0, "steer": 0.0, "prev_rot": c.global_rotation, "marker": marker, "show_wheels": show_wheels,
+			"grid": VoxelCars.body_grid(c.sprite.texture, layout, body_logical), "pristine_mesh": body.mesh,
 		})
 
 
@@ -360,7 +374,6 @@ func _sync_cars(delta: float) -> void:
 	var lp: LightingPilot = main.lighting
 	var night := lp != null and lp.enabled
 	var elevated: bool = main.track.layout.has_elevation()
-	var dv: DamageView = main.damage_view
 	for i in cars3d.size():
 		var d: Dictionary = cars3d[i]
 		var c: Car = main.cars[i]
@@ -406,12 +419,14 @@ func _sync_cars(delta: float) -> void:
 		var along := vel.dot(fwd)
 		var braking := a_long < -110.0 and along > 30.0
 		d.brake = lerpf(d.brake, 1.0 if braking else 0.0, 1.0 - exp(-delta * 12.0))
-		# wheels: steering (CarWheels' smoothed value) and rolling
-		var steer := 0.0
-		var cw := c.get_node_or_null("Wheels")
-		if cw != null:
-			steer = float(cw.get("_steer"))
-		var steer_angle := CarWheels.steer_angle(main.wheel_layout, steer)
+		# wheels: steering (the steering command when the car is driven here,
+		# otherwise its turning rate) and rolling
+		var turn_rate := deg_to_rad(c.model.params.turn_rate_degrees) if c.model != null else 3.0
+		var yaw_rate := wrapf(rot - float(d.prev_rot), -PI, PI) / maxf(delta, 0.0001) if moved < 60.0 else 0.0
+		var target := clampf(c.steer, -1.0, 1.0) if c.active else clampf(yaw_rate / turn_rate, -1.0, 1.0)
+		d.steer = lerpf(d.steer, target, 1.0 - exp(-delta / 0.07))
+		d.prev_rot = rot
+		var steer_angle := deg_to_rad(main.wheel_layout.max_steer_degrees) * clampf(d.steer, -1.0, 1.0)
 		var forward_px := (pos - (d.prev_pos as Vector2)).dot(fwd) if moved < 60.0 else 0.0
 		d.spin = fposmod(d.spin - forward_px / (VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX), TAU)
 		var wheels: Array = d.wheels
@@ -421,10 +436,23 @@ func _sync_cars(delta: float) -> void:
 			(spins[w] as Node3D).rotation.z = d.spin
 		# paint: junker tints, fallen tint, wear; lamps
 		var body: MeshInstance3D = d.body
-		var tint := c.sprite.modulate * c.sprite.self_modulate
+		var tint := c.sprite.modulate
+		if main.jumps != null and main.jumps.is_down(i):
+			tint *= JumpView.FALLEN_TINT
 		body.set_instance_shader_parameter("tint", tint)
-		if dv != null:
-			body.set_instance_shader_parameter("wear", dv.wear_of(i))
+		# respawn protection blinks the car, as in HyperCars
+		var cw: CombatWorld = main.combat
+		if cw != null and cw.enabled and cw.grace_left[i] > 0.0:
+			body.visible = sin(Time.get_ticks_msec() * 0.024) > -0.3
+		else:
+			body.visible = true
+		var marker: MeshInstance3D = d.marker
+		var mk: Dictionary = main.player_marker.marked if main.player_marker != null else {}
+		marker.visible = mk.has(c.racer_id)
+		if marker.visible:
+			marker.set_instance_shader_parameter("tint", mk[c.racer_id])
+			marker.position.y = 2.6 + sin(Time.get_ticks_msec() * 0.005) * 0.18
+			marker.rotation.y = -root.rotation.y
 		var hb := 0.0
 		var head_col := LightingPilot.HEADLIGHT_COLOR
 		if lp != null:
@@ -434,6 +462,12 @@ func _sync_cars(delta: float) -> void:
 		body.set_instance_shader_parameter("head_tint", head_col)
 		body.set_instance_shader_parameter("head_glow", (0.55 + 0.35 * hb) if night else 0.0)
 		body.set_instance_shader_parameter("tail_glow", (0.3 + 0.7 * d.brake) if night else 0.7 * d.brake)
+		var dmg: VoxelCarDamage = race_fx.damage[i] if race_fx != null and i < race_fx.damage.size() else null
+		var lights_all: Array = d.lights
+		var gone := dmg != null and dmg.wrecked
+		(lights_all[0] as Light3D).visible = night and not gone and (dmg == null or dmg.lamps[0] > 0)
+		(lights_all[1] as Light3D).visible = night and not gone and (dmg == null or dmg.lamps[1] > 0)
+		(lights_all[2] as Light3D).visible = night and not gone and (dmg == null or dmg.lamps[2] + dmg.lamps[3] > 0)
 		if night:
 			var lights: Array = d.lights
 			for s in 2:
@@ -606,6 +640,7 @@ func _sync(delta: float) -> void:
 	_place_camera(camera, centre, pitch, zoom)
 	_tilt_shift(view[3])
 	_sync_cars(delta)
+	race_fx.sync(delta)
 	# tyre marks: the decal viewport covers the visible ground (plus a margin)
 	var dz := z2 * (float(DECAL_SIZE.x) / 1280.0) / DECAL_MARGIN
 	decal_vp.canvas_transform = Transform2D(0.0, dz, 0.0, Vector2(DECAL_SIZE) * 0.5 - centre * dz)
@@ -671,3 +706,33 @@ func _sync_split_views(pitch: float, zoom: float) -> void:
 		var z := zoom * PlayerViews.VIEW_ZOOM.x
 		cam2.zoom = Vector2(z, z * sin(pitch))
 		_place_camera(cam, cam2.get_screen_center_position(), pitch, z)
+
+
+## The little floating chevron over the local player's car (tinted per player).
+static var _marker: ArrayMesh
+
+
+static func _marker_mesh() -> ArrayMesh:
+	if _marker != null:
+		return _marker
+	# a chevron pointing down at the car (seen from above: screen down is +Z)
+	var rows := ["1110111", "1111111", "0111110", "0011100", "0001000"]
+	var vs := VoxelCars.voxel_size() * 1.2
+	var g := VoxelGrid.new(Vector3i(7, 2, rows.size()), vs, Vector3.ZERO)
+	for z in rows.size():
+		for x in 7:
+			if rows[z][x] == "1":
+				g.set_v(x, 0, z, Vox.GLOW, Color.WHITE)
+				g.set_v(x, 1, z, Vox.GLOW, Color.WHITE)
+	_marker = VoxelMesher.build_mesh(g, VoxelCars.material(), Vector3(3.5, 1.0, rows.size() * 0.5) * vs, 0.0)
+	return _marker
+
+
+## Voxel confetti at the finish line.
+func _confetti(at: Vector2) -> void:
+	var cols := [Color("e8432e"), Color("f2b632"), Color("2ec4b6"), Color("f6f1e1"), Color("e45ba0"), Color("4f7cff")]
+	var base := Vox.to3(at, 30.0)
+	for k in 90:
+		var a := randf() * TAU
+		var v := Vector3(cos(a), 0.0, sin(a)) * randf_range(1.0, 6.0) + Vector3(0, randf_range(4.0, 10.0), 0)
+		race_fx.fx.spark(base, v, cols[k % cols.size()], randf_range(0.09, 0.15), randf_range(1.6, 2.6), 0.25, 0.35)

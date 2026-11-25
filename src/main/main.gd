@@ -441,10 +441,6 @@ func _ready() -> void:
 		if track.layout.has_elevation():  # J2: bridge-level effects draw above the deck
 			effects.setup_levels(level_of, decals)
 			combat_view.setup_levels(level_of)
-		var wheel := resolver.get_texture(AssetCatalog.WHEEL)
-		for k in cars.size():  # four shared wheels under each body (not for flattened custom cars)
-			if _car_looks[k].wheels:
-				CarWheels.new().setup(cars[k], wheel, wheel_layout, _car_looks[k].body_logical)
 		if voice_enabled:
 			voice = VoiceDirector.new()
 			voice.name = "VoiceDirector"

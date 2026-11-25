@@ -50,3 +50,21 @@ func box(from: Vector3i, to: Vector3i, m: int, c: Color) -> void:
 		for z in range(from.z, to.z + 1):
 			for x in range(from.x, to.x + 1):
 				set_v(x, y, z, m, c)
+
+
+## Independent copy (packed arrays are copy-on-write: cheap until changed).
+func copy() -> VoxelGrid:
+	var g := VoxelGrid.new(Vector3i(sx - 2, sy - 2, sz - 2), vs, origin + Vector3.ONE * vs)
+	g.mat = mat.duplicate()
+	g.col = col.duplicate()
+	return g
+
+
+func get_c(x: int, y: int, z: int) -> Color:
+	var i := ((y + 1) * sz + z + 1) * sx + x + 1
+	return Color.hex((col[i] << 8) | 0xff)
+
+
+## Interior size (without the border).
+func size() -> Vector3i:
+	return Vector3i(sx - 2, sy - 2, sz - 2)
