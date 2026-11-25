@@ -223,7 +223,7 @@ static func _standing(kind: Kind, img: Image, region: Rect2i, nxc: int, nzc: int
 	var occ: PackedByteArray = s[0]
 	var cols: Array = s[1]
 	var g := VoxelGrid.new(Vector3i(nxc, face_h + legs + 3, depth), VS * Vox.PX, Vector3.ZERO)
-	var back := Color(0.3, 0.3, 0.33)
+	var back := Color(0.62, 0.62, 0.66)
 	for row in face_h:
 		var y := legs + face_h - 1 - row
 		for x in nxc:

@@ -216,7 +216,7 @@ static func _build_body(tex: Texture2D, layout: WheelLayout, body_logical: Strin
 			if glass[i] == 1:
 				base = _body_colour_near(cols, occ, glass, nx, nz, cx, cz)
 			for y in range(bottom, top):
-				var k := 0.74 + 0.26 * float(y - bottom) / maxf(1.0, float(top - bottom - 1))
+				var k := 0.8 if y == bottom else 0.96
 				var c := paint if (y == top - 1 and glass[i] == 0) else base * Color(k, k, k)
 				g.set_v(cx, y, cz, Vox.SOLID, c)
 			if d >= 2 and bottom == BOTTOM:  # chassis between the wheels
@@ -300,8 +300,8 @@ static func wheel_mesh() -> ArrayMesh:
 			if r > WHEEL_R + 0.25:
 				continue
 			for z in WHEEL_W:
-				if r < 1.3:
-					g.set_v(x, y, z, Vox.METAL, Color(0.74, 0.72, 0.68) if z != 1 else Color(0.4, 0.39, 0.38))
+				if r < 1.6:
+					g.set_v(x, y, z, Vox.METAL, Color(0.82, 0.8, 0.74) if z != 1 else Color(0.4, 0.39, 0.38))
 				else:
 					var sector := int(floor((p.angle() + PI) / (TAU / 10.0))) % 2
 					var c := Color(0.16, 0.15, 0.16) if sector == 0 else Color(0.07, 0.07, 0.08)

@@ -17,6 +17,9 @@ var _mode := "spectate"
 var _speed := 1
 var _follow := -1
 var _drive_ai: AiDriver = null
+## --at=S: park the camera over the centreline at arc distance S (px).
+var _at := -1.0
+var _marker: Node2D
 
 
 func _initialize() -> void:
@@ -29,6 +32,7 @@ func _initialize() -> void:
 	_out = args.get("out", _out)
 	_speed = int(args.get("speed", "1"))
 	_follow = int(args.get("follow", "-1"))
+	_at = float(args.get("at", "-1"))
 	if args.has("shots"):
 		_shots.clear()
 		for s in String(args.shots).split(","):
@@ -76,9 +80,20 @@ func _physics_process(_delta: float) -> bool:
 			_start()
 		return false
 	_frame += 1
+	if _at >= 0.0:
+		if _marker == null:
+			_marker = Node2D.new()
+			_main.add_child(_marker)
+			_marker.position = _main.track.path.point_at(_at)
+		_main.camera.set_physics_process(false)
+		_main.camera.global_position = _marker.position
+	if _args.has("view"):
+		VoxelStage.view_index = int(_args.view)
 	if _shots.has(_frame):
 		var img := root.get_viewport().get_texture().get_image()
 		var path := "%s_%05d.png" % [_out, _frame]
 		img.save_png(path)
 		print("saved ", path)
+		if _args.has("decal_dump") and _main.voxel != null:
+			_main.voxel.decal_vp.get_texture().get_image().save_png("%s_%05d_decals.png" % [_out, _frame])
 	return _frame > _shots.max() + 1

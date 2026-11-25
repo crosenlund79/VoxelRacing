@@ -125,7 +125,7 @@ func setup(p_resolver: AssetResolver, p_settings: AudioSettings) -> void:
 	_logo.position = Vector2((1280 - _logo.size.x) * 0.5, 40)
 	_logo.pivot_offset = _logo.size * 0.5
 	root.add_child(_logo)
-	_tagline = HyperTheme.label("Top-down combat racing, hand-painted", 20, HyperTheme.CREAM, 500)
+	_tagline = HyperTheme.label("VoxelRacing  -  Prototype 001: The Voxel Experiment", 20, HyperTheme.CREAM, 500)
 	_tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_tagline.size = Vector2(1280, 30)
 	_tagline.position = Vector2(0, 214)

@@ -45,7 +45,7 @@ const TERRAIN_SHADER := preload("res://src/voxel/shaders/voxel_terrain.gdshader"
 const FLAT_SHADER_CODE := "shader_type canvas_item;\nuniform vec4 flat_color;\nvoid fragment() {\n\tfloat a = texture(TEXTURE, UV).a * COLOR.a;\n\tCOLOR = vec4(flat_color.rgb, step(0.5, a));\n}\n"
 
 ## Terrain hills per biome (variant 1..5): amplitude in voxels.
-const HILLS := [0, 6, 4, 5, 1, 0]
+const HILLS := [0, 6, 4, 5, 0, 0]
 
 var track: Track
 var theme: TrackTheme

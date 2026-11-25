@@ -34,7 +34,7 @@ const VIEWS := [
 ]
 const CAMERA_DISTANCE := 48.0
 ## Decal viewport (tyre marks): size, and how much more ground it covers than the screen.
-const DECAL_SIZE := Vector2i(720, 420)
+const DECAL_SIZE := Vector2i(1024, 600)
 const DECAL_MARGIN := 1.18
 
 ## Off for headless runs (tests) or when the player chose the 2D look.
@@ -480,6 +480,8 @@ func _build_props() -> void:
 		mi.scale = Vector3.ONE * s
 		mi.position = Vox.to3(pos, vtrack.height_px_at(pos))
 		mi.rotation.y = yaw
+		if kind == VoxelProps.Kind.BOARD:
+			mi.rotation.x = -0.62  # leaning back: the face looks up at the camera
 		var v := _rng.randf_range(-0.05, 0.05)
 		mi.set_instance_shader_parameter("tint", Color(1.0 + v, 1.0 + v * 0.6, 1.0 + v * 0.3))
 		if VoxelProps.sways(kind):

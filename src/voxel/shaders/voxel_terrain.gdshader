@@ -93,7 +93,8 @@ void fragment() {
 			vec2 uv = ((pc - decal_cam) * decal_zoom + decal_size * 0.5) / decal_size;
 			if (uv.x > 0.0 && uv.y > 0.0 && uv.x < 1.0 && uv.y < 1.0) {
 				vec4 dc = texture(decal_tex, uv);
-				col = col * (1.0 - dc.a) + dc.rgb;
+				// rubber: darken towards black, a little stronger than the 2D stamps
+				col *= 1.0 - 0.85 * clamp(dc.a * 1.7, 0.0, 1.0);
 			}
 		}
 	} else {
