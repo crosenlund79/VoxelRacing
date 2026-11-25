@@ -164,8 +164,8 @@ func _sync_car(i: int, delta: float) -> void:
 				var dc: Color = _main.track_theme.dust_color if _main.track_theme != null else Color(0.75, 0.66, 0.5)
 				fx.puff(rear, Vector3(_rng.randf_range(-0.5, 0.5), 0.4, _rng.randf_range(-0.5, 0.5)), dc, _rng.randf_range(0.25, 0.4), 0.6, 0.5)
 	# jumps: dust on take-off and landing
-	if _main.jumps != null:
-		var air: bool = _main.jumps.is_airborne(i)
+	if _main.get("jumps") != null:
+		var air: bool = _main.get("jumps").is_airborne(i)
 		if air != (_was_air[i] == 1) and c.visible:
 			var dust := Color(0.85, 0.78, 0.62)
 			for k in (8 if air else 18):

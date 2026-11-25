@@ -47,7 +47,7 @@ const FLAT_SHADER_CODE := "shader_type canvas_item;\nuniform vec4 flat_color;\nv
 ## Terrain hills per biome (variant 1..5): amplitude in voxels.
 const HILLS := [0, 6, 4, 5, 0, 0]
 
-var track: Track
+var track: Node2D  ## a Track, or the Battle Royale Arena
 var theme: TrackTheme
 var origin_px := Vector2.ZERO
 var nx := 0
@@ -94,7 +94,7 @@ func class_at(p: Vector2) -> int:
 
 ## decal_layer: HyperCars' decals node (grid boxes, road wear, kerbs are
 ## painted into the voxels; tyre marks stay dynamic, see VoxelStage).
-func build(p_track: Track, decal_layer: Node2D) -> void:
+func build(p_track: Node2D, decal_layer: Node2D) -> void:
 	var t0 := Time.get_ticks_msec()
 	track = p_track
 	theme = track.theme if track.theme != null else TrackTheme.load_variant(1)
@@ -105,12 +105,13 @@ func build(p_track: Track, decal_layer: Node2D) -> void:
 			if d is Sprite2D:
 				_decal_sources.append(d)
 	var ground := track.get_node_or_null("Ground") as Polygon2D
-	var bounds := Rect2(track.centerline[0], Vector2.ZERO)
+	var bounds := Rect2()
 	if ground != null:
 		bounds = Rect2(ground.polygon[0], Vector2.ZERO)
 		for p in ground.polygon:
 			bounds = bounds.expand(p)
 	else:
+		bounds = Rect2(track.centerline[0], Vector2.ZERO)
 		for p in track.centerline:
 			bounds = bounds.expand(p)
 		bounds = bounds.grow(Track.GROUND_MARGIN)
@@ -171,6 +172,8 @@ func _items(mode: String) -> Array[Node]:
 		if not (child is CanvasItem) or child is CollisionObject2D:
 			continue
 		var ci := child as CanvasItem
+		if String(child.name).begins_with("Prop"):
+			continue  # arena props become voxel models (VoxelStage)
 		if ci.z_index == Track.BRIDGE_SHADOW_Z or String(child.name).begins_with("BridgeShadow"):
 			continue
 		if (ci.z_index >= Track.BRIDGE_DECK_Z) != deck:
@@ -210,6 +213,9 @@ func _flatten(n: Node) -> bool:
 		return true
 	if nm.begins_with("Barrier"):
 		_flat(n, Color(0, 1, 0))
+		return true
+	if nm.begins_with("Divider"):  # raised islands (arena blocks and scrap piles)
+		_flat(n, Color(0, 0, 1))
 		return true
 	if nm.begins_with("Ravine"):
 		_flat(n, Color(1, 0, 1))
@@ -567,7 +573,7 @@ func _build_decks() -> void:
 	var norms := PackedVector3Array()
 	var cols := PackedColorArray()
 	var inds := PackedInt32Array()
-	var c := track.centerline
+	var c: PackedVector2Array = track.centerline
 	var n := c.size()
 	var tans := TrackLayout.tangents(c)
 	var wall_w: float = AssetCatalog.SPECS[theme.asset(AssetCatalog.WALL)].display_size.y

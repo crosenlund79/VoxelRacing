@@ -10,17 +10,22 @@ extends Node2D
 var layout := ArenaLayout.new()
 ## Lamp spots for night: [position, outward direction].
 var lamp_spots: Array = []
+## The biome (VoxelTrack reads it like a circuit's).
+var theme: TrackTheme
 
 
-func build(resolver: AssetResolver, theme: TrackTheme) -> void:
+func build(resolver: AssetResolver, p_theme: TrackTheme) -> void:
+	theme = p_theme
 	var grass := resolver.get_texture(theme.asset(AssetCatalog.GRASS))
 	var tarmac := resolver.get_texture(theme.asset(AssetCatalog.TARMAC))
 	var wall := resolver.get_texture(theme.asset(AssetCatalog.WALL))
 	var outside := _textured(grass, PackedVector2Array([Vector2(-2600, -2000), Vector2(2600, -2000), Vector2(2600, 2000), Vector2(-2600, 2000)]))
 	outside.color = theme.ground_tint
+	outside.name = "Ground"
 	add_child(outside)
 	var floor := _textured(tarmac, layout.boundary)
 	floor.color = Color(0.96, 0.9, 0.8) * theme.road_tint  # a dusty, worn yard
+	floor.name = "Road"
 	add_child(floor)
 	var body := StaticBody2D.new()
 	body.name = "Walls"
@@ -33,7 +38,9 @@ func build(resolver: AssetResolver, theme: TrackTheme) -> void:
 	closed.append(layout.boundary[0])
 	rim.polygon = closed
 	body.add_child(rim)
-	add_child(_line(layout.boundary, true, 26.0, wall))
+	var rim_wall := _line(layout.boundary, true, 26.0, wall)
+	rim_wall.name = "BarrierRim"
+	add_child(rim_wall)
 	var junker := CarArt.icon(resolver, AssetCatalog.CAR_JUNKER)  # (the same junker the races draw)
 	var tyres := resolver.get_texture(AssetCatalog.TYRE_STACK)
 	for o in layout.polygons:
@@ -43,6 +50,7 @@ func build(resolver: AssetResolver, theme: TrackTheme) -> void:
 		match o.kind:
 			"pile":
 				var p := Polygon2D.new()
+				p.name = "DividerPile"
 				p.polygon = o.points
 				p.color = Color(0.32, 0.27, 0.23)
 				add_child(p)
@@ -51,6 +59,7 @@ func build(resolver: AssetResolver, theme: TrackTheme) -> void:
 				rng.seed = 7
 				for k in 7:  # junked cars piled up, at all angles
 					var s := Sprite2D.new()
+					s.name = "PropJunker"
 					s.texture = junker
 					s.scale = AssetCatalog.scale_for(junker, Vector2(64, 36)) * rng.randf_range(0.85, 1.05)
 					s.position = Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, 95.0)
@@ -59,6 +68,7 @@ func build(resolver: AssetResolver, theme: TrackTheme) -> void:
 					add_child(s)
 			"block":
 				var p := Polygon2D.new()
+				p.name = "DividerBlock"
 				p.polygon = o.points
 				p.color = Color(0.68, 0.66, 0.62)
 				add_child(p)
@@ -75,8 +85,10 @@ func build(resolver: AssetResolver, theme: TrackTheme) -> void:
 					add_child(stripe)
 			"barrier":
 				var pts: PackedVector2Array = o.points
-				add_child(_line(PackedVector2Array([(pts[0] + pts[1]) * 0.5, (pts[2] + pts[3]) * 0.5]), false,
-					pts[0].distance_to(pts[1]), wall))
+				var bl := _line(PackedVector2Array([(pts[0] + pts[1]) * 0.5, (pts[2] + pts[3]) * 0.5]), false,
+					pts[0].distance_to(pts[1]), wall)
+				bl.name = "Barrier"
+				add_child(bl)
 	for t in layout.posts:
 		var c := CollisionShape2D.new()
 		var circle := CircleShape2D.new()
@@ -85,6 +97,7 @@ func build(resolver: AssetResolver, theme: TrackTheme) -> void:
 		c.position = t.centre
 		body.add_child(c)
 		var s := Sprite2D.new()
+		s.name = "PropTyres"
 		s.texture = tyres
 		s.scale = AssetCatalog.scale_for(tyres, Vector2(t.radius * 2.2, t.radius * 2.2))
 		s.position = t.centre
@@ -92,6 +105,7 @@ func build(resolver: AssetResolver, theme: TrackTheme) -> void:
 	var stand := resolver.get_texture(AssetCatalog.GRANDSTAND)
 	for at in layout.stands:  # (shared with the setup screen's preview)
 		var g := Sprite2D.new()
+		g.name = "PropStand"
 		g.texture = stand
 		g.scale = AssetCatalog.scale_for(stand, AssetCatalog.SPECS[AssetCatalog.GRANDSTAND].display_size)
 		g.position = at

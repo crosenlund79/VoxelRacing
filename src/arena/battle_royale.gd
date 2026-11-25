@@ -90,6 +90,13 @@ var _menu_paused := false
 ## The Esc menu is open (the human's car brakes; read by HumanDriverInput).
 var menu_open := false
 var _driving_params: DrivingParams
+## VoxelRacing: the voxel presentation, and what it reads like a race scene.
+var voxel: VoxelStage = null
+var track: Arena
+var track_theme: TrackTheme
+var wheel_layout: WheelLayout = preload("res://src/presentation/default_wheel_layout.tres")
+var _car_looks: Array[Dictionary] = []
+var player_marker: PlayerMarker
 var _shown_result := false
 ## Per car: the last weapon hit {by, weapon, time} (credits an elimination).
 var _last_hit: Array = []
@@ -104,6 +111,8 @@ func _ready() -> void:
 	arena.name = "Arena"
 	add_child(arena)
 	arena.build(resolver, theme)
+	track = arena
+	track_theme = theme
 	var decals := Node2D.new()
 	decals.name = "Decals"
 	add_child(decals)
@@ -120,6 +129,7 @@ func _ready() -> void:
 		add_child(c)
 		var logical := _car_image(i)
 		var look := CarArt.look(resolver, logical)
+		_car_looks.append(look)
 		c.setup(_driving_params, CarModel.ControlMode.FIRE_TO_ACCELERATE, look.body)
 		if logical == AssetCatalog.CAR_JUNKER:
 			c.sprite.modulate = CarArt.JUNKER_TINTS[i % CarArt.JUNKER_TINTS.size()]
@@ -132,8 +142,6 @@ func _ready() -> void:
 		cars.append(c)
 		textures[i] = CarArt.icon(resolver, logical)
 		full_names[i] = "YOU" if i == PLAYER else RivalRoster.full_name(i)
-		if look.wheels and presentation_enabled:
-			CarWheels.new().setup(c, resolver.get_texture(AssetCatalog.WHEEL), preload("res://src/presentation/default_wheel_layout.tres"), look.body_logical)
 		ais.append(null if i == PLAYER and not player_ai else ArenaAi.new(
 			load(RivalRoster.params_path(i)) if i > 0 else load(RivalRoster.params_path(2)), hash([base_seed, i])))
 	human_input = HumanDriverInput.new(PLAYER)
@@ -175,7 +183,7 @@ func _ready() -> void:
 		var zone := ZoneView.new()
 		zone.name = "Zone"
 		zone.arena = self
-		add_child(zone)
+		decals.add_child(zone)  # painted on the voxel ground
 		effects = RaceEffects.new()
 		add_child(effects)
 		effects.setup(cars, resolver, decals, theme.dust_color)
@@ -189,9 +197,9 @@ func _ready() -> void:
 		damage_view = DamageView.new()
 		add_child(damage_view)
 		damage_view.setup(damage, cars, resolver, race_audio)
-		var marker := PlayerMarker.new()
-		add_child(marker)
-		marker.setup([cars[PLAYER]] as Array[Car])
+		player_marker = PlayerMarker.new()
+		add_child(player_marker)
+		player_marker.set_marked({PLAYER: HyperTheme.GOLD})
 		kill_feed = KillFeed.new()
 		add_child(kill_feed)
 		var short := {PLAYER: "YOU"}
@@ -213,6 +221,10 @@ func _ready() -> void:
 			var weather := WeatherView.new()
 			add_child(weather)
 			weather.setup(theme.weather, night)
+		if VoxelStage.available():
+			voxel = VoxelStage.new()
+			add_child(voxel)
+			voxel.setup(self)
 		race_audio.play_music("battle")  # its own theme (docs/MUSIC.md)
 	session.start()
 	hud.flash_banner("FIGHT!", HyperTheme.RED, FIGHT_DELAY - 0.6)

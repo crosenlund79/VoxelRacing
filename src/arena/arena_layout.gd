@@ -99,3 +99,12 @@ static func _ngon(centre: Vector2, r: float, n: int, wobble: float) -> PackedVec
 		var rr := r * (1.0 + wobble * (0.5 if k % 2 == 0 else -0.3))
 		out.append(centre + Vector2.from_angle(TAU * k / n) * rr)
 	return out
+
+
+## (A flat yard: no bridges, no jumps, no branches; VoxelTrack asks.)
+func has_elevation() -> bool:
+	return false
+
+
+func has_jumps() -> bool:
+	return false

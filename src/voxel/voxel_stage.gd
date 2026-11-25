@@ -196,16 +196,19 @@ func _apply_mode() -> void:
 func _tag_2d_world() -> void:
 	main.visibility_layer = main.visibility_layer | DECAL_LAYER
 	main.track.visibility_layer = HIDE_LAYER
-	if main.scenery != null:
+	if main.get("scenery") != null:
 		main.scenery.visibility_layer = HIDE_LAYER
+	if main.get("combat_view") != null:  # mine halos are painted on the ground
+		main.combat_view.visibility_layer = DECAL_LAYER
+		main.combat_view.halos.visibility_layer = DECAL_LAYER
 	if main.lighting != null:
 		main.lighting.visibility_layer = HIDE_LAYER
 	var decals := main.get_node_or_null("Decals") as Node2D
 	if decals != null:
 		decals.visibility_layer = DECAL_LAYER
 		for d in decals.get_children():
-			if d is MultiMeshInstance2D and (d as CanvasItem).z_index < Track.BRIDGE_DECK_Z:
-				(d as CanvasItem).visibility_layer = DECAL_LAYER
+			if not (d is Sprite2D) and (d as CanvasItem).z_index < Track.BRIDGE_DECK_Z:
+				(d as CanvasItem).visibility_layer = DECAL_LAYER  # tyre marks, burn marks, the BR zone
 	for c in main.cars:
 		for child in c.get_children():
 			if child is CanvasItem:
@@ -408,10 +411,10 @@ func _sync_cars(delta: float) -> void:
 			h = vtrack.deck_height_px(main.progress[i].distance)
 		else:
 			h = clampf(vtrack.height_px_at(pos), 0.0, VoxelTrack.KERB_H * VoxelTrack.CELL)
-		if main.jumps != null:
-			h += main.jumps.height(i)
-			if main.jumps.is_down(i):
-				h = -2.0 if main.jumps.is_down_in_flyover(i) else VoxelTrack.PIT_H * VoxelTrack.CELL
+		if _jumps() != null:
+			h += _jumps().height(i)
+			if _jumps().is_down(i):
+				h = -2.0 if _jumps().is_down_in_flyover(i) else VoxelTrack.PIT_H * VoxelTrack.CELL
 		var moved: float = (pos - d.prev_pos).length()
 		if moved > 60.0:  # placed / respawned: no smoothing
 			d.h = h
@@ -456,7 +459,7 @@ func _sync_cars(delta: float) -> void:
 		# paint: junker tints, fallen tint, wear; lamps
 		var body: MeshInstance3D = d.body
 		var tint := c.sprite.modulate
-		if main.jumps != null and main.jumps.is_down(i):
+		if _jumps() != null and _jumps().is_down(i):
 			tint *= JumpView.FALLEN_TINT
 		body.set_instance_shader_parameter("tint", tint)
 		# respawn protection blinks the car, as in HyperCars
@@ -519,9 +522,15 @@ func _build_props() -> void:
 	holder.name = "Props"
 	add_child(holder)
 	var sprites: Array[Sprite2D] = []
-	if main.scenery != null:
+	if main.get("scenery") != null:
 		for s in main.scenery.get_children():
 			if s is Sprite2D:
+				sprites.append(s)
+	for s in main.track.get_children():  # arena props (Battle Royale)
+		if s is Sprite2D and String(s.name).begins_with("Prop"):
+			if String(s.name).begins_with("PropJunker"):
+				_junker(holder, s)
+			else:
 				sprites.append(s)
 	var branches: Node = main.track.get_node_or_null("Branches")
 	if branches != null:
@@ -763,3 +772,19 @@ func _confetti(at: Vector2) -> void:
 		var a := randf() * TAU
 		var v := Vector3(cos(a), 0.0, sin(a)) * randf_range(1.0, 6.0) + Vector3(0, randf_range(4.0, 10.0), 0)
 		race_fx.fx.spark(base, v, cols[k % cols.size()], randf_range(0.09, 0.15), randf_range(1.6, 2.6), 0.25, 0.35)
+
+
+func _jumps() -> JumpWorld:
+	return main.get("jumps")
+
+
+## A scrapped car on the Battle Royale pile: the junker as a voxel model,
+## a little sunk and battered.
+func _junker(holder: Node3D, spr: Sprite2D) -> void:
+	var logical := AssetCatalog.body_of(AssetCatalog.CAR_JUNKER)
+	var mi := MeshInstance3D.new()
+	mi.mesh = VoxelCars.body_mesh(main.resolver.get_texture(logical), main.wheel_layout, logical)
+	mi.position = Vox.to3(spr.global_position, vtrack.height_px_at(spr.global_position) - 2.0)
+	mi.rotation = Vector3(_rng.randf_range(-0.25, 0.25), Vox.yaw(spr.global_rotation), _rng.randf_range(-0.3, 0.3))
+	mi.set_instance_shader_parameter("tint", spr.modulate)
+	holder.add_child(mi)

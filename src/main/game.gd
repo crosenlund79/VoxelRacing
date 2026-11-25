@@ -384,6 +384,10 @@ func start_battle(choice: int) -> void:
 	PlayerControls.set_race_context(true)
 	await _fade_to(1.0)
 	title.hide_title()
+	loading.begin("BATTLE ROYALE", "THE SCRAPYARD  -  %s  -  %s" % [TrackTheme.load_variant(title.track_variant).display_name.to_upper(),
+		"NIGHT" if title.night else "DAY"])
+	await _fade_to(0.0)
+	await get_tree().process_frame
 	var b := BattleRoyale.new()
 	b.name = "BattleRoyale"
 	b.track_variant = title.track_variant
@@ -399,6 +403,10 @@ func start_battle(choice: int) -> void:
 		b.cars[0].model.control_mode = CarModel.ControlMode.FIRE_TO_BRAKE
 	b.exit_requested.connect(back_to_title)
 	b.restart_requested.connect(func() -> void: _restart_battle(choice))
+	b.set_physics_process(false)  # the fight waits for its voxel world
+	await _await_world()
+	if is_instance_valid(b):
+		b.set_physics_process(true)
 	_starting = false
 	await _fade_to(0.0)
 
