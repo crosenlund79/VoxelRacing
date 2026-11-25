@@ -180,7 +180,7 @@ func _sync_car(i: int, delta: float) -> void:
 				_rng.randf_range(0.35, 0.6), _rng.randf_range(1.0, 1.8), 0.6)
 		# wheelspin: smoke from under the rear wheels (a burnout off the line)
 		var ws: float = d.get("wheelspin", 0.0)
-		if ws > 0.08 and _rng.randf() < delta * 34.0 * ws:
+		if ws > 0.06 and _rng.randf() < delta * 46.0 * ws:
 			for side in [-0.75, 0.75]:
 				var at: Vector3 = root.global_transform * Vector3(-1.25, 0.15, side)
 				fx.puff(at, Vector3(_rng.randf_range(-0.6, 0.6), 0.45, _rng.randf_range(-0.6, 0.6)) - root.global_transform.basis.x * 1.2,

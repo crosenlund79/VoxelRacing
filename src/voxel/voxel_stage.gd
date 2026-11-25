@@ -480,7 +480,7 @@ func _sync_cars(delta: float) -> void:
 		# wheelspin: hard throttle at low speed spins the rear wheels (and the
 		# race fx puts tyre smoke under them); strongest from a standstill
 		var along := vel.dot(fwd)
-		var spin_want := clampf((a_long - 110.0) / 180.0, 0.0, 1.0) * clampf(1.0 - absf(along) / 190.0, 0.0, 1.0)
+		var spin_want := clampf((a_long - 100.0) / 140.0, 0.0, 1.0) * clampf(1.0 - absf(along) / 240.0, 0.0, 1.0)
 		if not c.active or c.airborne:
 			spin_want = 0.0
 		d.wheelspin = lerpf(float(d.wheelspin), spin_want, 1.0 - exp(-dt * (14.0 if spin_want > float(d.wheelspin) else 4.0)))

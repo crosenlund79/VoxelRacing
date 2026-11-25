@@ -11,6 +11,7 @@ var _out := "user://sc"
 var _taunt_at := -1
 var _thrower := -1
 var _shots := 0
+var _launch := -1
 
 
 func _initialize() -> void:
@@ -47,8 +48,12 @@ func _physics_process(_d: float) -> bool:
 		_main.hud.history_panel.visible = false
 		_main.follow_driver(9)
 	var t := _f - _t0
-	if t in [40, 70, 100]:
-		_shot("start_%d" % t)
+	# the launch: shots just after the followed car pulls away
+	var lead: Car = _main.cars[9]
+	if _launch < 0 and lead.model != null and lead.model.velocity.length() > 25.0:
+		_launch = t
+	if _launch > 0 and t - _launch in [4, 12, 24]:
+		_shot("start_%d" % (t - _launch))
 	if t == 400:
 		_shot("racing")
 	# a taunt: the first rival with another close behind it
