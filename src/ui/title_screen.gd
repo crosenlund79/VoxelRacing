@@ -65,19 +65,14 @@ signal quit_requested
 signal career_requested
 signal credits_requested
 
-const TRACK_SCRIPT := preload("res://src/track/track.gd")
 const LAYOUT := preload("res://src/track/circuit_01.tres")
 
 var resolver: AssetResolver
 var settings: AudioSettings
-var _backdrop: Node2D
+var _backdrop: MenuDiorama
 ## The player's parked car on the backdrop (the last grid slot).
-var _player_sprite: Sprite2D
-var _camera: Camera2D
-var _path: ClosedPath
-var _pan := 0.0
 var _ui: CanvasLayer
-var _logo: TextureRect
+var _logo: VoxelLogo
 var _tagline: Label
 ## A notice over the title (e.g. a car lost in a forfeited championship).
 var _notice: Label
@@ -112,23 +107,27 @@ func setup(p_resolver: AssetResolver, p_settings: AudioSettings) -> void:
 	root.theme = HyperTheme.build(resolver)
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_ui.add_child(root)
-	var shade := ColorRect.new()
-	shade.color = Color(0.1, 0.08, 0.07, 0.35)
-	shade.size = Vector2(1280, 720)
+	var shade := TextureRect.new()  # a soft dusk vignette behind the menu column
+	var sg := GradientTexture2D.new()
+	var gr := Gradient.new()
+	gr.set_color(0, Color(VrStyle.INK, 0.78))
+	gr.set_color(1, Color(VrStyle.INK, 0.0))
+	sg.gradient = gr
+	sg.fill_from = Vector2(0, 0)
+	sg.fill_to = Vector2(1, 0)
+	shade.texture = sg
+	shade.size = Vector2(760, 720)
+	shade.stretch_mode = TextureRect.STRETCH_SCALE
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(shade)
-	_logo = TextureRect.new()
-	_logo.texture = resolver.get_texture(AssetCatalog.LOGO)
-	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_logo.size = AssetCatalog.SPECS[AssetCatalog.LOGO].display_size
-	_logo.position = Vector2((1280 - _logo.size.x) * 0.5, 40)
-	_logo.pivot_offset = _logo.size * 0.5
+	_logo = VoxelLogo.new()
+	_logo.size = Vector2(560, 236)
+	_logo.position = Vector2(20, 4)
 	root.add_child(_logo)
-	_tagline = HyperTheme.label("VoxelRacing  -  Prototype 001: The Voxel Experiment", 20, HyperTheme.CREAM, 500)
+	_tagline = HyperTheme.label("MINIATURE MOTORSPORT, BLOCK BY BLOCK", 16, VrStyle.YELLOW, 700)
 	_tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_tagline.size = Vector2(1280, 30)
-	_tagline.position = Vector2(0, 214)
+	_tagline.size = Vector2(560, 24)
+	_tagline.position = Vector2(20, 226)
 	_notice = HyperTheme.label("", 30, HyperTheme.RED, 700)
 	_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_notice.size = Vector2(1280, 120)
@@ -242,8 +241,8 @@ func setup(p_resolver: AssetResolver, p_settings: AudioSettings) -> void:
 ## Shows the title (backdrop, menus, music) and focuses the first button.
 func show_title() -> void:
 	_backdrop.visible = true
-	_camera.enabled = true
-	_camera.make_current()
+	_backdrop.camera.make_current()
+	_backdrop.set_process(true)
 	_ui.visible = true
 	set_process(true)
 	music.play("music/music_menu")  # (keeps playing when it already is)
@@ -255,7 +254,8 @@ func show_title() -> void:
 func hide_title() -> void:
 	_ui.visible = false
 	_backdrop.visible = false
-	_camera.enabled = false
+	_backdrop.camera.clear_current()
+	_backdrop.set_process(false)
 	set_process(false)  # (the music carries on: the race scene takes it over)
 
 
@@ -267,10 +267,6 @@ func stop_audio() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
-	_pan = fposmod(_pan + delta * 70.0, _path.length)
-	_camera.global_position = _path.point_at(_pan) + Vector2(0, 120)
-	_logo.scale = Vector2.ONE * (1.0 + sin(_time * 1.6) * 0.012)
-	_logo.rotation = sin(_time * 0.9) * 0.008
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -515,10 +511,8 @@ func _player_car_name() -> String:
 
 ## The player's parked car on the backdrop follows the CAR choice at once.
 func _refresh_backdrop_player() -> void:
-	if _player_sprite == null or not is_instance_valid(_player_sprite):
-		return
-	_player_sprite.texture = CarArt.icon(resolver, _player_car_name())
-	_player_sprite.scale = AssetCatalog.scale_for(_player_sprite.texture, AssetCatalog.SPECS[AssetCatalog.CAR_PLAYER].display_size)
+	if _backdrop != null:
+		_backdrop.set_player_car(_player_car_name())
 
 
 func _update_car_button() -> void:
@@ -616,11 +610,6 @@ func _cycle_track(dir: int = 1) -> void:
 	cfg.load(settings.path)
 	cfg.set_value("game", "track_variant", track_variant)
 	cfg.save(settings.path)
-	var pan := _pan
-	_backdrop.free()
-	_build_backdrop()
-	_pan = pan
-	_camera.make_current()
 	_refresh_preview()
 
 
@@ -631,11 +620,6 @@ func _cycle_layout(dir: int = 1) -> void:
 	layout_id = ids[posmod(ids.find(layout_id) + dir, ids.size())]
 	_update_layout_button()
 	_refresh_preview()
-	var pan := _pan
-	_backdrop.free()
-	_build_backdrop()
-	_pan = pan
-	_camera.make_current()
 
 
 func _update_layout_button() -> void:
@@ -744,19 +728,15 @@ func _menu(root: Control, items: Array, width: int = 380, button_height: int = 3
 	for item in items:
 		var b := Button.new()
 		b.text = item[0]
-		b.custom_minimum_size = Vector2(width, button_height)
-		b.add_theme_font_size_override("font_size", 20)
-		for state in ["normal", "hover", "pressed", "focus", "disabled"]:
-			var sb: StyleBox = root.theme.get_stylebox(state, "Button").duplicate()
-			sb.content_margin_top = 4
-			sb.content_margin_bottom = 6
-			b.add_theme_stylebox_override(state, sb)
+		b.custom_minimum_size = Vector2(width, maxi(button_height, 48))
+		b.add_theme_font_size_override("font_size", 24)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.pressed.connect(item[1])
 		b.focus_entered.connect(func() -> void: _sfx_play("ui/ui_move"))
 		b.mouse_entered.connect(b.grab_focus)
 		box.add_child(b)
 	box.reset_size()
-	box.position = Vector2((1280 - width) * 0.5, 244)
+	box.position = Vector2(64, 262)
 	return box
 
 
@@ -768,39 +748,6 @@ func _sfx_play(logical: String) -> void:
 
 
 func _build_backdrop() -> void:
-	_backdrop = Node2D.new()
+	_backdrop = MenuDiorama.new()
+	_backdrop.name = "Diorama"
 	add_child(_backdrop)
-	var track := Node2D.new()
-	track.set_script(TRACK_SCRIPT)
-	var chosen := DevLayouts.load_layout(layout_id)
-	track.layout = chosen if chosen != null else LAYOUT
-	_backdrop.add_child(track)
-	track.build(resolver, TrackTheme.load_variant(track_variant))
-	# The backdrop never races: remove its collision and checkpoint nodes.
-	for child in track.get_children():
-		if child is CollisionObject2D:
-			child.queue_free()
-	var decals := Node2D.new()
-	_backdrop.add_child(decals)
-	var scenery := TrackScenery.new()
-	_backdrop.add_child(scenery)
-	scenery.build(track, resolver, decals)
-	var names := [_player_car_name()]
-	for i in range(1, 10):
-		# a rival whose car the player has won parks the junker
-		names.append(AssetCatalog.CAR_JUNKER if cars != null and cars.displaced(i) else AssetCatalog.ai_car(i))
-	for slot in names.size():
-		var spr := Sprite2D.new()
-		spr.texture = CarArt.icon(resolver, names[(slot + 1) % names.size()])
-		var t: Transform2D = track.grid_transform(slot)
-		spr.position = t.origin
-		spr.rotation = t.get_rotation()
-		spr.scale = AssetCatalog.scale_for(spr.texture, AssetCatalog.SPECS[AssetCatalog.CAR_PLAYER].display_size)
-		_backdrop.add_child(spr)
-		if (slot + 1) % names.size() == 0:
-			_player_sprite = spr
-	_path = track.path
-	_pan = _path.length - 700.0
-	_camera = Camera2D.new()
-	_camera.zoom = Vector2(0.9, 0.9)
-	_backdrop.add_child(_camera)

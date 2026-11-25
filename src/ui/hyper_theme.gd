@@ -1,160 +1,173 @@
 class_name HyperTheme
 extends RefCounted
-## The shared HyperCars UI theme: Fredoka (SIL OFL 1.1) typography, painted
-## nine-patch buttons and panels from replaceable textures, warm cream text.
+## The shared VoxelRacing UI theme (the class keeps its inherited name so every
+## screen picks it up): Pixel Operator typography (CC0), voxel-block buttons
+## and panels from VrStyle, the VoxelRacing palette. Screens use the constants
+## below, which now carry VoxelRacing's colours.
 
-const FONT_PATH := "res://assets/fonts/Fredoka.ttf"
-const CREAM := Color("f3e8cf")
-const CREAM_DIM := Color("f3e8cf", 0.6)
-const OUTLINE := Color("2a2220")
-const GOLD := Color("e2b23c")
-const RED := Color("b23a22")
-const PANEL_TINT := Color(1, 1, 1, 0.96)
+const CREAM := VrStyle.PAPER
+const CREAM_DIM := VrStyle.PAPER_DIM
+const OUTLINE := VrStyle.INK
+const GOLD := VrStyle.YELLOW
+const RED := VrStyle.RED
+const PANEL_TINT := Color(1, 1, 1, 0.95)
 ## Human player identity colours (HUD rows, results, car marker): Player 1 /
 ## the local player gold, Player 2 sky blue (matches the blue P2 car).
-const P2_BLUE := Color("74bdf2")
+const P2_BLUE := VrStyle.SKY
 
 
 ## Colour of a human by player index (0 = Player 1 / you, 1 = Player 2).
 static func player_color(index: int) -> Color:
 	return P2_BLUE if index == 1 else GOLD
 
-## Fredoka at a weight (300 light .. 700 bold). The font file itself is cached
-## by the resource loader; the small variation wrapper is created per use.
-static func font(weight: int = 600) -> FontVariation:
-	var f := FontVariation.new()
-	f.base_font = load(FONT_PATH)
-	f.variation_opentype = {"wght": weight}
-	return f
+
+## Pixel Operator: bold from weight 600 up, regular below.
+static func font(weight: int = 600) -> Font:
+	return VrStyle.font("bold" if weight >= 600 else "regular")
 
 
-static func build(resolver: AssetResolver) -> Theme:
+static func build(_resolver: AssetResolver = null) -> Theme:
 	var t := Theme.new()
-	t.default_font = font(500)
-	t.default_font_size = 20
-	for type in ["Label", "Button", "CheckButton", "LinkButton"]:
+	t.default_font = VrStyle.font("regular")
+	t.default_font_size = 16
+	for type in ["Label", "Button", "CheckButton", "LinkButton", "LineEdit"]:
 		t.set_color("font_color", type, CREAM)
 		t.set_color("font_outline_color", type, OUTLINE)
-		t.set_constant("outline_size", type, 6)
-	t.set_font("font", "Button", font(600))
+		t.set_constant("outline_size", type, 4)
+	t.set_font("font", "Button", VrStyle.font("bold"))
 	t.set_font_size("font_size", "Button", 24)
-	t.set_color("font_hover_color", "Button", Color.WHITE)
-	t.set_color("font_focus_color", "Button", Color.WHITE)
-	t.set_color("font_pressed_color", "Button", GOLD)
-	var button_tex := resolver.get_texture(AssetCatalog.BUTTON)
-	var margin := int(AssetCatalog.SPECS[AssetCatalog.BUTTON].patch_margin * button_tex.get_width() / 96.0)
-	t.set_stylebox("normal", "Button", _button_box(button_tex, margin, Color(1, 1, 1, 0.92)))
-	t.set_stylebox("hover", "Button", _button_box(button_tex, margin, Color(1.25, 1.18, 1.1)))
-	t.set_stylebox("pressed", "Button", _button_box(button_tex, margin, Color(0.8, 0.75, 0.72)))
-	var focus := _button_box(button_tex, margin, Color(1.35, 1.2, 0.85))
-	t.set_stylebox("focus", "Button", focus)
-	t.set_stylebox("disabled", "Button", _button_box(button_tex, margin, Color(1, 1, 1, 0.4)))
-	t.set_stylebox("normal", "CheckButton", StyleBoxEmpty.new())
-	var panel_tex := resolver.get_texture(AssetCatalog.HUD_PANEL)
-	var panel := StyleBoxTexture.new()
-	panel.texture = panel_tex
-	var pm := int(AssetCatalog.SPECS[AssetCatalog.HUD_PANEL].patch_margin * panel_tex.get_width() / 96.0)
-	panel.set_texture_margin_all(pm)
-	panel.set_content_margin_all(22)
-	panel.modulate_color = PANEL_TINT
-	t.set_stylebox("panel", "PanelContainer", panel)
-	t.set_stylebox("panel", "Panel", panel)
-	var slider := StyleBoxFlat.new()
-	slider.bg_color = Color("3a302a")
-	slider.set_corner_radius_all(6)
-	slider.content_margin_top = 4
-	slider.content_margin_bottom = 4
-	t.set_stylebox("slider", "HSlider", slider)
+	t.set_color("font_hover_color", "Button", OUTLINE)
+	t.set_color("font_focus_color", "Button", OUTLINE)
+	t.set_color("font_hover_pressed_color", "Button", OUTLINE)
+	t.set_color("font_pressed_color", "Button", CREAM)
+	t.set_color("font_disabled_color", "Button", Color(CREAM, 0.45))
+	t.set_constant("outline_size", "Button", 0)
+	t.set_stylebox("normal", "Button", VrStyle.block(VrStyle.NIGHT_LIGHT))
+	t.set_stylebox("hover", "Button", VrStyle.block(VrStyle.YELLOW))
+	t.set_stylebox("focus", "Button", VrStyle.block(VrStyle.YELLOW))
+	t.set_stylebox("pressed", "Button", VrStyle.block_pressed(VrStyle.RED))
+	t.set_stylebox("hover_pressed", "Button", VrStyle.block_pressed(VrStyle.YELLOW))
+	var off := VrStyle.block(VrStyle.NIGHT)
+	off.modulate_color = Color(1, 1, 1, 0.5)
+	t.set_stylebox("disabled", "Button", off)
+	for state in ["normal", "hover", "pressed", "focus"]:
+		t.set_stylebox(state, "CheckButton", StyleBoxEmpty.new())
+	t.set_font("font", "CheckButton", VrStyle.font("bold"))
+	t.set_font_size("font_size", "CheckButton", 24)
+	t.set_stylebox("panel", "PanelContainer", VrStyle.panel())
+	t.set_stylebox("panel", "Panel", VrStyle.panel())
+	# sliders: an ink groove with a yellow fill and a little voxel block knob
+	var groove := StyleBoxFlat.new()
+	groove.bg_color = OUTLINE
+	groove.border_color = VrStyle.NIGHT_LIGHT
+	groove.set_border_width_all(2)
+	groove.content_margin_top = 5
+	groove.content_margin_bottom = 5
+	t.set_stylebox("slider", "HSlider", groove)
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = GOLD
-	fill.set_corner_radius_all(6)
-	fill.content_margin_top = 4
-	fill.content_margin_bottom = 4
+	fill.content_margin_top = 5
+	fill.content_margin_bottom = 5
 	t.set_stylebox("grabber_area", "HSlider", fill)
 	t.set_stylebox("grabber_area_highlight", "HSlider", fill)
-	var bar := StyleBoxFlat.new()
-	bar.bg_color = Color(GOLD, 0.7)
-	bar.set_corner_radius_all(4)
-	t.set_stylebox("scroll", "HScrollBar", _flat(Color("3a302a", 0.8)))
-	t.set_stylebox("grabber", "HScrollBar", bar)
+	var knob := _knob(VrStyle.PAPER)
+	t.set_icon("grabber", "HSlider", knob)
+	t.set_icon("grabber_highlight", "HSlider", _knob(VrStyle.YELLOW))
+	t.set_stylebox("scroll", "HScrollBar", _flat(Color(OUTLINE, 0.8)))
+	t.set_stylebox("grabber", "HScrollBar", _flat(Color(GOLD, 0.8)))
 	t.set_stylebox("grabber_highlight", "HScrollBar", _flat(GOLD))
 	t.set_stylebox("grabber_pressed", "HScrollBar", _flat(GOLD))
+	t.set_stylebox("scroll", "VScrollBar", _flat(Color(OUTLINE, 0.8)))
+	t.set_stylebox("grabber", "VScrollBar", _flat(Color(GOLD, 0.8)))
+	# text fields
+	var field := StyleBoxFlat.new()
+	field.bg_color = OUTLINE
+	field.border_color = VrStyle.NIGHT_LIGHT
+	field.set_border_width_all(3)
+	field.content_margin_left = 10
+	field.content_margin_right = 10
+	field.content_margin_top = 6
+	field.content_margin_bottom = 6
+	t.set_stylebox("normal", "LineEdit", field)
+	var field_focus := field.duplicate() as StyleBoxFlat
+	field_focus.border_color = GOLD
+	t.set_stylebox("focus", "LineEdit", field_focus)
+	t.set_font_size("font_size", "LineEdit", 24)
+	# progress bars: chequered fill
+	var bar_bg := StyleBoxFlat.new()
+	bar_bg.bg_color = OUTLINE
+	bar_bg.border_color = VrStyle.NIGHT_LIGHT
+	bar_bg.set_border_width_all(2)
+	t.set_stylebox("background", "ProgressBar", bar_bg)
+	var bar_fill := StyleBoxFlat.new()
+	bar_fill.bg_color = GOLD
+	t.set_stylebox("fill", "ProgressBar", bar_fill)
 	return t
 
 
-static func _button_box(tex: Texture2D, margin: int, tint: Color) -> StyleBoxTexture:
-	var b := StyleBoxTexture.new()
-	b.texture = tex
-	b.set_texture_margin_all(margin)
-	b.content_margin_left = 28
-	b.content_margin_right = 28
-	b.content_margin_top = 8
-	b.content_margin_bottom = 10
-	b.modulate_color = tint
-	return b
+## A small voxel-block slider knob.
+static func _knob(face: Color) -> ImageTexture:
+	var img := Image.create(18, 22, false, Image.FORMAT_RGBA8)
+	img.fill(OUTLINE)
+	img.fill_rect(Rect2i(2, 2, 14, 16), face.darkened(0.3))
+	img.fill_rect(Rect2i(2, 2, 14, 12), face)
+	img.fill_rect(Rect2i(2, 2, 14, 2), face.lightened(0.3))
+	return ImageTexture.create_from_image(img)
 
 
 static func _flat(color: Color) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = color
-	s.set_corner_radius_all(4)
 	return s
 
 
-## Label helper with the theme font and an optional size/colour.
+## Label helper: Pixel Operator at a pixel-grid size, ink outline.
 static func label(text: String, size: int = 20, color: Color = CREAM, weight: int = 500) -> Label:
 	var l := Label.new()
 	l.text = text
+	var px := VrStyle.px(size)
 	l.add_theme_font_override("font", font(weight))
-	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_font_size_override("font_size", px)
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_color_override("font_outline_color", OUTLINE)
-	l.add_theme_constant_override("outline_size", maxi(4, size / 4))
+	l.add_theme_constant_override("outline_size", maxi(4, px / 5))
 	return l
 
 
-# ------------------------------------------------- shared screen pieces (2026-11-23)
-# One look for every screen, taken from the main menu: wooden buttons with the
-# main menu's margins and type sizes, a gold title with a thin gold rule under
-# it, cream subtitles, and the dark warm shade behind overlays.
+# ------------------------------------------------- shared screen pieces
+# One look for every screen: voxel-block buttons, a yellow title over a
+# chequered rule, cream subtitles, and a deep ink shade behind overlays.
 
-## The dark warm shade behind overlays (pause menu, ceremonies).
-const SHADE := Color(0.11, 0.09, 0.08, 0.62)
+## The deep shade behind overlays (pause menu, ceremonies).
+const SHADE := Color(0.06, 0.06, 0.16, 0.66)
 
 
-## Styles a button like the main menu's: 20 px type (28 for the primary
-## action), the main menu's content margins and height.
+## Styles a button like the main menu's: 24 px type (32 for the primary
+## action), voxel-block heights.
 static func style_button(b: Button, primary: bool = false, width: float = 380.0) -> Button:
-	b.custom_minimum_size = Vector2(width, 58 if primary else 40)
-	b.add_theme_font_size_override("font_size", 28 if primary else 20)
-	var theme := b.theme if b.theme != null else null
-	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
-		var sb: StyleBox = b.get_theme_stylebox(state, "Button")
-		if sb == null and theme != null:
-			sb = theme.get_stylebox(state, "Button")
-		if sb != null:
-			sb = sb.duplicate()
-			sb.content_margin_top = 4
-			sb.content_margin_bottom = 6
-			b.add_theme_stylebox_override(state, sb)
+	b.custom_minimum_size = Vector2(width, 64 if primary else 50)
+	b.add_theme_font_size_override("font_size", 32 if primary else 24)
+	if primary:
+		b.add_theme_stylebox_override("normal", VrStyle.block(VrStyle.RED))
+		b.add_theme_color_override("font_color", CREAM)
 	return b
 
 
-## A screen heading: a gold title, an optional cream subtitle and a thin gold
-## rule, as one VBox (place it where the screen's title goes).
+## A screen heading: a yellow title, an optional cream subtitle and a
+## chequered rule, as one VBox (place it where the screen's title goes).
 static func heading(title: String, subtitle: String = "", size: int = 46) -> VBoxContainer:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
+	box.add_theme_constant_override("separation", 4)
 	var t := label(title, size, GOLD, 700)
 	t.name = "Title"
 	box.add_child(t)
-	var rule := ColorRect.new()
+	var rule := TextureRect.new()
 	rule.name = "Rule"
-	rule.color = Color(GOLD, 0.7)
-	rule.custom_minimum_size = Vector2(220, 3)
+	rule.texture = VrStyle.checker(28, 2, 4)
+	rule.custom_minimum_size = Vector2(224, 8)
 	rule.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	box.add_child(rule)
-	var s := label(subtitle, 20, CREAM, 600)
+	var s := label(subtitle, 24, CREAM, 500)
 	s.name = "Subtitle"
 	s.visible = subtitle != ""
 	box.add_child(s)

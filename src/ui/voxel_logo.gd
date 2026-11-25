@@ -87,7 +87,7 @@ func _ready() -> void:
 			_car.add_child(w)
 	_car.scale = Vector3.ONE * 0.95
 	var cam := Camera3D.new()
-	cam.fov = 24.0
+	cam.fov = 17.0
 	cam.position = Vector3(0, 1.2, 30.0)
 	cam.look_at_from_position(cam.position, Vector3(0, -0.2, 0), Vector3.UP)
 	viewport.add_child(cam)
