@@ -273,8 +273,9 @@ func start_race(choice: int, with_garage: bool = false, devices: Array[int] = []
 	await _await_world()
 	if choice == 2:
 		race.start_race()  # spectating starts straight away
-	elif with_garage:
+	elif with_garage and not _garage_just_seen:
 		race.open_garage()  # shop before the first garage race
+	_garage_just_seen = false
 	_starting = false
 	await _fade_to(0.0)
 
@@ -313,6 +314,7 @@ func _close_garage(start: bool) -> void:
 		_champ_garage_open = false
 		garage_screen.set_back_label("grid panel")
 		if start and champ != null and not champ.finished() and race == null and not _starting:
+			_garage_just_seen = true
 			start_race(_champ_choice, true, [], null, -1, "", false, champ.next_round())
 		elif champ != null:
 			champ_screen.show_standings(champ)
@@ -538,6 +540,8 @@ func _next_round() -> void:
 ## weapons, upgrades, prize money from the round); its RACE button starts the
 ## next round, Back returns to the standings.
 var _champ_garage_open := false
+## The next round comes straight from the garage: no second garage on its grid.
+var _garage_just_seen := false
 
 
 func _open_championship_garage() -> void:

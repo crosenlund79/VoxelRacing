@@ -52,7 +52,12 @@ func _process(_d: float) -> bool:
 				_step = 1
 		1:  # round 1 is built; end it at once
 			if race != null and race.voxel != null and race.voxel.ready_3d and not _game._starting and _f > _mark + 60:
-				_check("round 1 races with the garage", race.garage == _game.garage)
+				if _game.garage_screen.visible:  # the shop before round 1: RACE!
+					_shot("0_garage_round1")
+					_check("round 1 races with the garage", race.garage == _game.garage)
+					_game.garage_screen.race_requested.emit()
+					_mark = _f
+					return false
 				if race.session.state == RaceSession.State.MODE_SELECT:
 					race.start_race()  # (the grid panel's Fire)
 					_mark = _f
@@ -87,6 +92,7 @@ func _process(_d: float) -> bool:
 		5:
 			if race != null and race.voxel != null and race.voxel.ready_3d and not _game._starting:
 				_check("round 2 starts from the garage", _game.champ.round_index() == 1, "(round %d)" % (_game.champ.round_index() + 1))
+				_check("no second garage on round 2's grid", not _game.garage_screen.visible)
 				_shot("4_round2")
 				return true
 			if _f > _mark + 4000:
