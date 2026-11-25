@@ -82,6 +82,8 @@ var _career_outcome := {}
 var milestones: MilestoneScreen
 var _last_reaction_rival := -1
 var _career_garage_open := false
+## VoxelRacing: the animated track loading screen ("The Little Race").
+var loading: LoadingRace
 
 
 func _ready() -> void:
@@ -152,6 +154,9 @@ func _ready() -> void:
 	garage_screen.race_requested.connect(func() -> void: _close_garage(true))
 	garage_screen.closed.connect(func() -> void: _close_garage(false))
 	_setup_career()
+	loading = LoadingRace.new()
+	loading.name = "LoadingRace"
+	add_child(loading)
 	var layer := CanvasLayer.new()
 	layer.layer = 50
 	add_child(layer)
@@ -178,6 +183,15 @@ func start_race(choice: int, with_garage: bool = false, devices: Array[int] = []
 	PlayerControls.set_race_context(true)  # Fire never presses a button from here on
 	await _fade_to(1.0)
 	title.hide_title()
+	# The Little Race: the loading screen runs while the voxel world is built
+	var client_flag := net != null and net.is_client()
+	var lid: String = String(round.layout) if not round.is_empty() else (net_layout if client_flag else title.layout_id)
+	var variant: int = int(round.variant) if not round.is_empty() else (net_track if client_flag else title.track_variant)
+	var is_night: bool = bool(round.night) if not round.is_empty() else (net_night if client_flag else title.night)
+	loading.begin(DevLayouts.display_name(lid).to_upper(), "%s  -  %s%s" % [TrackTheme.load_variant(variant).display_name.to_upper(),
+		"NIGHT" if is_night else "DAY", "  -  SPECTATING" if choice == 2 else ""])
+	await _fade_to(0.0)
+	await get_tree().process_frame
 	race = MAIN_SCENE.instantiate()
 	race.allow_exit = true
 	race.base_seed = race_rng.randi()
@@ -250,12 +264,28 @@ func start_race(choice: int, with_garage: bool = false, devices: Array[int] = []
 	if _career_mode:
 		race.race_began.connect(_on_career_race_began)
 		race.race_concluded.connect(_on_career_concluded)
+	await _await_world()
 	if choice == 2:
 		race.start_race()  # spectating starts straight away
 	elif with_garage:
 		race.open_garage()  # shop before the first garage race
 	_starting = false
 	await _fade_to(0.0)
+
+
+## Lets the loading race run until the race's voxel world is ready, then
+## fades from it to the race.
+func _await_world() -> void:
+	var voxel: VoxelStage = race.get("voxel") if race != null else null
+	if voxel != null:
+		loading.progress_source = voxel.progress
+		if not voxel.ready_3d:
+			await voxel.world_ready
+	loading.complete()
+	if loading.visible:
+		await loading.finished
+	await _fade_to(1.0)
+	loading.end()
 
 
 func _open_garage() -> void:

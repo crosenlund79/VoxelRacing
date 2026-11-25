@@ -57,6 +57,22 @@ var classes := PackedByteArray()
 var terrain_material: ShaderMaterial
 var deck_material: ShaderMaterial
 var build_msec := 0
+## Build progress 0..1 (the loading screen's race follows it).
+var progress := 0.0
+## The build gives the frame back after this long, so loading animates.
+const SLICE_USEC := 20000
+var _slice_start := 0
+
+
+func _over_budget() -> bool:
+	return Time.get_ticks_usec() - _slice_start > SLICE_USEC
+
+
+func _yield_frame() -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().process_frame
+	_slice_start = Time.get_ticks_usec()
 var _flat_shader: Shader
 var _decal_sources: Array[Node] = []
 
@@ -101,32 +117,43 @@ func build(p_track: Track, decal_layer: Node2D) -> void:
 	origin_px = (bounds.position / CELL).floor() * CELL
 	nx = int(ceil((bounds.end.x - origin_px.x) / CELL))
 	nz = int(ceil((bounds.end.y - origin_px.y) / CELL))
+	var passes := 4 if track.layout.has_elevation() else 2
 	var color := await _render(_items("color"), SS)
+	progress = 0.3 / passes
 	color.resize(nx, nz, Image.INTERPOLATE_BILINEAR)
 	var cls := await _render(_items("class"), 1)
+	progress = 0.3 * 2.0 / passes
 	var deck_color: Image = null
 	var deck_cls: Image = null
 	if track.layout.has_elevation():
 		deck_color = await _render(_items("deck_color"), SS)
+		progress = 0.3 * 3.0 / passes
 		deck_color.resize(nx, nz, Image.INTERPOLATE_BILINEAR)
 		deck_cls = await _render(_items("deck_class"), 1)
+		progress = 0.3
 	if not is_inside_tree():
 		return  # the race was left while the world was being built
+	_slice_start = Time.get_ticks_usec()
 	var t1 := Time.get_ticks_msec()
-	_classify(cls)
-	_compute_heights(color)
+	await _classify(cls)
+	progress = 0.36
+	await _compute_heights(color)
+	progress = 0.62
 	var t2 := Time.get_ticks_msec()
-	terrain_material = _make_material(color, _class_image(classes), true)
-	_build_terrain()
+	terrain_material = await _make_material(color, _class_image(classes), true)
+	await _build_terrain()
 	var t3 := Time.get_ticks_msec()
-	if deck_color != null:
+	if deck_color != null and is_inside_tree():
 		var dcls := PackedByteArray()
 		dcls.resize(nx * nz)
 		var data := deck_cls.get_data()
 		for i in nx * nz:
 			dcls[i] = _class_of(data[i * 4], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3])
-		deck_material = _make_material(deck_color, _class_image(dcls), false)
+			if (i & 16383) == 0 and _over_budget():
+				await _yield_frame()
+		deck_material = await _make_material(deck_color, _class_image(dcls), false)
 		_build_decks()
+	progress = 1.0
 	build_msec = Time.get_ticks_msec() - t0
 	print("VoxelTrack: %dx%d cells, render %d ms, heights %d ms, mesh %d ms, total %d ms" % [nx, nz, t1 - t0, t2 - t1, t3 - t2, build_msec])
 	built.emit()
@@ -259,6 +286,8 @@ func _classify(cls: Image) -> void:
 	var data := cls.get_data()
 	for i in nx * nz:
 		classes[i] = _class_of(data[i * 4], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3])
+		if (i & 16383) == 0 and _over_budget():
+			await _yield_frame()
 
 
 func _class_image(c: PackedByteArray) -> Image:
@@ -275,6 +304,8 @@ func _compute_heights(color: Image) -> void:
 	mask_data.resize(nx * nz)
 	for i in nx * nz:
 		mask_data[i] = 0 if classes[i] == C_GRASS else 255
+		if (i & 16383) == 0 and _over_budget():
+			await _yield_frame()
 	var near := _blurred(Image.create_from_data(nx, nz, false, Image.FORMAT_L8, mask_data), 5).get_data()
 	var hills := PackedByteArray()
 	if amp > 0:
@@ -314,6 +345,9 @@ func _compute_heights(color: Image) -> void:
 				if dr + dg + db > 70 and near[i] < 200:
 					h += 1
 		heights[i] = h
+		if (i & 8191) == 0 and _over_budget():
+			progress = 0.36 + 0.26 * float(i) / (nx * nz)
+			await _yield_frame()
 
 
 ## Box-blurred copy by repeated halving, scaled back to the map size.
@@ -337,6 +371,8 @@ func _make_material(color: Image, cls_img: Image, with_heights: bool) -> ShaderM
 		hb.resize(nx * nz)
 		for i in nx * nz:
 			hb[i] = clampi(heights[i] + 64, 0, 255)
+			if (i & 16383) == 0 and _over_budget():
+				await _yield_frame()
 		m.set_shader_parameter("height_map", ImageTexture.create_from_image(Image.create_from_data(nx, nz, false, Image.FORMAT_R8, hb)))
 	m.set_shader_parameter("use_heights", with_heights)
 	m.set_shader_parameter("map_origin", Vector2(origin_px.x, origin_px.y) * Vox.PX)
@@ -360,6 +396,8 @@ func _build_terrain() -> void:
 	holder.name = "Terrain"
 	add_child(holder)
 	var cz0 := 0
+	var chunks := ceili(float(nx) / CHUNK) * ceili(float(nz) / CHUNK)
+	var done := 0
 	while cz0 < nz:
 		var cx0 := 0
 		while cx0 < nx:
@@ -370,6 +408,12 @@ func _build_terrain() -> void:
 				mi.material_override = terrain_material
 				holder.add_child(mi)
 			cx0 += CHUNK
+			done += 1
+			progress = 0.66 + 0.3 * float(done) / chunks
+			if _over_budget():
+				await _yield_frame()
+				if not is_inside_tree():
+					return
 		cz0 += CHUNK
 
 

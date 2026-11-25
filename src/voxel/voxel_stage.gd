@@ -57,6 +57,11 @@ var decal_vp: SubViewport
 var ready_3d := false
 var cars3d: Array[Dictionary] = []
 var race_fx: VoxelRaceFx
+## Emitted once the voxel world is complete (the loading race finishes).
+signal world_ready
+var build_msec := 0
+var _cars_part := 0.0
+var _props_part := 0.0
 var lamps3d: Array[Light3D] = []
 var _night := -1
 var _hint: Label
@@ -104,13 +109,7 @@ func setup(p_main: Node2D) -> void:
 	_tilt.material_override = tm
 	camera.add_child(_tilt)
 	_tilt.position = Vector3(0, 0, -2.0)
-	_build_cars()
 	_setup_decals()
-	race_fx = VoxelRaceFx.new()
-	add_child(race_fx)
-	race_fx.setup(self)
-	if main.effects != null:
-		main.effects.celebrated.connect(_confetti)
 	_hint = Label.new()
 	_hint.add_theme_font_size_override("font_size", 18)
 	_hint.add_theme_color_override("font_color", Color(1, 0.95, 0.8))
@@ -124,30 +123,45 @@ func setup(p_main: Node2D) -> void:
 	layer.layer = 20
 	layer.add_child(_hint)
 	add_child(layer)
-	_show_hint("BUILDING THE VOXEL WORLD...")
-	_hint_left = 600.0
+	_build()
+
+
+## The whole voxel world, a slice per frame (the loading race follows
+## `progress`; `world_ready` when the race can be shown).
+func _build() -> void:
+	var t0 := Time.get_ticks_msec()
 	vtrack = VoxelTrack.new()
 	vtrack.name = "VoxelTrack"
 	add_child(vtrack)
-	vtrack.built.connect(_on_track_built)
 	var decals := main.get_node_or_null("Decals") as Node2D
-	vtrack.build(main.track, decals)
-
-
-func _on_track_built() -> void:
-	_build_props()
+	await vtrack.build(main.track, decals)
+	if not is_inside_tree():
+		return
+	await _build_cars()
+	race_fx = VoxelRaceFx.new()
+	add_child(race_fx)
+	race_fx.setup(self)
+	if main.effects != null:
+		main.effects.celebrated.connect(_confetti)
+	await _build_props()
+	if not is_inside_tree():
+		return
 	_build_lamps()
 	vtrack.terrain_material.set_shader_parameter("decal_tex", decal_vp.get_texture())
 	vtrack.terrain_material.set_shader_parameter("decal_on", 1.0)
 	ready_3d = true
-	_hint_left = 0.0
-	_hint.visible = false
 	_apply_mode()
-	if not _keys_shown:  # once per session: how to play with the experiment
-		_keys_shown = true
-		_show_hint("V: CAMERA     G: ORIGINAL 2D")
-		_hint_left = 5.0
 	_sync(0.0)
+	build_msec = Time.get_ticks_msec() - t0
+	world_ready.emit()
+
+
+## Overall build progress 0..1.
+func progress() -> float:
+	if ready_3d:
+		return 1.0
+	var t := vtrack.progress if vtrack != null else 0.0
+	return t * 0.74 + _cars_part * 0.12 + _props_part * 0.14
 
 
 func _exit_tree() -> void:
@@ -306,7 +320,12 @@ func _build_cars() -> void:
 	holder.name = "Cars"
 	add_child(holder)
 	var layout: WheelLayout = main.wheel_layout
+	var t := Time.get_ticks_usec()
 	for i in main.cars.size():
+		if Time.get_ticks_usec() - t > 20000:
+			await get_tree().process_frame
+			t = Time.get_ticks_usec()
+		_cars_part = float(i) / main.cars.size()
 		var c: Car = main.cars[i]
 		var look: Dictionary = main._car_looks[i] if i < main._car_looks.size() else {}
 		var body_logical: String = look.get("body_logical", "")
@@ -509,7 +528,15 @@ func _build_props() -> void:
 		for s in branches.get_children():
 			if s is Sprite2D:
 				sprites.append(s)
-	for spr in sprites:
+	var t := Time.get_ticks_usec()
+	for n in sprites.size():
+		var spr := sprites[n]
+		if Time.get_ticks_usec() - t > 20000:
+			_props_part = float(n) / sprites.size()
+			await get_tree().process_frame
+			if not is_inside_tree():
+				return
+			t = Time.get_ticks_usec()
 		var logical := _logical_of(spr.texture)
 		if logical.is_empty():
 			continue
