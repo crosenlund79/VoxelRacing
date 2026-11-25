@@ -91,6 +91,7 @@ func _ready() -> void:
 	tm.shader = TILT_SHADER
 	tm.set_shader_parameter("amount", 2.4)
 	tm.set_shader_parameter("band", 0.3)
+	tm.render_priority = Material.RENDER_PRIORITY_MIN  # under the exhaust puffs (see VoxelStage)
 	tilt.material_override = tm
 	camera.add_child(tilt)
 	tilt.position = Vector3(0, 0, -1.0)

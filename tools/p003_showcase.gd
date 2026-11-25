@@ -52,12 +52,17 @@ func _physics_process(_d: float) -> bool:
 	var lead: Car = _main.cars[9]
 	if _launch < 0 and lead.model != null and lead.model.velocity.length() > 25.0:
 		_launch = t
-	if _launch > 0 and t - _launch in [4, 12, 24]:
+	if _launch > 0 and t - _launch in [4, 12, 24, 40, 60]:
 		_shot("start_%d" % (t - _launch))
 		var d: Dictionary = _main.voxel.cars3d[9]
-		print("launch +%d: wheelspin %.2f, accel %.0f px/s2, speed %.0f" % [t - _launch, float(d.wheelspin), float(d.acc_long), lead.model.velocity.length()])
+		print("launch +%d: wheelspin %.2f, accel %.0f px/s2, speed %.0f, smoke puffs alive %d" % [t - _launch, float(d.wheelspin), float(d.acc_long),
+			lead.model.velocity.length(), (_main.voxel.race_fx.fx._p.active as Array).size()])
 	if t == 400:
 		_shot("racing")
+	if _launch > 0 and t - _launch == 70:
+		print("(launch checked)")
+		if OS.get_cmdline_user_args().has("--launch-only"):
+			return true
 	# a taunt: the first rival with another close behind it
 	if t > 600 and _taunt_at < 0:
 		var st: Array = _main.session.standings()

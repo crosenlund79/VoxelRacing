@@ -181,10 +181,11 @@ func _sync_car(i: int, delta: float) -> void:
 		# wheelspin: smoke from under the rear wheels (a burnout off the line)
 		var ws: float = d.get("wheelspin", 0.0)
 		if ws > 0.06 and _rng.randf() < delta * 46.0 * ws:
-			for side in [-0.75, 0.75]:
-				var at: Vector3 = root.global_transform * Vector3(-1.25, 0.15, side)
-				fx.puff(at, Vector3(_rng.randf_range(-0.6, 0.6), 0.45, _rng.randf_range(-0.6, 0.6)) - root.global_transform.basis.x * 1.2,
-					Color(0.96, 0.95, 0.93), _rng.randf_range(0.4, 0.62) * (0.75 + ws * 0.4), _rng.randf_range(0.6, 1.1), 0.45 * ws + 0.3)
+			for side in [-0.8, 0.8]:
+				# behind the rear wheels (not hidden under the body), rolling back
+				var at: Vector3 = root.global_transform * Vector3(-2.3, 0.4, side)
+				fx.puff(at, Vector3(_rng.randf_range(-0.7, 0.7), 0.5, _rng.randf_range(-0.7, 0.7)) - root.global_transform.basis.x * 1.6,
+					Color(0.97, 0.96, 0.94), _rng.randf_range(0.6, 0.9) * (0.8 + ws * 0.4), _rng.randf_range(0.7, 1.2), 0.55 + 0.4 * ws)
 		# tyre smoke and dust from RaceEffects' own rules
 		var eff: RaceEffects = _main.effects
 		if eff != null and i < eff.smoking.size():

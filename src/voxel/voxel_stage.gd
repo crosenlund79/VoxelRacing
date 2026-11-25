@@ -110,6 +110,10 @@ func setup(p_main: Node2D) -> void:
 	_tilt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var tm := ShaderMaterial.new()
 	tm.shader = TILT_SHADER
+	# drawn first among the transparent things: it repaints the screen from
+	# the opaque copy, so smoke and dust puffs must come after it (P003 fix:
+	# before, it painted over every puff)
+	tm.render_priority = Material.RENDER_PRIORITY_MIN
 	_tilt.material_override = tm
 	camera.add_child(_tilt)
 	_tilt.position = Vector3(0, 0, -2.0)
@@ -549,6 +553,9 @@ func _sync_cars(delta: float) -> void:
 		d.prev_pos = pos
 
 
+## Tilt-shift strength relative to the camera preset's (P003: softer).
+const TILT_SCALE := 0.7
+
 ## Night (P003): ambient and moonlight energies; the lamp posts' pools.
 const NIGHT_AMBIENT := 0.13
 const NIGHT_MOON := 0.13
@@ -893,7 +900,12 @@ func _sync(delta: float) -> void:
 	var z2 := Vector2(zoom, zoom * sin(pitch))
 	cam2.zoom = z2
 	_place_camera(camera, centre, pitch, zoom)
-	_tilt_shift(view[3])
+	# tilt-shift: only while following your own car (P003: never while
+	# spectating, watching the rest of the race, or in a replay - the cars
+	# being watched stay crisp)
+	var watching: bool = main.get("watching") == true or (main.get("session") != null and main.session.spectator)
+	var replaying_now := replay != null and replay.playing
+	_tilt_shift(0.0 if watching or replaying_now else float(view[3]) * TILT_SCALE)
 	_sync_cars(delta)
 	race_fx.sync(delta)
 	# an action replay hides the live race (which carries on underneath)
