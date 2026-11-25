@@ -23,6 +23,16 @@ Extract it and run `VoxelRacing.exe`.
   scatter, burn marks, voxel collision stars and sparks, voxel missiles and
   mines, Battle Royale in voxels, and the inherited 2D presentation removed.
   Screenshots of the running game: `docs/screenshots/p002/`.
+- **Prototype 003 - Lights, Camera, Carnage** (previous state on branch
+  `checkpoint/prototype-002`): automatic cinematic action replays of the
+  race's best moments (missile, mine, chase, trackside, sweep, side and
+  destruction cameras, slow motion), cars with weight (nose lift, dive,
+  body roll, wheelspin and burnouts), heavier debris that costs grip,
+  cheeky rivals lobbing soda cans at the car they just passed, darker nights
+  with more lamp posts, meadow grass and flowers like the menu island,
+  Championship with the garage between rounds (Garage Race retired), tabbed
+  controls, voxel achievement icons and new credits.
+  Screenshots: `docs/screenshots/p003/`.
 
 <p align="center">
 <img src="docs/screenshots/p002/01_main_menu.jpg" width="49%" alt="Main menu">
@@ -37,6 +47,9 @@ Extract it and run `VoxelRacing.exe`.
 |---|---|
 | **V** | Cycle the camera: MINIATURE (58 deg), HIGH (72), LOW (44), TOP-DOWN |
 | **L** | Night lighting on / off (also TIME: NIGHT on the setup screen) |
+| **R** / pad X | On the results: watch the race's highlights again |
+| **Enter / Space** | During an action replay: next moment |
+| **Esc** / pad B | During an action replay: skip the replay |
 
 All other controls are HyperCars' (CONTROLS in the menu; see below).
 
@@ -67,11 +80,22 @@ All other controls are HyperCars' (CONTROLS in the menu; see below).
 - **Branding**: the logo is a live voxel model (`voxel_logo.gd`);
   `tools/make_branding.gd` bakes `assets/branding/` (window icon, splash).
 
+- **Action replays** (`replay_recorder.gd`, `replay_theater.gd`): the
+  recorder scores events as they happen (kills, wrecks, pile-ups, overtakes
+  in corners or on the last lap, close finishes, taunts, jumps) and keeps a
+  few seconds of 30 Hz voxel poses around each good one; after the race the
+  theater replays the best (variety, about 50 s at most) with its own cars,
+  debris and camera while the live race stays hidden and untouched.
+- **Debris grip** (`src/race/debris_field.gd`): wrecks and lost bodywork
+  leave debris on a coarse grid that lowers `CarModel.grip_scale` for any
+  car on it and is swept along by traffic; constants at the top for tuning.
+
 Developer tools (run under Xvfb): `tools/smoke_flow.gd` (end-to-end smoke
 test with simulated keys), `tools/capture_race.gd` (screenshots of any
 circuit, biome, time, camera; `--hurt` damages a car to show damage and
 explosions), `tools/fx_check.gd` (damage, explosion, debris, burn mark and
-fresh-race reset counts), `tools/screens_tour.gd`, `tools/car_showroom.gd`,
+fresh-race reset counts), `tools/replay_check.gd` (a short spectated race
+with a forced wreck and mine, then the highlights), `tools/screens_tour.gd`, `tools/car_showroom.gd`,
 `tools/logo_preview.gd`.
 
 ## Known limitations

@@ -16,6 +16,8 @@ var _done_at := -1
 var _last_clip := -1
 var _mined := false
 var _laps := 1
+var _min_grip := 1.0
+var _grip_cars := {}
 
 
 func _initialize() -> void:
@@ -55,6 +57,11 @@ func _physics_process(_d: float) -> bool:
 		_main.hud.history_panel.visible = false
 	var t := _f - _t0
 	var session: RaceSession = _main.session
+	# debris traction: who drove over wreckage, and how much grip it cost
+	for c in _main.cars:
+		if c.model != null and c.model.grip_scale < 0.995:
+			_min_grip = minf(_min_grip, c.model.grip_scale)
+			_grip_cars[c.racer_id] = true
 	if t == 420:
 		# a wreck for the destruction camera
 		var dw: DamageWorld = _main.damage
@@ -67,7 +74,7 @@ func _physics_process(_d: float) -> bool:
 		var lead: int = st[0].id
 		var c: Car = _main.cars[lead]
 		var fwd := Vector2.from_angle(c.global_rotation)
-		_main.combat.mines.append({"owner": st[1].id, "pos": c.global_position + fwd * 260.0, "age": 0.0, "level": 0})
+		_main.combat.mines.append({"owner": st[1].id, "pos": c.global_position + fwd * 130.0, "age": 0.0, "level": 0})
 		_mined = true
 		print("mine laid in front of ", lead)
 	if rp != null and rp.playing:
@@ -93,6 +100,7 @@ func _physics_process(_d: float) -> bool:
 	if _done_at > 0 and t == _done_at + 30:
 		_shot("z_results")
 		print("CHECK replay played and returned: ", _seen_replay)
+		print("CHECK debris traction: %d cars lost grip on debris, lowest grip x%.2f, debris left %.1f" % [_grip_cars.size(), _min_grip, _main.debris_field.total()])
 		return true
 	if t > 30000:
 		print("CHECK timeout; state ", session.state, " captures ", rp.recorder.captures.size() if rp != null else -1)

@@ -407,7 +407,7 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 	shoulder.add_child(arm)
 	return {
 		"tick_pos": c.global_position, "tick_prev": c.global_position, "tick_rot": c.global_rotation, "rot_prev": c.global_rotation,
-		"tick_v": Vector2.ZERO, "acc_long": 0.0, "acc_lat": 0.0, "pitch_v": 0.0, "roll_v": 0.0, "wheelspin": 0.0, "spin_rear": 0.0,
+		"tick_v": Vector2.ZERO, "slope": 0.0, "acc_long": 0.0, "acc_lat": 0.0, "pitch_v": 0.0, "roll_v": 0.0, "wheelspin": 0.0, "spin_rear": 0.0,
 		"head_node": head, "head": 0.0, "head_side": 1.0, "head_box": body.mesh.get_aabb() if body.mesh != null else AABB(),
 		"root": root, "tilt": tilt, "body": body, "wheels": wheels, "spins": spins, "lights": lights,
 		"roll": 0.0, "pitch": 0.0, "spin": 0.0, "h": 0.0, "prev_v": Vector2.ZERO, "prev_pos": c.global_position,
@@ -441,12 +441,22 @@ func _sync_cars(delta: float) -> void:
 			if _jumps().is_down(i):
 				h = -2.0 if _jumps().is_down_in_flyover(i) else VoxelTrack.PIT_H * VoxelTrack.CELL
 		var moved: float = (pos - d.prev_pos).length()
-		if moved > 60.0:  # placed / respawned: no smoothing
-			d.h = h
+		var on_deck: bool = elevated and main.draw_level_of(i) == 1
+		if moved > 60.0 or (on_deck and not (_jumps() != null and _jumps().height(i) > 0.0)):
+			d.h = h  # placed / respawned, or on a bridge ramp: exactly on the deck (P003)
 		else:
 			d.h = lerpf(d.h, h, 1.0 - exp(-delta * 18.0))
+		# the car leans with the ramp (so do its headlights: they light the
+		# road ahead going up and over a bridge, P003)
+		var slope := 0.0
+		if on_deck:
+			var sd: float = main.progress[i].distance
+			var dh := vtrack.deck_height_px(sd + 24.0) - vtrack.deck_height_px(sd - 24.0)
+			var along_path := Vector2.from_angle(rot).dot(main.track.path.tangent_at(sd))
+			slope = atan2(dh, 48.0) * along_path
+		d.slope = lerpf(float(d.slope), slope, 1.0 - exp(-delta * 16.0)) if moved <= 60.0 else slope
 		root.position = Vox.to3(pos, d.h)
-		root.rotation = Vector3(0.0, Vox.yaw(rot), 0.0)
+		root.rotation = Vector3(0.0, Vox.yaw(rot), d.slope)
 		# weight transfer (presentation only): the nose lifts and the tail
 		# squats under acceleration, the nose dives under braking, the body
 		# leans out of corners - a spring with a little overshoot

@@ -118,13 +118,13 @@ func setup(p_stage: VoxelStage, p_recorder: ReplayRecorder) -> void:
 
 
 func has_highlights() -> bool:
-	return not recorder.highlights(6, 60.0, 5.0).is_empty()
+	return not recorder.highlights(6, 60.0, 4.5).is_empty()
 
 
 ## Moments for the "watch again" list: a little more generous than the
 ## automatic selection.
 func play_highlights(again: bool = false) -> bool:
-	var list := recorder.highlights(6 if again else 5, 60.0 if again else 52.0, 5.0 if again else 6.0)
+	var list := recorder.highlights(6 if again else 5, 60.0 if again else 52.0, 4.5 if again else 5.0)
 	if list.is_empty():
 		return false
 	clips = list
@@ -289,7 +289,7 @@ func _apply(c: Dictionary, delta: float) -> void:
 		var jump := pa.distance_to(pb) > 4.0  # respawned between the samples
 		var p := pa if jump else pa.lerp(pb, u)
 		root.position = p
-		root.rotation = Vector3(0.0, lerp_angle(ca[o + 3], cb[o + 3], u), 0.0)
+		root.rotation = Vector3(0.0, lerp_angle(ca[o + 3], cb[o + 3], u), lerpf(ca[o + 12], cb[o + 12], u))
 		(d.tilt as Node3D).rotation = Vector3(lerpf(ca[o + 4], cb[o + 4], u), 0.0, lerpf(ca[o + 5], cb[o + 5], u))
 		var steer := lerpf(ca[o + 6], cb[o + 6], u)
 		var brake := lerpf(ca[o + 7], cb[o + 7], u)
@@ -607,11 +607,11 @@ func _plan(c: Dictionary) -> void:
 				_add_shot("destruction", tk + 1.0, ce, {"car": victim, "pos": pos})
 				_slow.append([tk - 0.15, tk + 0.9, 0.3])
 			elif rid >= 0 and launch >= cs and by >= 0 and by != victim:
-				var lt := launch + 0.1
+				var lt := launch + 0.05
 				_add_shot("chase", cs, lt, {"car": by})
-				_add_shot("missile", lt, tk, {"rid": rid, "car": victim})
-				_add_shot("destruction", tk, ce, {"car": victim, "pos": pos})
-				_slow.append([tk - 0.35, tk + 1.2, 0.28])
+				_add_shot("missile", lt, tk + 0.25, {"rid": rid, "car": victim})
+				_add_shot("destruction", tk + 0.25, ce, {"car": victim, "pos": pos})
+				_slow.append([lt, tk + 1.3, 0.26])  # the flight and the hit, slowly
 			else:
 				var watcher := by if by >= 0 and by != victim else victim
 				_add_shot("chase", cs, tk - 0.7, {"car": watcher})
@@ -660,7 +660,7 @@ func _plan(c: Dictionary) -> void:
 
 
 func _add_shot(type: String, from: float, to: float, params: Dictionary) -> void:
-	if to - from < 0.35 and not _shots.is_empty():
+	if to - from < 0.35 and not _shots.is_empty() and type != "missile" and type != "mine":
 		_shots[-1][2] = to  # too short to cut to: the previous shot runs on
 		return
 	_shots.append([type, from, to, params])

@@ -7,7 +7,7 @@ extends Node
 ## rolling buffer supplies each moment's lead-in), so long races stay small.
 ##
 ## A sample: [t, cars: PackedFloat32Array (K per car), missiles, mines]
-##   car:     x, y, z (3D), yaw, roll, pitch, steer, brake, health share, flags, speed (px/s), head
+##   car:     x, y, z (3D), yaw, roll, pitch, steer, brake, health share, flags, speed (px/s), head, slope
 ##   missile: rid, type, x2d, y2d, angle, level
 ##   mine:    x2d, y2d, age, level
 ## An event: {t, kind, score, pos (2D), ...}
@@ -23,7 +23,7 @@ const MAX_CAPTURES := 30
 const MAX_LEN := 13.0
 ## Events below this are only kept inside other moments (sparks, launches).
 const CAPTURE_SCORE := 4.5
-const K := 12
+const K := 13
 const F_VISIBLE := 1
 const F_WRECKED := 2
 const F_BODY := 4
@@ -145,6 +145,7 @@ func _sample() -> void:
 		cars[o + 9] = flags
 		cars[o + 10] = c.model.velocity.length() if c.model != null else 0.0
 		cars[o + 11] = float(d.get("head", 0.0))
+		cars[o + 12] = float(d.get("slope", 0.0))
 	var missiles := PackedFloat32Array()
 	var mines := PackedFloat32Array()
 	var combat: CombatWorld = main.combat

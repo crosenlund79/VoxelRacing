@@ -40,6 +40,8 @@ const C_BARRIER := 2
 const C_DIVIDER := 3
 const C_KERB := 4
 const C_PIT := 5
+## P003: a flower voxel on the grass (scenery, never drivable).
+const C_FLOWER := 6
 
 const TERRAIN_SHADER := preload("res://src/voxel/shaders/voxel_terrain.gdshader")
 const FLAT_SHADER_CODE := "shader_type canvas_item;\nuniform vec4 flat_color;\nvoid fragment() {\n\tfloat a = texture(TEXTURE, UV).a * COLOR.a;\n\tCOLOR = vec4(flat_color.rgb, step(0.5, a));\n}\n"
@@ -326,8 +328,31 @@ func _class_image(c: PackedByteArray) -> Image:
 ## how much of it is mixed into the circuit's own grass, and the flowers.
 const MEADOW := Color("7bc950")
 const MEADOW_BLEND := 0.55
-const FLOWER_SHARE := 0.045
+const FLOWER_SHARE := 0.06
 const FLOWERS := [Color("f7b731"), Color("f45b9b"), Color("fff4de"), Color("ff8c2e")]
+
+
+func is_meadow() -> bool:
+	return theme != null and (theme.variant == 1 or theme.variant == 4)
+
+
+## Flower voxels like the menu island's: a share of the open grass (away from
+## the road) gets a raised cell in a flower colour (class C_FLOWER, so the
+## terrain shader leaves its colour alone). The grass itself is tinted
+## towards the menu's green in the terrain shader.
+func _plant_flowers(color: Image, near: PackedByteArray) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242 + theme.variant
+	var tries := int(nx * nz * FLOWER_SHARE)
+	for k in tries:
+		var i := rng.randi_range(0, nx * nz - 1)
+		if classes[i] != C_GRASS or near[i] >= 24 or heights[i] >= 2:
+			continue
+		classes[i] = C_FLOWER
+		heights[i] += 1
+		color.set_pixel(i % nx, i / nx, FLOWERS[rng.randi_range(0, FLOWERS.size() - 1)])
+		if (k & 8191) == 0 and _over_budget():
+			await _yield_frame()
 
 
 func _compute_heights(color: Image) -> void:
@@ -350,7 +375,7 @@ func _compute_heights(color: Image) -> void:
 		noise.fractal_octaves = 3
 		hills = noise.get_image(nx, nz, false, false, true).get_data()
 	# flowers / tufts: grass cells whose colour stands out from the local mean
-	var meadow := theme.variant == 1 or theme.variant == 4
+	var meadow := is_meadow()
 	var cdata := color.get_data()
 	var mean := color.duplicate() as Image
 	mean = _blurred(mean, 2)
@@ -379,28 +404,12 @@ func _compute_heights(color: Image) -> void:
 				var db := absi(cdata[i * cstride + 2] - mdata[i * mstride + 2])
 				if dr + dg + db > 70 and near[i] < 200:
 					h += 1
-				# P003: the menu island's look - lively, varied grass and
-				# little flower voxels (never near the road)
-				if meadow:
-					var x := i % nx
-					var z := i / nx
-					var hv := Vox.hash3(x, 9, z)
-					var base := MEADOW.darkened(0.1 + 0.13 * hv)
-					var o := i * cstride
-					var orig := Color8(cdata[o], cdata[o + 1], cdata[o + 2])
-					var c2 := orig.lerp(base, MEADOW_BLEND)
-					if near[i] < 24 and hv > 1.0 - FLOWER_SHARE and h < 2:
-						c2 = FLOWERS[int(Vox.hash3(x, 3, z) * 997.0) % FLOWERS.size()]
-						h += 1
-					cdata[o] = c2.r8
-					cdata[o + 1] = c2.g8
-					cdata[o + 2] = c2.b8
 		heights[i] = h
 		if (i & 8191) == 0 and _over_budget():
 			progress = 0.36 + 0.26 * float(i) / (nx * nz)
 			await _yield_frame()
 	if meadow:
-		color.set_data(nx, nz, false, color.get_format(), cdata)
+		await _plant_flowers(color, near)
 
 
 ## Box-blurred copy by repeated halving, scaled back to the map size.
@@ -437,6 +446,10 @@ func _make_material(color: Image, cls_img: Image, with_heights: bool) -> ShaderM
 		soil = Color(0.62, 0.6, 0.62)
 	elif theme.variant == 5:
 		soil = Color(0.55, 0.37, 0.22)
+	if is_meadow():
+		m.set_shader_parameter("meadow_on", 1.0)
+		m.set_shader_parameter("meadow_col", MEADOW)
+		m.set_shader_parameter("meadow_blend", MEADOW_BLEND)
 	m.set_shader_parameter("soil_color", soil)
 	m.set_shader_parameter("soil_dark", soil.darkened(0.3))
 	return m

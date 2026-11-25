@@ -19,6 +19,10 @@ uniform bool use_heights = true;
 uniform vec3 soil_color : source_color = vec3(0.5, 0.36, 0.24);
 uniform vec3 soil_dark : source_color = vec3(0.34, 0.24, 0.17);
 uniform float side_lines = 0.16;
+// P003 meadow: grass tinted towards the menu island's green, per cell
+uniform float meadow_on = 0.0;
+uniform vec3 meadow_col : source_color = vec3(0.48, 0.79, 0.31);
+uniform float meadow_blend = 0.55;
 
 uniform sampler2D decal_tex : source_color, filter_linear;
 uniform float decal_on = 0.0;
@@ -58,6 +62,10 @@ void fragment() {
 	ci = clamp(ci, ivec2(0), ivec2(map_cells) - 1);
 	vec3 col = texelFetch(color_map, ci, 0).rgb;
 	float cls = floor(texelFetch(class_map, ci, 0).r * 255.0 + 0.5);
+	if (meadow_on > 0.5 && cls < 0.5) {
+		float hv = hash12(vec2(ci) * 0.731 + 7.0);
+		col = mix(col, meadow_col * (0.9 - 0.13 * hv), meadow_blend);
+	}
 	float ao = 1.0;
 	if (COLOR.a < 0.5) {
 		// plain painted part (bridge concrete): vertex colour
