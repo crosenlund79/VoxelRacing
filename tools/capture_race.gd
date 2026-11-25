@@ -91,6 +91,8 @@ func _physics_process(_delta: float) -> bool:
 		_main.camera.global_position = _marker.position
 	if _args.has("view"):
 		VoxelStage.view_index = int(_args.view)
+	if _args.get("clean", "0") == "1" and _main.hud.history_panel != null:
+		_main.hud.history_panel.visible = false
 	if _shots.has(_frame):
 		var img := root.get_viewport().get_texture().get_image()
 		var path := "%s_%05d.png" % [_out, _frame]

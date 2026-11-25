@@ -68,7 +68,7 @@ static func sways(kind: Kind) -> bool:
 
 ## The voxel mesh for a prop drawing shown at `display` px (frame 0 of a sheet).
 static func mesh_for(logical: String, tex: Texture2D, display: Vector2, hframes: int = 1) -> ArrayMesh:
-	var key := "%s|%d|%d|%d" % [logical, tex.get_instance_id() if tex != null else 0, int(display.x), int(display.y)]
+	var key := "%s|%s|%d|%d" % [logical, VoxelCars._tex_key(tex), int(display.x), int(display.y)]
 	if _meshes.has(key):
 		return _meshes[key]
 	var mesh := _build(kind_of(logical), tex, display, hframes)

@@ -110,6 +110,8 @@ func build(p_track: Track, decal_layer: Node2D) -> void:
 		deck_color = await _render(_items("deck_color"), SS)
 		deck_color.resize(nx, nz, Image.INTERPOLATE_BILINEAR)
 		deck_cls = await _render(_items("deck_class"), 1)
+	if not is_inside_tree():
+		return  # the race was left while the world was being built
 	var t1 := Time.get_ticks_msec()
 	_classify(cls)
 	_compute_heights(color)
@@ -230,6 +232,8 @@ func _render(items: Array[Node], scale: int) -> Image:
 	vp.canvas_transform = Transform2D(0.0, Vector2(s, s), 0.0, -origin_px * s)
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
+	if not is_instance_valid(vp) or not is_inside_tree():
+		return Image.create(maxi(1, nx), maxi(1, nz), false, Image.FORMAT_RGBA8)
 	var img := vp.get_texture().get_image()
 	img.convert(Image.FORMAT_RGBA8)
 	vp.queue_free()

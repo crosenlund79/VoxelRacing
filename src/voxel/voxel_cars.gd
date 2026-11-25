@@ -45,12 +45,22 @@ static func voxel_size() -> float:
 ## The voxel body for a car drawing (nose +X, the car's right +Z, centred,
 ## standing on y = 0).
 static func body_mesh(tex: Texture2D, layout: WheelLayout = null, body_logical: String = "") -> ArrayMesh:
-	var key := "%s|%d|%s" % [tex.resource_path if tex != null else "", tex.get_instance_id() if tex != null else 0, body_logical]
+	var key := "%s|%s" % [_tex_key(tex), body_logical]
 	if _bodies.has(key):
 		return _bodies[key]
 	var mesh := _build_body(tex, layout, body_logical)
 	_bodies[key] = mesh
 	return mesh
+
+
+## Cache key of a drawing: its file (packaged art), else the texture itself
+## (the user's custom art is loaded as plain image textures).
+static func _tex_key(tex: Texture2D) -> String:
+	if tex == null:
+		return "none"
+	if not tex.resource_path.is_empty():
+		return tex.resource_path
+	return str(tex.get_instance_id())
 
 
 static func _build_body(tex: Texture2D, layout: WheelLayout, body_logical: String) -> ArrayMesh:

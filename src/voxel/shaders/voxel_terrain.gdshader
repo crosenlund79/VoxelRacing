@@ -86,6 +86,10 @@ void fragment() {
 			}
 			ao = 1.0 - 0.45 * clamp(occ, 0.0, 1.0);
 			col *= 1.0 + 0.12 * clamp(lip, 0.0, 1.0);
+			if (cls < 0.5 && hc > 0.5) {  // grass hills: sunnier, a touch yellower higher up
+				float t = clamp(hc / 6.0, 0.0, 1.0);
+				col *= mix(vec3(1.0), vec3(1.16, 1.14, 1.0), t);
+			}
 		}
 		// tyre marks and other ground decals (road level only)
 		if (decal_on > 0.5 && abs(hc) < 0.5) {

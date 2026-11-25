@@ -8,6 +8,16 @@ you see is a 3D voxel diorama that mirrors it frame by frame.
 Windows x64 folder for every push (Actions tab → latest run → artifact). Extract
 and run `VoxelRacing.exe`.
 
+![Kestrel Ridge, first corner](docs/screenshots/02_kestrel_corner_day.jpg)
+
+| | |
+|---|---|
+| ![Night](docs/screenshots/03_kestrel_night.jpg) | ![The Raceway](docs/screenshots/04_larkspur_raceway.jpg) |
+| ![Winter flyover](docs/screenshots/05_ravenhook_winter_flyover.jpg) | ![Tabletop Mayhem at night](docs/screenshots/06_kestrel_tabletop_night.jpg) |
+
+More in [`docs/screenshots/`](docs/screenshots/), including the original 2D
+and the voxel version of the same moment (`10_original_2d_vs_voxel.jpg`).
+
 ## Voxel keys
 
 | Key | |

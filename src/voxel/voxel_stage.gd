@@ -44,6 +44,7 @@ static var enabled := true
 ## The camera preset and the 2D / voxel choice last for the whole session.
 static var view_index := 0
 static var voxel_mode := true
+static var _keys_shown := false
 
 var main: Node2D
 var vtrack: VoxelTrack
@@ -136,6 +137,10 @@ func _on_track_built() -> void:
 	_hint_left = 0.0
 	_hint.visible = false
 	_apply_mode()
+	if not _keys_shown:  # once per session: how to play with the experiment
+		_keys_shown = true
+		_show_hint("V: CAMERA     G: ORIGINAL 2D")
+		_hint_left = 5.0
 	_sync(0.0)
 
 
