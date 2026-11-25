@@ -54,6 +54,8 @@ func _physics_process(_d: float) -> bool:
 		_launch = t
 	if _launch > 0 and t - _launch in [4, 12, 24]:
 		_shot("start_%d" % (t - _launch))
+		var d: Dictionary = _main.voxel.cars3d[9]
+		print("launch +%d: wheelspin %.2f, accel %.0f px/s2, speed %.0f" % [t - _launch, float(d.wheelspin), float(d.acc_long), lead.model.velocity.length()])
 	if t == 400:
 		_shot("racing")
 	# a taunt: the first rival with another close behind it

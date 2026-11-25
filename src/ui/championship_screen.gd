@@ -241,6 +241,8 @@ func show_standings(champ: Championship, reward: String = "", reward_car: Textur
 		_reward.visible = false
 		_reward_car.visible = false
 		_continue.text = "START THE FINAL" if r.get("final", false) else "START ROUND %d" % (done_rounds + 1)
+		if not career:  # P003: the garage comes first, then the round
+			_continue.text = "GARAGE  >  " + ("THE FINAL" if r.get("final", false) else "ROUND %d" % (done_rounds + 1))
 		_abandon.visible = true
 	_hint.text = PlayerControls.fmt("{confirm} / {back}: main menu" if _final else "{confirm}: next round      {back}: abandon the championship")
 	_confirming = false

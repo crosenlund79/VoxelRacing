@@ -184,7 +184,7 @@ func _sync_car(i: int, delta: float) -> void:
 			for side in [-0.75, 0.75]:
 				var at: Vector3 = root.global_transform * Vector3(-1.25, 0.15, side)
 				fx.puff(at, Vector3(_rng.randf_range(-0.6, 0.6), 0.45, _rng.randf_range(-0.6, 0.6)) - root.global_transform.basis.x * 1.2,
-					Color(0.9, 0.89, 0.86), _rng.randf_range(0.24, 0.4) * (0.7 + ws * 0.5), _rng.randf_range(0.5, 0.9), 0.5 * ws + 0.15)
+					Color(0.96, 0.95, 0.93), _rng.randf_range(0.4, 0.62) * (0.75 + ws * 0.4), _rng.randf_range(0.6, 1.1), 0.45 * ws + 0.3)
 		# tyre smoke and dust from RaceEffects' own rules
 		var eff: RaceEffects = _main.effects
 		if eff != null and i < eff.smoking.size():
