@@ -305,7 +305,7 @@ func _apply(c: Dictionary, delta: float) -> void:
 			((d.wheels as Array)[w] as Node3D).rotation.y = -steer_angle if w < 2 else 0.0
 			((d.spins as Array)[w] as Node3D).rotation.z = _spin[i]
 		var body: MeshInstance3D = d.body
-		body.visible = (flags & ReplayRecorder.F_BODY) != 0
+		body.visible = true  # (the respawn blink is a gameplay signal: not in replays)
 		var c2: Car = main.cars[i]
 		body.set_instance_shader_parameter("tint", c2.sprite.modulate)
 		body.set_instance_shader_parameter("head_glow", 0.6 if night else 0.0)

@@ -35,6 +35,13 @@ Extract it and run `VoxelRacing.exe`.
   Screenshots: `docs/screenshots/p003/`.
 
 <p align="center">
+<img src="docs/screenshots/p003/11_replay_missile_cam.jpg" width="49%" alt="Replay: missile cam">
+<img src="docs/screenshots/p003/16_replay_destruction_cam.jpg" width="49%" alt="Replay: destruction cam">
+<img src="docs/screenshots/p003/06_night_lamp_posts.jpg" width="49%" alt="Night race with lamp posts">
+<img src="docs/screenshots/p003/22_garage_between_rounds.jpg" width="49%" alt="Championship garage between rounds">
+</p>
+
+<p align="center">
 <img src="docs/screenshots/p002/01_main_menu.jpg" width="49%" alt="Main menu">
 <img src="docs/screenshots/p002/03_loading_race_50.jpg" width="49%" alt="The Little Race loading screen">
 <img src="docs/screenshots/p002/06_night_race_lights_explosions.jpg" width="49%" alt="Night race">
