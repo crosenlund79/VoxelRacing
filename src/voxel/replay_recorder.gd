@@ -144,7 +144,7 @@ func _sample() -> void:
 			flags |= F_BODY
 		cars[o + 9] = flags
 		cars[o + 10] = c.model.velocity.length() if c.model != null else 0.0
-		cars[o + 11] = float(d.get("head", 0.0))
+		cars[o + 11] = float(d.get("head", 0.0)) * float(d.get("head_side", 1.0))  # taunt pose, signed by side
 		cars[o + 12] = float(d.get("slope", 0.0))
 	var missiles := PackedFloat32Array()
 	var mines := PackedFloat32Array()

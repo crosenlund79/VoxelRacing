@@ -1326,11 +1326,15 @@ func _spectator_tick(step: float) -> void:
 	if session.state == RaceSession.State.FINISHED:
 		if _highlights_tick():
 			return  # the next race waits for the action replay
+		if _restart_timer >= 0.0 and _menu_pressed(PlayerControls.REPLAY) and _highlights_allowed() \
+				and voxel.replay.play_highlights(true):
+			_restart_timer = RESTART_DELAY + 2.0  # (results again afterwards)
+			return
 		if _restart_timer < 0.0:
 			history.add_race(session.finish_order, weapons_enabled, session.lap_count())
 			hud.history_panel.refresh()
-			_restart_timer = RESTART_DELAY
-			hud.show_results(session.standings(), "Next race starting...")
+			_restart_timer = RESTART_DELAY + (2.0 if _replay_hint != "" else 0.0)
+			hud.show_results(session.standings(), "Next race starting..." + _replay_hint)
 		_restart_timer -= step
 		if _restart_timer <= 0.0:
 			_spectator_grid = session.reversed_grid()

@@ -316,8 +316,10 @@ func _apply(c: Dictionary, delta: float) -> void:
 		(lights[1] as Light3D).visible = night and not dmg.wrecked and dmg.lamps[1] > 0
 		(lights[2] as Light3D).visible = night and not dmg.wrecked and dmg.lamps[2] + dmg.lamps[3] > 0
 		if d.has("head_node"):
-			var hv := lerpf(ca[o + 11], cb[o + 11], u)
-			stage.pose_head(d, hv)
+			var hv := ca[o + 11] if signf(ca[o + 11]) != signf(cb[o + 11]) else lerpf(ca[o + 11], cb[o + 11], u)
+			if absf(hv) > 0.0:
+				d.head_side = signf(hv)
+			stage.pose_head(d, absf(hv))
 		# damage and wrecks, as they happened
 		var wrecked := (flags & ReplayRecorder.F_WRECKED) != 0
 		if wrecked and _was_wrecked[i] == 0:
