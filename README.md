@@ -1,4 +1,72 @@
-# HyperCars
+# VoxelRacing — Prototype 001: The Voxel Experiment
+
+HyperCars, rebuilt as a voxel miniature. The race you drive is HyperCars' own
+2D simulation (handling, AI, weapons, rules, audio, menus are unchanged); what
+you see is a 3D voxel diorama that mirrors it frame by frame.
+
+**Download:** the GitHub Actions *Windows build* workflow uploads a portable
+Windows x64 folder for every push (Actions tab → latest run → artifact). Extract
+and run `VoxelRacing.exe`.
+
+## Voxel keys
+
+| Key | |
+|---|---|
+| **V** | Cycle the camera: MINIATURE (58°), HIGH (72°), LOW (44°), TOP-DOWN |
+| **G** | Switch between the voxel world and the original 2D look (A / B) |
+| **L** | Night lighting on / off (HyperCars' key; TIME: NIGHT on the setup screen) |
+
+All other controls are HyperCars' (below).
+
+## How it works
+
+- **Simulation untouched.** `src/main/main.gd` gains six lines that add a
+  `VoxelStage` (`src/voxel/`) to the race scene. The 2D world visuals are
+  culled with canvas visibility layers; nothing in the race changes.
+- **Camera.** Orthographic, pitched but never yawed: the ground plane then maps
+  to the screen by an affine transform, so the 2D camera gets the matching
+  zoom `(k, k·sin pitch)` and every remaining 2D effect (smoke, sparks,
+  missiles, mines, explosions, markers, weather) stays aligned with the 3D world.
+- **Track conversion** (`voxel_track.gd`). The circuit's own 2D nodes are
+  rendered offscreen at voxel resolution (4 px cells) twice: once in their real
+  artwork (colour) and once in flat colours (what each cell is). That gives a
+  heightfield — barriers 3 voxels tall, kerbs 1, dividers 2, the flyover
+  ravine sunk, terraced hills and flower voxels on the grass — which is
+  greedy-meshed in chunks. Every biome and layout converts automatically.
+  Bridges are real decks with railings, embankments and pillars; the flyover
+  jump's gap is a real gap.
+- **Cars** (`voxel_cars.gd`). Each car drawing becomes a 2 px voxel model:
+  rounded body, glass cabin with the number roundel on the roof, wheel arches,
+  lamp voxels at HyperCars' lamp anchors. Voxel wheels steer and roll; the body
+  rolls and pitches with the car's acceleration.
+- **Scenery** (`voxel_props.gd`). Trees, bushes, rocks, flowers, tyre stacks,
+  flags, grandstands, boards, lamp posts and the Tabletop props are extruded
+  from their artwork with a shape per kind, at HyperCars' own placements.
+- **Tyre marks** render each frame into a small viewport that the terrain
+  shader samples per voxel, so they lie on the road under the cars.
+- **Light.** Forward+ (Vulkan → D3D12 → OpenGL fallback): sun shadows, SSAO,
+  glow, a subtle tilt-shift; at night real headlights (high beam), tail and
+  brake lights and lit lamp posts.
+- The voxel mesher and model shader are adapted from SirensWentQuiet
+  (`src/voxel/voxel_mesher.gd`, `voxel_grid.gd`).
+
+Developer tools: `tools/capture_race.gd` (screenshots of a race, any layout,
+biome, time, camera), `tools/car_showroom.gd` (all cars as voxel models),
+`tools/smoke_flow.gd` (scripted end-to-end smoke test with simulated keys).
+
+## Known limitations
+
+- Battle Royale (its own arena scene) and the title / garage backdrops are
+  still the original 2D.
+- Building the voxel world takes a few seconds when a race loads; the original
+  2D view shows meanwhile ("BUILDING THE VOXEL WORLD...").
+- 2D effects on a bridge deck (smoke, missiles) are drawn at ground level;
+  tyre marks on bridge decks are not shown.
+- The inherited GUT suite was not re-run for this experiment.
+
+---
+
+# HyperCars (inherited README)
 
 A top-down combat racing game in Godot 4.7, mechanically faithful to *Super Cars II* (Gremlin, 1991) with original, hand-painted HyperCars artwork. Ten cars race: you and nine recurring rivals with their own personalities, or two players with eight rivals.
 
