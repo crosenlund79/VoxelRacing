@@ -17,6 +17,9 @@ var yaw_rate := 0.0
 ## car slows smoothly (LIMITER_DECEL_SHARE of its braking), never abruptly.
 var speed_cap := INF
 const LIMITER_DECEL_SHARE := 0.6
+## VoxelRacing (P003): grip multiplier from what is on the road under the car
+## (debris, see DebrisField); 1.0 = the established HyperCars handling.
+var grip_scale := 1.0
 
 
 func _init(p_params: DrivingParams = null, p_mode: ControlMode = ControlMode.FIRE_TO_ACCELERATE) -> void:
@@ -78,7 +81,7 @@ func update(delta: float, steer: float, fire: bool) -> void:
 	else:
 		fwd = move_toward(fwd, 0.0, braking_deceleration() * delta)
 
-	side *= exp(-params.grip * delta)
+	side *= exp(-params.grip * grip_scale * delta)
 	velocity = fwd_dir * fwd + side_dir * side
 
 

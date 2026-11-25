@@ -309,6 +309,14 @@ func _show_garage_car(car: int) -> void:
 
 func _close_garage(start: bool) -> void:
 	garage_screen.close()
+	if _champ_garage_open:  # between championship rounds (no race scene)
+		_champ_garage_open = false
+		garage_screen.set_back_label("grid panel")
+		if start and champ != null and not champ.finished() and race == null and not _starting:
+			start_race(_champ_choice, true, [], null, -1, "", false, champ.next_round())
+		elif champ != null:
+			champ_screen.show_standings(champ)
+		return
 	if _career_garage_open:  # opened from the career hub (no race scene yet)
 		_career_garage_open = false
 		garage_screen.set_back_label("grid panel")
@@ -437,7 +445,7 @@ func start_championship(choice: int) -> void:
 	cars.put_at_stake(title.player_car)  # Racing for Keeps (the own car is never at stake)
 	cars.count_championship()
 	title.championship = ChampionshipSchedule.for_run(cars.championships_run)  # the one after this
-	start_race(choice, false, [], null, -1, "", false, champ.next_round())
+	start_race(choice, true, [], null, -1, "", false, champ.next_round())
 
 
 ## A round's result (Enter on the results): record it and show the standings.
@@ -523,7 +531,21 @@ func _next_round() -> void:
 	if champ == null or champ.finished() or race != null or _starting:
 		return
 	champ_screen.close()
-	start_race(_champ_choice, false, [], null, -1, "", false, champ.next_round())
+	_open_championship_garage()
+
+
+## P003: between championship rounds the player is in the garage (repairs,
+## weapons, upgrades, prize money from the round); its RACE button starts the
+## next round, Back returns to the standings.
+var _champ_garage_open := false
+
+
+func _open_championship_garage() -> void:
+	_champ_garage_open = true
+	garage_screen.set_garage(garage)
+	garage_screen.set_back_label("standings")
+	_show_garage_car(title.player_car if cars.owns(title.player_car) else CarCollection.OWN_CAR)
+	garage_screen.open()
 
 
 ## Abandon (or, after the final, finish) the championship: back to the menu.

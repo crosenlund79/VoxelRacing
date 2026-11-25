@@ -73,7 +73,6 @@ var _backdrop: MenuDiorama
 ## The player's parked car on the backdrop (the last grid slot).
 var _ui: CanvasLayer
 var _logo: VoxelLogo
-var _tagline: Label
 ## A notice over the title (e.g. a car lost in a forfeited championship).
 var _notice: Label
 var _notice_tween: Tween
@@ -124,16 +123,11 @@ func setup(p_resolver: AssetResolver, p_settings: AudioSettings) -> void:
 	_logo.size = Vector2(560, 236)
 	_logo.position = Vector2(20, 4)
 	root.add_child(_logo)
-	_tagline = HyperTheme.label("MINIATURE MOTORSPORT, BLOCK BY BLOCK", 16, VrStyle.YELLOW, 700)
-	_tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_tagline.size = Vector2(560, 24)
-	_tagline.position = Vector2(20, 226)
 	_notice = HyperTheme.label("", 30, HyperTheme.RED, 700)
 	_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_notice.size = Vector2(1280, 120)
 	_notice.position = Vector2(0, 590)
 	_notice.visible = false
-	root.add_child(_tagline)
 	root.add_child(_notice)
 
 	_load_weapons_pref()
@@ -150,7 +144,6 @@ func setup(p_resolver: AssetResolver, p_settings: AudioSettings) -> void:
 	(_main_menu.get_child(0) as Button).add_theme_font_size_override("font_size", 28)
 	(_main_menu.get_child(0) as Button).custom_minimum_size.y = 58
 	_mode_menu = _menu(root, [["QUICK RACE", func() -> void: _open_setup("quick")],
-		["GARAGE RACE", func() -> void: _open_setup("garage")],
 		["CHAMPIONSHIP", func() -> void: _open_setup("championship")],
 		["KNOCKOUT", func() -> void: _open_setup("knockout")],
 		["BATTLE ROYALE", func() -> void: _open_setup("battle")],
@@ -362,7 +355,7 @@ func _open_setup(mode: String) -> void:
 	setup_mode = mode
 	var titles := {"quick": "QUICK RACE  -  standard weapons", "garage": "GARAGE RACE  -  prize money, your own weapons",
 		"spectate": "SPECTATE  -  the nine rivals race", "multi": "MULTIPLAYER  -  two players",
-		"championship": "CHAMPIONSHIP", "knockout": "KNOCKOUT  -  last place out every lap",
+		"championship": "CHAMPIONSHIP  -  your garage, prize money, points", "knockout": "KNOCKOUT  -  last place out every lap",
 		"battle": "BATTLE ROYALE  -  last car standing"}
 	_setup_title.text = titles.get(mode, mode.to_upper())
 	var champ := mode == "championship"
@@ -376,7 +369,7 @@ func _open_setup(mode: String) -> void:
 	_control_button.visible = mode != "spectate"
 	_car_button.visible = mode != "spectate" and mode != "multi"
 	_rounds_button.visible = champ
-	_garage_button.visible = mode == "garage" and garage != null
+	_garage_button.visible = (mode == "garage" or mode == "championship") and garage != null
 	_garage_confirming = false
 	_update_garage_button()
 	_update_rounds_button()
@@ -711,7 +704,6 @@ func _show_only(node: Control) -> void:
 	for n in [_main_menu, _mode_menu, _setup, _race_menu, _settings_panel, _controls_panel, _achievements_panel, _join_panel, lan_panel]:
 		n.visible = n == node
 	_logo.visible = node != _controls_panel and node != _achievements_panel and node != _setup
-	_tagline.visible = _logo.visible
 	node.modulate.a = 0.0
 	create_tween().tween_property(node, "modulate:a", 1.0, 0.18)
 

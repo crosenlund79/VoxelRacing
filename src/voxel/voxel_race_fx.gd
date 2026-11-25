@@ -37,6 +37,18 @@ var _missiles: Array[MeshInstance3D] = []
 var _mines: Array[MeshInstance3D] = []
 var _trail_clock := 0.0
 var _rebuilds_left := 0
+## Overtaking taunts (P003): how likely each driver is to throw a can at the
+## car they just passed (index = racer id: the player never does). Scaled by
+## TAUNT_SCALE for tuning.
+const TAUNT_CHANCE := [0.0, 0.06, 0.55, 0.25, 0.18, 0.15, 0.6, 0.08, 0.45, 0.3]
+const TAUNT_SCALE := 1.0
+const TAUNT_TIME := 1.45
+const TAUNT_GAP := 9.0
+const TAUNT_COOLDOWN := 25.0
+var _taunts: Array = []
+var _taunt_cool := PackedFloat32Array()
+var _taunt_last := -100.0
+var cans: Array = []
 
 
 func setup(p_stage: VoxelStage) -> void:
@@ -72,6 +84,8 @@ func setup(p_stage: VoxelStage) -> void:
 	_was_wrecked.resize(damage.size())
 	_was_air.resize(damage.size())
 	_smoke_clock.resize(damage.size())
+	_taunt_cool.resize(damage.size())
+	_taunt_cool.fill(-100.0)
 
 
 ## Called every frame by VoxelStage after the cars were placed.
@@ -83,6 +97,8 @@ func sync(delta: float) -> void:
 	for i in damage.size():
 		_sync_car(i, delta)
 	_sync_weapons(delta)
+	_sync_taunts(delta)
+	step_cans(cans, delta, fx.ground)
 
 
 # ------------------------------------------------------------ fresh races
@@ -98,6 +114,15 @@ func _check_new_race() -> void:
 	fx.clear()
 	for b in _burns.get_children():
 		b.queue_free()
+	for can in cans:
+		(can.node as Node3D).queue_free()
+	cans.clear()
+	for tt in _taunts:
+		stage.pose_head(stage.cars3d[tt.car], 0.0)
+		stage.cars3d[tt.car].head = 0.0
+	_taunts.clear()
+	_taunt_cool.fill(-100.0)
+	_taunt_last = -100.0
 	for i in damage.size():
 		if damage[i].removed > 0 or damage[i].wrecked:
 			damage[i].restore()
@@ -153,6 +178,13 @@ func _sync_car(i: int, delta: float) -> void:
 			var at: Vector3 = root.global_position + Vector3(_rng.randf_range(-0.6, 0.6), 0.8, _rng.randf_range(-0.6, 0.6))
 			fx.puff(at, Vector3(_rng.randf_range(-0.3, 0.3), 1.3, _rng.randf_range(-0.3, 0.3)), Color(g, g * 0.97, g * 0.95),
 				_rng.randf_range(0.35, 0.6), _rng.randf_range(1.0, 1.8), 0.6)
+		# wheelspin: smoke from under the rear wheels (a burnout off the line)
+		var ws: float = d.get("wheelspin", 0.0)
+		if ws > 0.08 and _rng.randf() < delta * 34.0 * ws:
+			for side in [-0.75, 0.75]:
+				var at: Vector3 = root.global_transform * Vector3(-1.25, 0.15, side)
+				fx.puff(at, Vector3(_rng.randf_range(-0.6, 0.6), 0.45, _rng.randf_range(-0.6, 0.6)) - root.global_transform.basis.x * 1.2,
+					Color(0.9, 0.89, 0.86), _rng.randf_range(0.24, 0.4) * (0.7 + ws * 0.5), _rng.randf_range(0.5, 0.9), 0.5 * ws + 0.15)
 		# tyre smoke and dust from RaceEffects' own rules
 		var eff: RaceEffects = _main.effects
 		if eff != null and i < eff.smoking.size():
@@ -373,6 +405,11 @@ func _burn(p: Vector2, scale: float) -> void:
 	_burns.add_child(s)
 
 
+func burns_visible(on: bool) -> void:
+	if _burns != null:
+		_burns.visible = on
+
+
 func burn_count() -> int:
 	return _burns.get_child_count()
 
@@ -392,3 +429,105 @@ static func _make_scorch() -> Texture2D:
 			var core := clampf(1.0 - r / 0.5, 0.0, 1.0)
 			img.set_pixel(x, y, Color(0.05 + 0.05 * core, 0.04, 0.035, a * 0.92))
 	return ImageTexture.create_from_image(img)
+
+
+# ------------------------------------------------------------ taunts
+
+## A rival just passed another car (ReplayRecorder spots it): sometimes,
+## by temperament, the driver leans out and lobs a soda can back at them.
+func on_overtake(a: int, b: int) -> void:
+	var session: RaceSession = _main.session
+	if session.human_ids.has(a) and not session.spectator:
+		return  # the player's own driver keeps both hands on the wheel
+	if _time - _taunt_last < TAUNT_GAP or _time - _taunt_cool[a] < TAUNT_COOLDOWN:
+		return
+	var chance: float = TAUNT_CHANCE[a % TAUNT_CHANCE.size()] * TAUNT_SCALE
+	if session.human_ids.has(b) and not session.spectator:
+		chance *= 1.4  # they love doing it to you
+	if _rng.randf() > chance:
+		return
+	_taunt_last = _time
+	_taunt_cool[a] = _time
+	var ca: Car = _main.cars[a]
+	var cb: Car = _main.cars[b]
+	var local := (cb.global_position - ca.global_position).rotated(-ca.global_rotation)
+	stage.cars3d[a].head_side = 1.0 if local.y >= 0.0 else -1.0
+	_taunts.append({"car": a, "victim": b, "t": 0.0, "thrown": false})
+
+
+func _sync_taunts(delta: float) -> void:
+	for k in range(_taunts.size() - 1, -1, -1):
+		var tt: Dictionary = _taunts[k]
+		var d: Dictionary = stage.cars3d[tt.car]
+		var c: Car = _main.cars[tt.car]
+		tt.t = float(tt.t) + delta
+		var v := float(tt.t) / TAUNT_TIME
+		if v >= 1.0 or not c.visible or (_main.combat != null and _main.combat.enabled and _main.combat.is_wrecked(tt.car)):
+			d.head = 0.0
+			stage.pose_head(d, 0.0)
+			_taunts.remove_at(k)
+			continue
+		d.head = v
+		stage.pose_head(d, v)
+		if not tt.thrown and v >= 0.42:
+			tt.thrown = true
+			_throw(tt.car, tt.victim)
+
+
+func _throw(a: int, b: int) -> void:
+	var d: Dictionary = stage.cars3d[a]
+	var head: Node3D = d.head_node
+	var ca: Car = _main.cars[a]
+	var cb: Car = _main.cars[b]
+	var at := head.global_position + Vector3(0, 0.35, 0)
+	var carv := Vector3(ca.model.velocity.x, 0.0, ca.model.velocity.y) * Vox.PX if ca.model != null else Vector3.ZERO
+	var to_b := Vox.to3(cb.global_position) - Vox.to3(ca.global_position)
+	to_b.y = 0.0
+	var back := to_b.normalized() if to_b.length() > 0.1 else -Vector3(cos(ca.global_rotation), 0, sin(ca.global_rotation))
+	var vel := carv * 0.55 + back * _rng.randf_range(4.5, 6.0) + Vector3(0, _rng.randf_range(5.0, 6.5), 0)
+	var spin := Vector3(_rng.randf_range(-9, 9), _rng.randf_range(-4, 4), _rng.randf_range(-9, 9))
+	var node := MeshInstance3D.new()
+	node.mesh = VoxelWeapons.can_mesh()
+	add_child(node)
+	node.position = at
+	cans.append({"node": node, "vel": vel, "spin": spin, "rest": false, "life": 14.0})
+	if stage.recorder != null:
+		stage.recorder.add_event({"kind": "taunt", "score": 6.5, "pos": ca.global_position, "car": b, "by": a,
+			"can_pos": at, "can_vel": vel, "can_spin": spin})
+
+
+## Soda cans in flight: tumble, bounce, roll a little, lie there a while,
+## then shrink away. Cosmetic only.
+static func step_cans(list: Array, dt: float, ground: Callable) -> void:
+	for k in range(list.size() - 1, -1, -1):
+		var can: Dictionary = list[k]
+		var node: Node3D = can.node
+		can.life = float(can.life) - dt
+		if can.life <= 0.0:
+			node.queue_free()
+			list.remove_at(k)
+			continue
+		if can.life < 0.6:
+			node.scale = Vector3.ONE * maxf(0.01, can.life / 0.6)
+		if can.rest:
+			continue
+		var v: Vector3 = can.vel
+		v.y -= 30.0 * dt
+		var p := node.position + v * dt
+		var g: float = ground.call(p.x, p.z) if ground.is_valid() else 0.0
+		var spin: Vector3 = can.spin
+		if p.y < g + 0.22:
+			p.y = g + 0.22
+			if v.y < 0.0:
+				v.y = -v.y * 0.38
+			v.x *= 0.72
+			v.z *= 0.72
+			spin *= 0.6
+			if v.length() < 0.9:
+				can.rest = true
+				node.rotation = Vector3(PI * 0.5, node.rotation.y, 0.0)  # on its side
+		can.vel = v
+		can.spin = spin
+		node.position = p
+		if not can.rest:
+			node.rotation += spin * dt

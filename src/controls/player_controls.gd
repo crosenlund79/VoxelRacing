@@ -24,6 +24,10 @@ const TOGGLE_PANEL := "toggle_panel"
 const TOGGLE_LIGHTING := "toggle_lighting"
 ## Grid panel: Classic / Tactical combat style.
 const TOGGLE_STYLE := "toggle_style"
+## VoxelRacing: the voxel camera preset (V).
+const CAMERA_VIEW := "camera_view"
+## VoxelRacing: watch the race's highlights again (results screen).
+const REPLAY := "replay"
 const STICK_DEADZONE := 0.5
 ## Device id for a player on the keyboard (two-player assignment).
 const KEYBOARD := -1
@@ -138,6 +142,8 @@ static func ensure_actions() -> void:
 	_add(TOGGLE_PANEL, [_key(KEY_H), _joy_button(JOY_BUTTON_BACK)])
 	_add(TOGGLE_LIGHTING, [_key(KEY_L)])
 	_add(TOGGLE_STYLE, [_key(KEY_C), _joy_button(JOY_BUTTON_RIGHT_SHOULDER)])
+	_add(CAMERA_VIEW, [_key(KEY_V), _joy_button(JOY_BUTTON_RIGHT_STICK)])
+	_add(REPLAY, [_key(KEY_R), _joy_button(JOY_BUTTON_X)])
 	# Godot's menus accept / cancel only from the keyboard by default: a
 	# controller selects with A or Start and goes back with B.
 	for e in [_joy_button(JOY_BUTTON_A), _joy_button(JOY_BUTTON_START)]:
@@ -168,7 +174,7 @@ static func key_text(action: String) -> String:
 static func fmt(text: String) -> String:
 	var out := text
 	for a in [STEER_LEFT, STEER_RIGHT, FIRE, FIRE_FRONT, FIRE_REAR, CYCLE_FRONT, CYCLE_REAR, HISTORY_VIEW, SIM_SPEED, BACK, TOGGLE_PANEL,
-			TOGGLE_LIGHTING, TOGGLE_STYLE, CONFIRM]:
+			TOGGLE_LIGHTING, TOGGLE_STYLE, CONFIRM, CAMERA_VIEW, REPLAY]:
 		out = out.replace("{%s}" % a, key_text(a))
 	return out
 

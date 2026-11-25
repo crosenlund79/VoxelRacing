@@ -85,6 +85,25 @@ func height_px_at(p: Vector2) -> float:
 	return heights[c.y * nx + c.x] * CELL
 
 
+## Deck (bridge level) classes, where the circuit has elevation.
+var deck_classes := PackedByteArray()
+
+
+## True where cars drive: road, kerbs, pit lane - at ground level or on a
+## bridge deck. Scenery never stands there.
+func drivable_at(p: Vector2) -> bool:
+	var c := Vector2i(((p - origin_px) / CELL).floor())
+	if c.x < 0 or c.y < 0 or c.x >= nx or c.y >= nz:
+		return false
+	var i := c.y * nx + c.x
+	for arr in [classes, deck_classes]:
+		if (arr as PackedByteArray).size() == nx * nz:
+			var k: int = arr[i]
+			if k == C_ROAD or k == C_KERB or k == C_PIT:
+				return true
+	return false
+
+
 func class_at(p: Vector2) -> int:
 	var c := Vector2i(((p - origin_px) / CELL).floor())
 	if c.x < 0 or c.y < 0 or c.x >= nx or c.y >= nz or classes.size() < nx * nz:
@@ -152,6 +171,7 @@ func build(p_track: Node2D, decal_layer: Node2D) -> void:
 			dcls[i] = _class_of(data[i * 4], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3])
 			if (i & 16383) == 0 and _over_budget():
 				await _yield_frame()
+		deck_classes = dcls
 		deck_material = await _make_material(deck_color, _class_image(dcls), false)
 		_build_decks()
 	progress = 1.0
@@ -302,6 +322,14 @@ func _class_image(c: PackedByteArray) -> Image:
 
 # ------------------------------------------------------------ heights
 
+## P003 meadow (Green Valley, The Raceway): the menu island's grass green,
+## how much of it is mixed into the circuit's own grass, and the flowers.
+const MEADOW := Color("7bc950")
+const MEADOW_BLEND := 0.55
+const FLOWER_SHARE := 0.045
+const FLOWERS := [Color("f7b731"), Color("f45b9b"), Color("fff4de"), Color("ff8c2e")]
+
+
 func _compute_heights(color: Image) -> void:
 	heights.resize(nx * nz)
 	var amp: int = HILLS[clampi(theme.variant, 0, HILLS.size() - 1)]
@@ -322,6 +350,7 @@ func _compute_heights(color: Image) -> void:
 		noise.fractal_octaves = 3
 		hills = noise.get_image(nx, nz, false, false, true).get_data()
 	# flowers / tufts: grass cells whose colour stands out from the local mean
+	var meadow := theme.variant == 1 or theme.variant == 4
 	var cdata := color.get_data()
 	var mean := color.duplicate() as Image
 	mean = _blurred(mean, 2)
@@ -350,10 +379,28 @@ func _compute_heights(color: Image) -> void:
 				var db := absi(cdata[i * cstride + 2] - mdata[i * mstride + 2])
 				if dr + dg + db > 70 and near[i] < 200:
 					h += 1
+				# P003: the menu island's look - lively, varied grass and
+				# little flower voxels (never near the road)
+				if meadow:
+					var x := i % nx
+					var z := i / nx
+					var hv := Vox.hash3(x, 9, z)
+					var base := MEADOW.darkened(0.1 + 0.13 * hv)
+					var o := i * cstride
+					var orig := Color8(cdata[o], cdata[o + 1], cdata[o + 2])
+					var c2 := orig.lerp(base, MEADOW_BLEND)
+					if near[i] < 24 and hv > 1.0 - FLOWER_SHARE and h < 2:
+						c2 = FLOWERS[int(Vox.hash3(x, 3, z) * 997.0) % FLOWERS.size()]
+						h += 1
+					cdata[o] = c2.r8
+					cdata[o + 1] = c2.g8
+					cdata[o + 2] = c2.b8
 		heights[i] = h
 		if (i & 8191) == 0 and _over_budget():
 			progress = 0.36 + 0.26 * float(i) / (nx * nz)
 			await _yield_frame()
+	if meadow:
+		color.set_data(nx, nz, false, color.get_format(), cdata)
 
 
 ## Box-blurred copy by repeated halving, scaled back to the map size.

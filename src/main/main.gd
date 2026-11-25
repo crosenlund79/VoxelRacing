@@ -752,6 +752,11 @@ func laps_fixed() -> bool:
 
 func reset_race() -> void:
 	_conclude_race()
+	if _replaying():
+		voxel.replay.stop()
+	_reset_debris()
+	_highlights_shown = false
+	_replay_hint = ""
 	_race_open = false
 	_human_stuck_time = 0.0
 	_human_best = -INF
@@ -1012,6 +1017,37 @@ func _client_stats() -> void:
 			stats.on_retired(id, session.elapsed, true)
 
 
+# ------------------------------------------------ P003: action replays
+
+var _highlights_shown := false
+## "{replay}: highlights" on the results once the race has some.
+var _replay_hint := ""
+
+
+func _replaying() -> bool:
+	return voxel != null and voxel.replay != null and voxel.replay.playing
+
+
+func _highlights_allowed() -> bool:
+	return voxel != null and voxel.replay != null and net == null and not is_two_player() and player_views == null
+
+
+## Once everyone is in, the race's best moments play (once); true while a
+## replay runs. The live race is only watched, never changed, by the replay.
+func _highlights_tick() -> bool:
+	if _replaying():
+		return true
+	if not _highlights_allowed() or session.state != RaceSession.State.FINISHED or not session.all_finished():
+		return false
+	if not _highlights_shown:
+		_highlights_shown = true
+		if voxel.replay.has_highlights():
+			_replay_hint = "     {replay}: highlights"
+		if voxel.replay.play_highlights():
+			return true
+	return false
+
+
 ## Reports the race result once it is final (see race_concluded). Only a race
 ## that reached the flag counts; one left while racing is not reported.
 func _conclude_race() -> void:
@@ -1151,11 +1187,15 @@ func _physics_process(_delta: float) -> void:
 				exit_requested.emit()
 			return
 		RaceSession.State.FINISHED:
-			if _watch_active():
+			if _highlights_tick():
+				pass  # the action replay first; the results wait for it
+			elif _watch_active():
 				_watch_input()  # the rest of the race goes on below
 			elif not session.spectator:
 				if watching or _celebrate_left >= 0.0:
 					_end_watch()  # everyone is in: the results
+				if _menu_pressed(PlayerControls.REPLAY) and _highlights_allowed() and voxel.replay.play_highlights(true):
+					return  # watch the highlights again
 				var skip_garage := garage != null and _menu_pressed(PlayerControls.HISTORY_VIEW)
 				if championship_round >= 0:
 					if _menu_pressed(PlayerControls.CONFIRM) and not _round_reported:
@@ -1178,12 +1218,13 @@ func _physics_process(_delta: float) -> void:
 					elif garage != null:
 						open_garage()
 					return
-	if session.spectator and _spectator_input():
+	if session.spectator and not _replaying() and _spectator_input():
 		return
 	_apply_impacts(step)
 	_update_progress()
 	_update_levels()
 	_update_jumps(Car.FIXED_STEP)
+	_debris_tick(step)
 	_drive_cars(step)
 	_update_pits(step)
 	if combat.enabled:
@@ -1283,6 +1324,8 @@ func _spectator_tick(step: float) -> void:
 		if _stuck_time > STUCK_RACE_TIMEOUT:
 			session.classify_remaining()
 	if session.state == RaceSession.State.FINISHED:
+		if _highlights_tick():
+			return  # the next race waits for the action replay
 		if _restart_timer < 0.0:
 			history.add_race(session.finish_order, weapons_enabled, session.lap_count())
 			hud.history_panel.refresh()
@@ -1413,7 +1456,7 @@ func _present_levels() -> void:
 ## Esc (any player's Back) during a race opens the race menu.
 func _check_race_menu() -> void:
 	var racing := session.state == RaceSession.State.RACING or (session.spectator and session.state == RaceSession.State.FINISHED)
-	if menu_open or network_lost or not racing:
+	if menu_open or network_lost or not racing or _replaying():
 		return
 	if _menu_pressed(PlayerControls.BACK):
 		open_race_menu()
@@ -1826,18 +1869,20 @@ func _refresh_hud() -> void:
 	hud.set_weapons_locked(combat.enabled and combat.locked and session.state != RaceSession.State.FINISHED)
 	_refresh_watch_panel()
 	if session.state == RaceSession.State.FINISHED and not _watch_active():
+		if _replaying():
+			return
 		if net != null:
 			hud.show_results(session.standings(), "{confirm}: next race" if net.is_host() else "Waiting for the host to continue")
 		elif championship_round >= 0 and garage != null and _garage_settled:  # a career round
 			hud.show_results(session.standings(), ("Prize money: $%d" % garage.last_prize) + ("  -  pit collision fines $%d" % garage.last_fine if garage.last_fine > 0 else "")
-				+ "     {confirm}: championship standings")
+				+ "     {confirm}: championship standings" + _replay_hint)
 		elif championship_round >= 0:
-			hud.show_results(session.standings(), "{confirm}: championship standings")
+			hud.show_results(session.standings(), "{confirm}: championship standings" + _replay_hint)
 		elif garage != null and _garage_settled:
 			hud.show_results(session.standings(), ("Prize money: $%d" % garage.last_prize) + ("  -  pit collision fines $%d" % garage.last_fine if garage.last_fine > 0 else "")
-				+ "     {confirm}: garage     {history_view}: skip shopping, next race")
+				+ "     {confirm}: garage     {history_view}: skip shopping, next race" + _replay_hint)
 		else:
-			hud.show_results(session.standings())
+			hud.show_results(session.standings(), "{confirm}: race again (reversed grid)" + _replay_hint)
 
 
 ## One human's HUD: their own position, lap, time, weapons and cooldowns.
@@ -2095,6 +2140,66 @@ func _update_progress() -> void:
 
 
 ## Every car in the race takes its command for this tick from its DriverInput.
+# ------------------------------------------------ P003: debris costs grip
+
+## Off to compare the old handling exactly (debug / tuning).
+var debris_traction := true
+var debris_field := DebrisField.new()
+var _debris_cursor := 0
+var _debris_share := PackedFloat32Array()
+var _debris_out := PackedByteArray()
+
+
+## Wrecks and lost bodywork leave debris (DebrisField); cars on it slide more
+## and sweep it about. Every car alike, player or rival.
+func _debris_tick(step: float) -> void:
+	if not debris_traction:
+		return
+	if _debris_share.size() != cars.size():
+		_debris_share.resize(cars.size())
+		_debris_share.fill(1.0)
+		_debris_out.resize(cars.size())
+		_debris_out.fill(0)
+	if combat != null:
+		if _debris_cursor > combat.events.size():
+			_debris_cursor = 0
+		while _debris_cursor < combat.events.size():
+			var e: Dictionary = combat.events[_debris_cursor]
+			_debris_cursor += 1
+			if e.kind == "destroyed" and int(e.car) >= 0 and int(e.car) < cars.size():
+				debris_field.deposit(cars[e.car].global_position, DebrisField.WRECK_AMOUNT, DebrisField.WRECK_RADIUS)
+	for i in cars.size():
+		var c := cars[i]
+		if damage != null:
+			var f := damage.fraction(i)
+			if f < _debris_share[i] - 0.001 and c.visible:
+				debris_field.deposit(c.global_position, (_debris_share[i] - f) * DebrisField.DAMAGE_AMOUNT, DebrisField.DAMAGE_RADIUS)
+			_debris_share[i] = f
+			var out := damage.is_retired(i)
+			if out and _debris_out[i] == 0 and c.visible:
+				debris_field.deposit(c.global_position, DebrisField.WRECK_AMOUNT, DebrisField.WRECK_RADIUS)
+			_debris_out[i] = 1 if out else 0
+		if c.model == null:
+			continue
+		if not c.visible or c.airborne:
+			c.model.grip_scale = 1.0
+			continue
+		c.model.grip_scale = debris_field.grip_scale(c.global_position)
+		debris_field.sweep(c.global_position, c.model.velocity, step)
+
+
+func _reset_debris() -> void:
+	debris_field.clear()
+	_debris_share.resize(cars.size())
+	_debris_share.fill(1.0)
+	_debris_out.resize(cars.size())
+	_debris_out.fill(0)
+	_debris_cursor = combat.events.size() if combat != null else 0
+	for c in cars:
+		if c.model != null:
+			c.model.grip_scale = 1.0
+
+
 func _drive_cars(step: float) -> void:
 	_pit_requests.clear()
 	for id in grid_order:

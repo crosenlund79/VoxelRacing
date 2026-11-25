@@ -18,6 +18,13 @@ enum Kind { DOME, TREE, PINE, BUSH, ROCK, FLOWERS, TYRES, FLAG, STAND, LAMP, FLO
 static var _meshes: Dictionary = {}
 
 
+## Scenery that must never stand on a drivable surface (vegetation, rocks,
+## clutter); stands, boards, lamps, flags and pit gear are placed on purpose.
+static func is_decoration(kind: Kind) -> bool:
+	return kind in [Kind.DOME, Kind.TREE, Kind.PINE, Kind.BUSH, Kind.ROCK, Kind.FLOWERS, Kind.CRATE,
+		Kind.PENCIL, Kind.CUP, Kind.DICE]
+
+
 static func kind_of(logical: String) -> Kind:
 	var l := logical.to_lower()
 	if l.ends_with("tree_round") or l.ends_with("tree_bloom") or l == "variant_2/scenery/prop_1":

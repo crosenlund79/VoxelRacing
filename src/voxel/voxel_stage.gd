@@ -55,6 +55,9 @@ var decal_vp: SubViewport
 var ready_3d := false
 var cars3d: Array[Dictionary] = []
 var race_fx: VoxelRaceFx
+## Action replays (races only, not Battle Royale).
+var recorder: ReplayRecorder
+var replay: ReplayTheater
 ## Emitted once the voxel world is complete (the loading race finishes).
 signal world_ready
 var build_msec := 0
@@ -76,6 +79,9 @@ static func available() -> bool:
 func setup(p_main: Node2D) -> void:
 	main = p_main
 	name = "VoxelStage"
+	if main.get("camera") != null:
+		# the camera moves with the physics ticks; the voxel view interpolates
+		(main.camera as Camera2D).process_callback = Camera2D.CAMERA2D_PROCESS_PHYSICS
 	_rng.seed = 7
 	world_env = WorldEnvironment.new()
 	world_env.environment = make_environment()
@@ -141,6 +147,13 @@ func _build() -> void:
 	race_fx.setup(self)
 	if main.effects != null:
 		main.effects.celebrated.connect(_confetti)
+	if main.get("session") != null and main.get("races_started") != null and main.get("progress") != null:
+		recorder = ReplayRecorder.new()
+		add_child(recorder)
+		recorder.setup(self)
+		replay = ReplayTheater.new()
+		add_child(replay)
+		replay.setup(self, recorder)
 	await _build_props()
 	if not is_inside_tree():
 		return
@@ -209,17 +222,10 @@ func _tag_2d_world() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not (event is InputEventKey) or not event.pressed or event.echo:
+	if not event.is_action_pressed(PlayerControls.CAMERA_VIEW, false, true):
 		return
-	var k := event as InputEventKey
-	var code := k.physical_keycode if k.physical_keycode != KEY_NONE else k.keycode
-	if code != KEY_V:
-		return
-	for action in InputMap.get_actions():  # never steal a key the player bound to something
-		if not String(action).begins_with("ui_") and InputMap.event_is_action(event, action, true):
-			return
 	view_index = (view_index + 1) % VIEWS.size()
-	_show_hint("CAMERA: %s   (V)" % VIEWS[view_index][2])
+	_show_hint(PlayerControls.fmt("CAMERA: %s   ({camera_view})") % VIEWS[view_index][2])
 	get_viewport().set_input_as_handled()
 
 
@@ -264,16 +270,18 @@ func _apply_time_of_day(night: bool) -> void:
 	var weather: String = theme.weather if theme != null else ""
 	if night:
 		var amb: Color = theme.night_ambient if theme != null else Color(0.42, 0.44, 0.58)
-		e.background_color = Color(0.03, 0.035, 0.06)
-		e.ambient_light_color = amb.lerp(Color(0.35, 0.42, 0.7), 0.4)
-		e.ambient_light_energy = 0.34
-		e.glow_intensity = 0.9
-		e.glow_hdr_threshold = 0.85
+		# P003: a proper night - the darkness comes from the world's lighting
+		# (dim moonlight, little ambient), the light from lamps and headlights
+		e.background_color = Color(0.015, 0.018, 0.035)
+		e.ambient_light_color = amb.lerp(Color(0.3, 0.38, 0.72), 0.5)
+		e.ambient_light_energy = NIGHT_AMBIENT
+		e.glow_intensity = 1.0
+		e.glow_hdr_threshold = 0.8
 		e.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
-		e.adjustment_saturation = 1.0
-		e.tonemap_exposure = 1.15
-		sun.light_color = Color(0.62, 0.7, 1.0)
-		sun.light_energy = 0.32
+		e.adjustment_saturation = 1.05
+		e.tonemap_exposure = 1.05
+		sun.light_color = Color(0.55, 0.65, 1.0)
+		sun.light_energy = NIGHT_MOON
 		sun.basis = Basis.looking_at(Vector3(-0.35, -1.0, -0.45).normalized(), Vector3.UP)
 	else:
 		e.background_color = Color(0.2, 0.24, 0.2)
@@ -306,78 +314,106 @@ func _apply_time_of_day(night: bool) -> void:
 
 # ------------------------------------------------------------ cars
 
+var _cars_holder: Node3D
+
+
 func _build_cars() -> void:
 	var holder := Node3D.new()
 	holder.name = "Cars"
 	add_child(holder)
-	var layout: WheelLayout = main.wheel_layout
+	_cars_holder = holder
 	var t := Time.get_ticks_usec()
 	for i in main.cars.size():
 		if Time.get_ticks_usec() - t > 20000:
 			await get_tree().process_frame
 			t = Time.get_ticks_usec()
 		_cars_part = float(i) / main.cars.size()
-		var c: Car = main.cars[i]
-		var look: Dictionary = main._car_looks[i] if i < main._car_looks.size() else {}
-		var body_logical: String = look.get("body_logical", "")
-		var root := Node3D.new()
-		root.name = "Car%d" % i
-		holder.add_child(root)
-		var tilt := Node3D.new()
-		root.add_child(tilt)
-		var body := MeshInstance3D.new()
-		body.mesh = VoxelCars.body_mesh(c.sprite.texture, layout, body_logical)
-		tilt.add_child(body)
-		var marker := MeshInstance3D.new()
-		marker.mesh = _marker_mesh()
-		marker.position = Vector3(0, 2.6, 0)
-		marker.visible = false
-		marker.set_instance_shader_parameter("lamp_glow", 0.35)
-		marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		root.add_child(marker)
-		var wheels: Array[Node3D] = []
-		var spins: Array[MeshInstance3D] = []
-		var at := layout.positions(body_logical)
-		var show_wheels: bool = look.get("wheels", true)
-		for ax in [at.x, at.y]:
-			for az in [-at.z, at.z]:
-				var pivot := Node3D.new()
-				pivot.position = Vector3(ax, VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX, az) * Vox.PX
-				root.add_child(pivot)
-				var w := MeshInstance3D.new()
-				w.mesh = VoxelCars.wheel_mesh()
-				pivot.add_child(w)
-				pivot.visible = show_wheels
-				wheels.append(pivot)
-				spins.append(w)
-		var lights: Array[Light3D] = []
-		for side in [-1.0, 1.0]:
-			var spot := SpotLight3D.new()
-			spot.position = Vector3(LightingPilot.HEAD_LAMP.x, 8.0, side * LightingPilot.HEAD_LAMP.y) * Vox.PX
-			spot.basis = Basis.looking_at(Vector3(1.0, -0.2, side * 0.04).normalized(), Vector3.UP)
-			spot.spot_range = 20.0
-			spot.spot_angle = 26.0
-			spot.spot_angle_attenuation = 0.8
-			spot.light_energy = 5.0
-			spot.light_color = main.lighting.head_color_of(c.racer_id) if main.lighting != null else LightingPilot.HEADLIGHT_COLOR
-			spot.light_specular = 0.2
-			spot.visible = false
-			root.add_child(spot)
-			lights.append(spot)
-		var tail := OmniLight3D.new()
-		tail.position = Vector3(-36.0, 6.0, 0.0) * Vox.PX
-		tail.omni_range = 2.6
-		tail.light_energy = 0.8
-		tail.light_color = Color(1.0, 0.12, 0.06)
-		tail.visible = false
-		root.add_child(tail)
-		lights.append(tail)
-		cars3d.append({
-			"root": root, "tilt": tilt, "body": body, "wheels": wheels, "spins": spins, "lights": lights,
-			"roll": 0.0, "pitch": 0.0, "spin": 0.0, "h": 0.0, "prev_v": Vector2.ZERO, "prev_pos": c.global_position,
-			"brake": 0.0, "steer": 0.0, "prev_rot": c.global_rotation, "marker": marker, "show_wheels": show_wheels,
-			"grid": VoxelCars.body_grid(c.sprite.texture, layout, body_logical), "pristine_mesh": body.mesh,
-		})
+		cars3d.append(make_car(i, holder))
+
+
+## One car's voxel node tree (root > tilt > body, wheels, lamps, marker) and
+## its presentation state. Also used by the replay theater for its own cars.
+func make_car(i: int, holder: Node3D) -> Dictionary:
+	var layout: WheelLayout = main.wheel_layout
+	var c: Car = main.cars[i]
+	var look: Dictionary = main._car_looks[i] if i < main._car_looks.size() else {}
+	var body_logical: String = look.get("body_logical", "")
+	var root := Node3D.new()
+	root.name = "Car%d" % i
+	holder.add_child(root)
+	var tilt := Node3D.new()
+	root.add_child(tilt)
+	var body := MeshInstance3D.new()
+	body.mesh = VoxelCars.body_mesh(c.sprite.texture, layout, body_logical)
+	tilt.add_child(body)
+	var marker := MeshInstance3D.new()
+	marker.mesh = _marker_mesh()
+	marker.position = Vector3(0, 2.6, 0)
+	marker.visible = false
+	marker.set_instance_shader_parameter("lamp_glow", 0.35)
+	marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(marker)
+	var wheels: Array[Node3D] = []
+	var spins: Array[MeshInstance3D] = []
+	var at := layout.positions(body_logical)
+	var show_wheels: bool = look.get("wheels", true)
+	for ax in [at.x, at.y]:
+		for az in [-at.z, at.z]:
+			var pivot := Node3D.new()
+			pivot.position = Vector3(ax, VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX, az) * Vox.PX
+			root.add_child(pivot)
+			var w := MeshInstance3D.new()
+			w.mesh = VoxelCars.wheel_mesh()
+			pivot.add_child(w)
+			pivot.visible = show_wheels
+			wheels.append(pivot)
+			spins.append(w)
+	var lights: Array[Light3D] = []
+	for side in [-1.0, 1.0]:
+		var spot := SpotLight3D.new()
+		spot.position = Vector3(LightingPilot.HEAD_LAMP.x, 8.0, side * LightingPilot.HEAD_LAMP.y) * Vox.PX
+		spot.basis = Basis.looking_at(Vector3(1.0, -0.2, side * 0.04).normalized(), Vector3.UP)
+		spot.spot_range = 20.0
+		spot.spot_angle = 26.0
+		spot.spot_angle_attenuation = 0.8
+		spot.light_energy = 5.0
+		spot.light_color = main.lighting.head_color_of(c.racer_id) if main.lighting != null else LightingPilot.HEADLIGHT_COLOR
+		spot.light_specular = 0.2
+		spot.visible = false
+		root.add_child(spot)
+		lights.append(spot)
+	var tail := OmniLight3D.new()
+	tail.position = Vector3(-36.0, 6.0, 0.0) * Vox.PX
+	tail.omni_range = 2.6
+	tail.light_energy = 0.8
+	tail.light_color = Color(1.0, 0.12, 0.06)
+	tail.visible = false
+	root.add_child(tail)
+	lights.append(tail)
+	# the driver, for the overtaking taunt (hidden until a head pops out)
+	var head := Node3D.new()
+	head.name = "Driver"
+	head.visible = false
+	tilt.add_child(head)
+	var face := MeshInstance3D.new()
+	face.mesh = VoxelWeapons.head_mesh(HELMETS[i % HELMETS.size()])
+	head.add_child(face)
+	var shoulder := Node3D.new()
+	shoulder.name = "Shoulder"
+	shoulder.position = Vector3(-0.05, 0.12, 0.0)
+	head.add_child(shoulder)
+	var arm := MeshInstance3D.new()
+	arm.mesh = VoxelWeapons.arm_mesh()
+	shoulder.add_child(arm)
+	return {
+		"tick_pos": c.global_position, "tick_prev": c.global_position, "tick_rot": c.global_rotation, "rot_prev": c.global_rotation,
+		"tick_v": Vector2.ZERO, "acc_long": 0.0, "acc_lat": 0.0, "pitch_v": 0.0, "roll_v": 0.0, "wheelspin": 0.0, "spin_rear": 0.0,
+		"head_node": head, "head": 0.0, "head_side": 1.0, "head_box": body.mesh.get_aabb() if body.mesh != null else AABB(),
+		"root": root, "tilt": tilt, "body": body, "wheels": wheels, "spins": spins, "lights": lights,
+		"roll": 0.0, "pitch": 0.0, "spin": 0.0, "h": 0.0, "prev_v": Vector2.ZERO, "prev_pos": c.global_position,
+		"brake": 0.0, "steer": 0.0, "prev_rot": c.global_rotation, "marker": marker, "show_wheels": show_wheels,
+		"grid": VoxelCars.body_grid(c.sprite.texture, layout, body_logical), "pristine_mesh": body.mesh,
+	}
 
 
 func _sync_cars(delta: float) -> void:
@@ -391,8 +427,9 @@ func _sync_cars(delta: float) -> void:
 		root.visible = c.visible
 		if not c.visible:
 			continue
-		var pos := c.global_position
-		var rot := c.global_rotation
+		var alpha := Engine.get_physics_interpolation_fraction()
+		var pos := (d.tick_prev as Vector2).lerp(d.tick_pos, alpha)
+		var rot := lerp_angle(float(d.rot_prev), float(d.tick_rot), alpha)
 		# height: bridge deck, kerbs, jumps
 		var h := 0.0
 		if elevated and main.draw_level_of(i) == 1:
@@ -410,23 +447,34 @@ func _sync_cars(delta: float) -> void:
 			d.h = lerpf(d.h, h, 1.0 - exp(-delta * 18.0))
 		root.position = Vox.to3(pos, d.h)
 		root.rotation = Vector3(0.0, Vox.yaw(rot), 0.0)
-		# body roll and pitch from the car's acceleration (presentation only)
+		# weight transfer (presentation only): the nose lifts and the tail
+		# squats under acceleration, the nose dives under braking, the body
+		# leans out of corners - a spring with a little overshoot
 		var vel: Vector2 = c.model.velocity if c.model != null else Vector2.ZERO
 		var fwd := Vector2.from_angle(rot)
-		var right := Vector2(-fwd.y, fwd.x)
-		var acc := Vector2.ZERO
-		if delta > 0.0 and moved < 60.0:
-			acc = (vel - (d.prev_v as Vector2)) / delta
-		var a_lat := acc.dot(right)
-		var a_long := acc.dot(fwd)
-		var k := 1.0 - exp(-delta * 7.0)
-		d.roll = lerpf(d.roll, clampf(a_lat * 0.00011, -0.11, 0.11), k)
-		d.pitch = lerpf(d.pitch, clampf(-a_long * 0.00006, -0.05, 0.06), k)
+		var a_long: float = d.acc_long
+		var a_lat: float = d.acc_lat
+		if moved >= 60.0:
+			a_long = 0.0
+			a_lat = 0.0
+		var pitch_target := clampf(a_long * PITCH_PER_ACC, -PITCH_DIVE_MAX, PITCH_LIFT_MAX)
+		var roll_target := clampf(a_lat * ROLL_PER_ACC, -ROLL_MAX, ROLL_MAX)
 		if c.airborne:
-			d.pitch = lerpf(d.pitch, -0.08, k)
+			pitch_target = 0.05
+		var dt := minf(delta, 0.05)
+		d.pitch_v = float(d.pitch_v) + (SPRING_K * (pitch_target - float(d.pitch)) - SPRING_C * float(d.pitch_v)) * dt
+		d.pitch = float(d.pitch) + float(d.pitch_v) * dt
+		d.roll_v = float(d.roll_v) + (SPRING_K * (roll_target - float(d.roll)) - SPRING_C * float(d.roll_v)) * dt
+		d.roll = float(d.roll) + float(d.roll_v) * dt
 		(d.tilt as Node3D).rotation = Vector3(d.roll, 0.0, d.pitch)
-		# braking (brake lights by day too)
+		# wheelspin: hard throttle at low speed spins the rear wheels (and the
+		# race fx puts tyre smoke under them); strongest from a standstill
 		var along := vel.dot(fwd)
+		var spin_want := clampf((a_long - 110.0) / 180.0, 0.0, 1.0) * clampf(1.0 - absf(along) / 190.0, 0.0, 1.0)
+		if not c.active or c.airborne:
+			spin_want = 0.0
+		d.wheelspin = lerpf(float(d.wheelspin), spin_want, 1.0 - exp(-dt * (14.0 if spin_want > float(d.wheelspin) else 4.0)))
+		# braking (brake lights by day too)
 		var braking := a_long < -110.0 and along > 30.0
 		d.brake = lerpf(d.brake, 1.0 if braking else 0.0, 1.0 - exp(-delta * 12.0))
 		# wheels: steering (the steering command when the car is driven here,
@@ -439,11 +487,12 @@ func _sync_cars(delta: float) -> void:
 		var steer_angle := deg_to_rad(main.wheel_layout.max_steer_degrees) * clampf(d.steer, -1.0, 1.0)
 		var forward_px := (pos - (d.prev_pos as Vector2)).dot(fwd) if moved < 60.0 else 0.0
 		d.spin = fposmod(d.spin - forward_px / (VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX), TAU)
+		d.spin_rear = fposmod(float(d.spin_rear) - forward_px / (VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX) - float(d.wheelspin) * 34.0 * dt, TAU)
 		var wheels: Array = d.wheels
 		var spins: Array = d.spins
 		for w in 4:
 			(wheels[w] as Node3D).rotation.y = -steer_angle if w < 2 else 0.0
-			(spins[w] as Node3D).rotation.z = d.spin
+			(spins[w] as Node3D).rotation.z = d.spin if w < 2 else d.spin_rear
 		# paint: junker tints, fallen tint, wear; lamps
 		var body: MeshInstance3D = d.body
 		var tint := c.sprite.modulate
@@ -482,12 +531,60 @@ func _sync_cars(delta: float) -> void:
 			var lights: Array = d.lights
 			for s in 2:
 				var spot: SpotLight3D = lights[s]
-				spot.spot_range = 20.0 * lerpf(1.0, LightingPilot.HIGH_BEAM_SCALE, hb)
-				spot.light_energy = 5.0 * lerpf(1.0, LightingPilot.HIGH_BEAM_ENERGY, hb)
+				spot.spot_range = 25.0 * lerpf(1.0, LightingPilot.HIGH_BEAM_SCALE, hb)
+				spot.light_energy = 7.5 * lerpf(1.0, LightingPilot.HIGH_BEAM_ENERGY, hb)
 				spot.light_color = head_col
 			(lights[2] as OmniLight3D).light_energy = 0.7 + 1.6 * d.brake
 		d.prev_v = vel
 		d.prev_pos = pos
+
+
+## Night (P003): ambient and moonlight energies; the lamp posts' pools.
+const NIGHT_AMBIENT := 0.13
+const NIGHT_MOON := 0.13
+const POST_SPACING := 420.0
+const POST_OFFSET := 132.0
+const POST_MAX := 26
+
+
+## Weight transfer (P003, presentation only): body pitch / roll per px/s2 of
+## acceleration, limits (radians), and the spring that carries it.
+const PITCH_PER_ACC := 0.00026
+const PITCH_LIFT_MAX := 0.075
+const PITCH_DIVE_MAX := 0.06
+const ROLL_PER_ACC := 0.00011
+const ROLL_MAX := 0.1
+const SPRING_K := 140.0
+const SPRING_C := 15.0
+
+
+## Helmet colours of the drivers (the player first, then the rivals).
+const HELMETS := [Color("f7b731"), Color("e8e8f0"), Color("e8432e"), Color("59c3f2"), Color("7bc950"),
+	Color("f45b9b"), Color("2ec4b6"), Color("a37ef0"), Color("ff8c2e"), Color("3d4a8a")]
+
+
+## The overtaking taunt, pose v in 0..1 (0: inside): the driver's head pops out
+## of the window on `head_side`, looks back, the arm winds up and throws.
+func pose_head(d: Dictionary, v: float) -> void:
+	var head: Node3D = d.head_node
+	head.visible = v > 0.001 and v < 0.999
+	if not head.visible:
+		return
+	var box: AABB = d.head_box
+	var side: float = d.head_side
+	var out := smoothstep(0.0, 0.18, v) * (1.0 - smoothstep(0.84, 1.0, v))
+	var cx := box.get_center().x - box.size.x * 0.06
+	var top := box.end.y
+	head.position = Vector3(cx, lerpf(top * 0.35, top - 0.08, out), side * lerpf(box.size.z * 0.18, box.size.z * 0.5 + 0.12, out))
+	# looks back towards the car behind, a little cheeky tilt
+	var look := smoothstep(0.1, 0.3, v) * (1.0 - smoothstep(0.7, 0.9, v))
+	head.rotation = Vector3(side * 0.35 * out, side * look * 2.2, 0.0)
+	var shoulder: Node3D = head.get_node("Shoulder")
+	shoulder.position = Vector3(-0.05, 0.12, side * 0.18)
+	# wind up (arm raised forward), then the throw backwards
+	var wind := smoothstep(0.18, 0.34, v)
+	var throw := smoothstep(0.36, 0.48, v)
+	shoulder.rotation = Vector3(side * 0.45, 0.0, PI + 0.9 * wind - 2.4 * throw)
 
 
 # ------------------------------------------------------------ scenery
@@ -542,6 +639,8 @@ func _build_props() -> void:
 		var nominal: Vector2 = spec.get("display_size", spr.texture.get_size())
 		var frame_size := spr.texture.get_size() / Vector2(maxi(1, spr.hframes), maxi(1, spr.vframes))
 		var shown := frame_size * spr.global_scale.abs()
+		if VoxelProps.is_decoration(kind) and _on_drivable(spr.global_position, shown):
+			continue  # (2D drew it under the road; in voxels it would stand on it)
 		var mesh := VoxelProps.mesh_for(logical, spr.texture, nominal, spr.hframes)
 		var mi := MeshInstance3D.new()
 		mi.mesh = mesh
@@ -568,6 +667,17 @@ func _build_props() -> void:
 		if kind == VoxelProps.Kind.FLOOD:
 			_glowing.append(mi)
 		holder.add_child(mi)
+
+
+## Whether a prop of `size` (px) at p would cover any drivable ground.
+func _on_drivable(p: Vector2, size: Vector2) -> bool:
+	var r := maxf(size.x, size.y) * 0.32
+	if vtrack.drivable_at(p):
+		return true
+	for k in 8:
+		if vtrack.drivable_at(p + Vector2.from_angle(k * TAU / 8.0) * r):
+			return true
+	return false
 
 
 ## Direction from a point to the nearest centreline sample.
@@ -616,11 +726,81 @@ func _build_lamps() -> void:
 		light.spot_angle_attenuation = 0.6
 		light.spot_range = 26.0 if flood else 20.0
 		light.light_color = lp.lamp_color
-		light.light_energy = lp.lamp_energy * 5.5
+		light.light_energy = lp.lamp_energy * 7.0
 		light.shadow_enabled = false
 		light.visible = false
 		holder.add_child(light)
 		lamps3d.append(light)
+	_build_posts(holder)
+
+
+## P003: more voxel lamp posts round the circuit (presentation only): every
+## POST_SPACING px along the centre line, alternating sides, on open ground
+## beside the road; each casts a pool of light on the asphalt at night.
+func _build_posts(holder: Node3D) -> void:
+	var track = main.track
+	if track == null or track.get("centerline") == null or (track.centerline as PackedVector2Array).size() < 8:
+		return
+	var cl: PackedVector2Array = track.centerline
+	var lp: LightingPilot = main.lighting
+	var flood: bool = main.track_theme != null and main.track_theme.variant == 4
+	var existing: Array[Vector2] = []
+	for l in lp._lamp_sprites if lp != null else []:
+		existing.append((l as Sprite2D).global_position)
+	var total := 0.0
+	var next := POST_SPACING * 0.5
+	var side := 1.0
+	var placed := 0
+	for k in cl.size():
+		var a := cl[k]
+		var b := cl[(k + 1) % cl.size()]
+		total += a.distance_to(b)
+		if total < next:
+			continue
+		next += POST_SPACING
+		side = -side
+		var t := (b - a).normalized()
+		var n := Vector2(-t.y, t.x) * side
+		var spot := Vector2.ZERO
+		var ok := false
+		for extra in [0.0, 24.0, 48.0, -12.0]:
+			spot = a + n * (POST_OFFSET + extra)
+			if vtrack.class_at(spot) == VoxelTrack.C_GRASS and not _on_drivable(spot, Vector2(28, 28)):
+				ok = true
+				break
+		if not ok:
+			continue
+		var crowded := false
+		for e in existing:
+			if e.distance_to(spot) < 170.0:
+				crowded = true
+		if crowded:
+			continue
+		existing.append(spot)
+		var post := MeshInstance3D.new()
+		post.mesh = VoxelProps.lamp_mesh(flood)
+		var ground := vtrack.height_px_at(spot)
+		post.position = Vox.to3(spot, ground)
+		post.rotation.y = Vox.yaw((-n).angle())
+		holder.add_child(post)
+		_glowing.append(post)
+		var head := VoxelProps.lamp_head(flood)
+		var light := SpotLight3D.new()
+		light.position = Vox.to3(spot - n * head.x, ground + head.y - 6.0)
+		var aim := Vox.to3(spot - n * 110.0, 0.0) - light.position
+		light.basis = Basis.looking_at(aim.normalized(), Vector3.UP)
+		light.spot_angle = 58.0
+		light.spot_angle_attenuation = 0.7
+		light.spot_range = 22.0
+		light.light_color = lp.lamp_color if lp != null else LightingPilot.LAMP_COLOR
+		light.light_energy = (lp.lamp_energy if lp != null else 1.15) * 7.0
+		light.shadow_enabled = false
+		light.visible = false
+		holder.add_child(light)
+		lamps3d.append(light)
+		placed += 1
+		if placed >= POST_MAX:
+			break
 
 
 # ------------------------------------------------------------ decals
@@ -649,7 +829,48 @@ func _process(delta: float) -> void:
 	_sync(delta)
 
 
+## Smooth motion at any refresh rate (P003): the race moves in 60 Hz physics
+## ticks; cars and the camera are drawn between the last two ticks. (Without
+## this, a smoothed spectator camera glided every frame while the cars
+## stepped: after the player's finish the other cars looked blurred.)
+var _phys_frame := -1
+var _ticks_new := false
+var _cam_prev := Vector2.ZERO
+var _cam_cur := Vector2.ZERO
+
+
+func _capture_tick() -> void:
+	var pf := Engine.get_physics_frames()
+	_ticks_new = pf != _phys_frame
+	if not _ticks_new:
+		return
+	var steps := maxi(1, pf - _phys_frame) if _phys_frame >= 0 else 1
+	_phys_frame = pf
+	var centre: Vector2 = main.camera.get_screen_center_position()
+	_cam_prev = _cam_cur if _cam_cur.distance_to(centre) < 200.0 else centre
+	_cam_cur = centre
+	var dt := steps * Car.FIXED_STEP
+	for i in cars3d.size():
+		var d: Dictionary = cars3d[i]
+		var c: Car = main.cars[i]
+		var p := c.global_position
+		var r := c.global_rotation
+		var jump: bool = (p - (d.tick_pos as Vector2)).length() > 60.0
+		d.tick_prev = p if jump else d.tick_pos
+		d.rot_prev = r if jump else d.tick_rot
+		d.tick_pos = p
+		d.tick_rot = r
+		# acceleration in the car's frame, per tick (weight transfer)
+		var vel: Vector2 = c.model.velocity if c.model != null else Vector2.ZERO
+		var acc := Vector2.ZERO if jump else (vel - (d.tick_v as Vector2)) / dt
+		d.tick_v = vel
+		var fwd := Vector2.from_angle(r)
+		d.acc_long = acc.dot(fwd)
+		d.acc_lat = acc.dot(Vector2(-fwd.y, fwd.x))
+
+
 func _sync(delta: float) -> void:
+	_capture_tick()
 	var night: bool = main.lighting != null and main.lighting.enabled
 	if int(night) != _night:
 		_night = int(night)
@@ -658,13 +879,21 @@ func _sync(delta: float) -> void:
 	var pitch := deg_to_rad(view[0])
 	var zoom: float = view[1]
 	var cam2: Camera2D = main.camera
-	var centre := cam2.get_screen_center_position()
+	var centre := _cam_prev.lerp(_cam_cur, Engine.get_physics_interpolation_fraction())
 	var z2 := Vector2(zoom, zoom * sin(pitch))
 	cam2.zoom = z2
 	_place_camera(camera, centre, pitch, zoom)
 	_tilt_shift(view[3])
 	_sync_cars(delta)
 	race_fx.sync(delta)
+	# an action replay hides the live race (which carries on underneath)
+	var replaying := replay != null and replay.playing
+	_cars_holder.visible = not replaying
+	race_fx.visible = not replaying
+	race_fx.burns_visible(not replaying)
+	if replaying:
+		centre = replay.focus_2d()
+		z2 = Vector2(1.0, 1.0) * 0.9
 	# tyre marks: the decal viewport covers the visible ground (plus a margin)
 	var dz := z2 * (float(DECAL_SIZE.x) / 1280.0) / DECAL_MARGIN
 	decal_vp.canvas_transform = Transform2D(0.0, dz, 0.0, Vector2(DECAL_SIZE) * 0.5 - centre * dz)

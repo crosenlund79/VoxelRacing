@@ -22,6 +22,14 @@ const SMOKE_SHADER := preload("res://src/voxel/shaders/voxel_smoke.gdshader")
 
 ## Ground height (3D units) at a world x, z (set by VoxelStage).
 var ground: Callable
+## Time scale (action replays' slow motion).
+var speed := 1.0
+## Debris weight (P003): heavier pieces fall faster, bounce lower, skid less
+## and spin down sooner. Tune here.
+const DEBRIS_GRAVITY := 38.0
+const DEBRIS_BOUNCE := 0.2
+const DEBRIS_SKID := 0.42
+const DEBRIS_SETTLE_SPEED := 1.1
 
 var _debris: MultiMesh
 var _fx: MultiMesh
@@ -253,8 +261,8 @@ func impact(pos: Vector3, normal: Vector3, severity: float) -> void:
 ## A car (centre, velocity in units/s, radius in units) kicks up the settled
 ## debris it drives through.
 func scatter_near(centre: Vector3, vel: Vector3, radius: float) -> void:
-	var speed := Vector2(vel.x, vel.z).length()
-	if speed < 1.5:
+	var v_speed := Vector2(vel.x, vel.z).length()
+	if v_speed < 1.5:
 		return
 	var c0 := Vector2i(floori((centre.x - radius) / HASH_CELL), floori((centre.z - radius) / HASH_CELL))
 	var c1 := Vector2i(floori((centre.x + radius) / HASH_CELL), floori((centre.z + radius) / HASH_CELL))
@@ -276,9 +284,10 @@ func scatter_near(centre: Vector3, vel: Vector3, radius: float) -> void:
 				var away := Vector3(dx, 0.0, dz).normalized()
 				if away == Vector3.ZERO:
 					away = Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)).normalized()
-				d_vel[i] = vel * _rng.randf_range(0.3, 0.6) + away * (1.5 + speed * _rng.randf_range(0.15, 0.35)) \
-					+ Vector3(0, 1.2 + speed * _rng.randf_range(0.08, 0.2), 0)
-				d_spin[i] = Vector3(_rng.randf_range(-14, 14), _rng.randf_range(-14, 14), _rng.randf_range(-14, 14))
+				# heavy bits: shoved along and skittering, hardly lifted
+				d_vel[i] = vel * _rng.randf_range(0.25, 0.5) + away * (1.0 + v_speed * _rng.randf_range(0.1, 0.25)) \
+					+ Vector3(0, 0.6 + v_speed * _rng.randf_range(0.03, 0.09), 0)
+				d_spin[i] = Vector3(_rng.randf_range(-8, 8), _rng.randf_range(-8, 8), _rng.randf_range(-8, 8))
 				d_state[i] = 1
 				_flying.append(i)
 			if list.is_empty():
@@ -332,7 +341,7 @@ func settled_count() -> int:
 # ------------------------------------------------------------ simulation
 
 func _process(delta: float) -> void:
-	delta = minf(delta, 0.05)
+	delta = minf(delta, 0.05) * speed
 	_step_debris(delta)
 	_step_pool(_f, _fx, delta)
 	_step_pool(_p, _puffs, delta)
@@ -359,7 +368,7 @@ func _step_debris(dt: float) -> void:
 		var v := d_vel[i]
 		var half := d_size[i] * 0.5
 		var old_floor := _floor_at(i, p)
-		v.y -= GRAVITY * dt
+		v.y -= DEBRIS_GRAVITY * dt
 		v *= 1.0 - 0.35 * dt
 		var np := p + v * dt
 		var nf := _floor_at(i, np)
@@ -373,11 +382,11 @@ func _step_debris(dt: float) -> void:
 		if np.y - half <= nf:
 			np.y = nf + half
 			if v.y < 0.0:
-				v.y = -v.y * 0.34
-				v.x *= 0.6
-				v.z *= 0.6
-				d_spin[i] *= 0.5
-			if v.length() < 0.7:
+				v.y = -v.y * DEBRIS_BOUNCE
+				v.x *= DEBRIS_SKID
+				v.z *= DEBRIS_SKID
+				d_spin[i] *= 0.32
+			if v.length() < DEBRIS_SETTLE_SPEED:
 				settled = true
 		var r := d_rot[i] + d_spin[i] * dt
 		if settled:

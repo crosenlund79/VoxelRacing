@@ -65,3 +65,68 @@ static func mine_mesh() -> ArrayMesh:
 	g.set_v(n / 2, 3, n / 2, Vox.GLOW, Color(1.0, 0.15, 0.1))
 	_mine = VoxelMesher.build_mesh(g, VoxelCars.material(), Vector3(n * 0.5, 0.0, n * 0.5) * VoxelCars.voxel_size(), 0.03)
 	return _mine
+
+
+static var _can: ArrayMesh
+static var _heads: Dictionary = {}
+static var _arm: ArrayMesh
+
+
+## A cartoon soda can (red with a white stripe, silver ends) - the cheeky
+## overtaking taunt. Lies along +Y; centred.
+static func can_mesh() -> ArrayMesh:
+	if _can != null:
+		return _can
+	var g := VoxelGrid.new(Vector3i(5, 8, 5), VoxelCars.voxel_size(), Vector3.ZERO)
+	for y in 8:
+		for z in 5:
+			for x in 5:
+				if (x == 0 or x == 4) and (z == 0 or z == 4):
+					continue  # rounded corners
+				var c := Color(0.86, 0.12, 0.1)
+				if y == 0 or y == 7:
+					c = Color(0.78, 0.8, 0.84)
+				elif y == 4:
+					c = Color(0.97, 0.95, 0.9)
+				g.set_v(x, y, z, Vox.METAL if y == 0 or y == 7 else Vox.SOLID, c)
+	g.set_v(2, 7, 1, Vox.METAL, Color(0.45, 0.46, 0.5))  # the ring pull
+	_can = VoxelMesher.build_mesh(g, VoxelCars.material(), Vector3(2.5, 4.0, 2.5) * VoxelCars.voxel_size(), 0.03)
+	return _can
+
+
+## A driver's head in a helmet of `color`, face (visor) towards +X.
+static func head_mesh(color: Color) -> ArrayMesh:
+	var key := color.to_html()
+	if _heads.has(key):
+		return _heads[key]
+	var g := VoxelGrid.new(Vector3i(6, 7, 6), VoxelCars.voxel_size(), Vector3.ZERO)
+	var skin := Color(0.96, 0.76, 0.6)
+	for y in 7:
+		for z in 6:
+			for x in 6:
+				if (x == 0 or x == 5) and (z == 0 or z == 5) and y > 4:
+					continue
+				var c := color
+				if y <= 1:
+					c = skin  # chin and neck
+				elif x == 5 and y >= 2 and y <= 3 and z >= 1 and z <= 4:
+					c = Color(0.1, 0.12, 0.18)  # visor
+				elif y == 4 and x >= 4:
+					c = color.lightened(0.35)
+				g.set_v(x, y, z, Vox.SOLID, c)
+	var mesh := VoxelMesher.build_mesh(g, VoxelCars.material(), Vector3(3.0, 0.0, 3.0) * VoxelCars.voxel_size(), 0.03)
+	_heads[key] = mesh
+	return mesh
+
+
+## The throwing arm (shoulder at the origin, hand towards -Y).
+static func arm_mesh() -> ArrayMesh:
+	if _arm != null:
+		return _arm
+	var g := VoxelGrid.new(Vector3i(2, 7, 2), VoxelCars.voxel_size(), Vector3.ZERO)
+	for y in 7:
+		for z in 2:
+			for x in 2:
+				g.set_v(x, y, z, Vox.SOLID, Color(0.96, 0.76, 0.6) if y < 2 else Color(0.2, 0.22, 0.3))
+	_arm = VoxelMesher.build_mesh(g, VoxelCars.material(), Vector3(1.0, 7.0, 1.0) * VoxelCars.voxel_size(), 0.03)
+	return _arm

@@ -138,31 +138,106 @@ func _add_car(logical: String, k: int) -> void:
 	_bodies.append(body)
 	_wheels.append(ws)
 	_s.append(_length * (1.0 - k * 0.075))
-	_lane.append([-1.6, 1.4, -0.2, 1.8, -1.9, 0.6, -0.9][k % 7])
+	_lane.append([-1.6, 1.4, -1.0, 1.8, -1.9, 0.6, -0.9][k % 7])
 	_speed.append(11.0 + _rng.randf_range(-0.8, 0.8))
+
+
+## The cars are choreographed, not simulated (P003): two lanes, each car
+## keeps a safe gap to the one ahead in its lane, and only pulls out to
+## overtake when the other lane is clear - so they race, but never touch.
+const LANE := 1.65
+const CAR_LEN := 4.4
+const SAFE_GAP := 6.6
+var _lane_target := PackedFloat32Array()
+var _lane_rate := PackedFloat32Array()
+var _v := PackedFloat32Array()
+var _settle := PackedFloat32Array()
 
 
 func _process(delta: float) -> void:
 	delta = minf(delta, 0.1)
 	_time += delta
-	for k in _cars.size():
-		# each car surges and backs off on its own rhythm: overtakes happen
-		var v := _speed[k] + sin(_time * (0.35 + k * 0.11) + k * 2.1) * 1.8
-		_s[k] = fposmod(_s[k] + v * delta, _length)
-		var lane := _lane[k] + sin(_time * 0.5 + k) * 0.5
+	var n := _cars.size()
+	if _v.size() != n:
+		_v.resize(n)
+		_lane_target.resize(n)
+		_lane_rate.resize(n)
+		_settle.resize(n)
+		for k in n:
+			_v[k] = _speed[k]
+			_lane_target[k] = signf(_lane[k]) * LANE if absf(_lane[k]) > 0.1 else LANE
+			_lane[k] = _lane_target[k]
+	for k in n:
+		# the pace this car would like: its own rhythm
+		var want := _speed[k] + sin(_time * (0.3 + k * 0.07) + k * 2.1) * 1.1
+		var ahead := _nearest(k, _lane_target[k], true)
+		var here := _nearest(k, _lane[k], true)  # mid lane change: the old lane too
+		if here[0] >= 0 and here[1] < ahead[1]:
+			ahead = here
+		if ahead[0] >= 0 and ahead[1] < SAFE_GAP + 2.0:
+			var other := -_lane_target[k]
+			_settle[k] -= delta
+			# pull out when the other lane is clear alongside and a little ahead
+			if want > _v[ahead[0]] + 0.3 and _settle[k] <= 0.0 and _clear(k, other):
+				_lane_target[k] = other
+				_settle[k] = 2.5
+			else:  # tuck in behind: match its pace, a safe gap
+				var gap: float = ahead[1]
+				want = minf(want, _v[ahead[0]] - clampf((SAFE_GAP - gap) * 0.9, -0.4, 3.0))
+		_v[k] = move_toward(_v[k], maxf(want, 3.0), delta * 4.0)
+	for k in n:
+		_s[k] = fposmod(_s[k] + _v[k] * delta, _length)
+		var old_lane := _lane[k]
+		_lane[k] = move_toward(_lane[k], _lane_target[k], delta * 1.4)
+		_lane_rate[k] = (_lane[k] - old_lane) / maxf(delta, 0.001)
 		var p := _path.sample_baked(_s[k], true)
-		var ahead := _path.sample_baked(fposmod(_s[k] + 1.0, _length), true)
-		var dir := (ahead - p).normalized()
+		var ahead_p := _path.sample_baked(fposmod(_s[k] + 1.0, _length), true)
+		var dir := (ahead_p - p).normalized()
 		var right := Vector3(-dir.z, 0, dir.x)
 		var car := _cars[k]
-		car.position = p + right * lane
-		car.basis = Basis.looking_at(-right, Vector3.UP)  # the car model's nose is +X
+		car.position = p + right * _lane[k]
+		var drift := atan2(_lane_rate[k], maxf(_v[k], 1.0))  # nose into the lane change
+		car.basis = Basis.looking_at(-right, Vector3.UP).rotated(Vector3.UP, -drift)
 		for w in (_wheels[k] as Array):
-			(w as Node3D).rotation.z -= v * delta / (VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX * Vox.PX)
+			(w as Node3D).rotation.z -= _v[k] * delta / (VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX * Vox.PX)
 		if _rng.randf() < delta * 8.0:
 			var back := car.global_transform * Vector3(-2.0, 0.2, 0.0)
 			_fx.puff(back, Vector3(0, 0.5, 0), Color(0.95, 0.9, 0.85), _rng.randf_range(0.2, 0.32), 0.6, 0.45)
 	_place_camera()
+
+
+## The nearest car ahead of k (by distance along the circuit) whose lane
+## overlaps `lane`: [index, gap] (index -1: none).
+func _nearest(k: int, lane: float, _forward: bool) -> Array:
+	var best := -1
+	var best_d := INF
+	for j in _cars.size():
+		if j == k:
+			continue
+		if absf(_lane[j] - lane) > LANE * 1.4 and absf(_lane_target[j] - lane) > LANE * 1.4:
+			continue
+		var d := fposmod(_s[j] - _s[k], _length)
+		if d < best_d:
+			best_d = d
+			best = j
+	if best >= 0 and best_d < _length * 0.25:
+		# the real distance (shorter than the arc on the inside of a bend)
+		best_d = minf(best_d, _cars[k].position.distance_to(_cars[best].position))
+	return [best, best_d]
+
+
+## Whether `lane` is free beside car k (from a car length behind to a safe
+## gap ahead).
+func _clear(k: int, lane: float) -> bool:
+	for j in _cars.size():
+		if j == k:
+			continue
+		if absf(_lane[j] - lane) > LANE * 1.4 and absf(_lane_target[j] - lane) > LANE * 1.4:
+			continue
+		var d := fposmod(_s[j] - _s[k] + _length * 0.5, _length) - _length * 0.5
+		if d > -CAR_LEN * 1.6 and d < SAFE_GAP + 1.5:
+			return false
+	return true
 
 
 func _place_camera() -> void:
