@@ -72,7 +72,9 @@ func _physics_process(_delta: float) -> bool:
 		1:  # the loading race shows and animates while the world builds
 			if _game.loading.visible:
 				_loading_seen = true
-				if _loading_shots < 2 and _f % 45 == 0:
+				# snapshots as the leader passes 10 %, 50 % and 90 % of the strip
+				var marks := [0.1, 0.5, 0.9]
+				if _loading_shots < marks.size() and _game.loading._shown >= marks[_loading_shots]:
 					_loading_shots += 1
 					_shot("02_loading_%d" % _loading_shots)
 			if race != null and race.voxel != null and race.voxel.ready_3d and not _game.loading.visible and not _game._starting:

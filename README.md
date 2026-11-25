@@ -22,6 +22,14 @@ Extract it and run `VoxelRacing.exe`.
   progressive voxel damage, voxel explosions, persistent debris that cars
   scatter, burn marks, voxel collision stars and sparks, voxel missiles and
   mines, Battle Royale in voxels, and the inherited 2D presentation removed.
+  Screenshots of the running game: `docs/screenshots/p002/`.
+
+<p align="center">
+<img src="docs/screenshots/p002/01_main_menu.jpg" width="49%" alt="Main menu">
+<img src="docs/screenshots/p002/03_loading_race_50.jpg" width="49%" alt="The Little Race loading screen">
+<img src="docs/screenshots/p002/06_night_race_lights_explosions.jpg" width="49%" alt="Night race">
+<img src="docs/screenshots/p002/10_debris_and_burn_mark.jpg" width="49%" alt="Debris and burn mark">
+</p>
 
 ## Keys
 
@@ -62,7 +70,8 @@ All other controls are HyperCars' (CONTROLS in the menu; see below).
 Developer tools (run under Xvfb): `tools/smoke_flow.gd` (end-to-end smoke
 test with simulated keys), `tools/capture_race.gd` (screenshots of any
 circuit, biome, time, camera; `--hurt` damages a car to show damage and
-explosions), `tools/screens_tour.gd`, `tools/car_showroom.gd`,
+explosions), `tools/fx_check.gd` (damage, explosion, debris, burn mark and
+fresh-race reset counts), `tools/screens_tour.gd`, `tools/car_showroom.gd`,
 `tools/logo_preview.gd`.
 
 ## Known limitations
