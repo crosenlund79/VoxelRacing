@@ -113,6 +113,14 @@ with a forced wreck and mine, then the highlights), `tools/screens_tour.gd`, `to
   deck height but missiles there are drawn slightly above it.
 - Some inherited GUT tests still describe the HyperCars presentation and were
   not maintained for this prototype.
+- Action replays: single-player races and spectating only (not couch or LAN
+  races, not Battle Royale). Each moment re-creates its own debris and burn
+  marks; tyre marks are the race's final ones. A point-blank missile hit has
+  no flight to follow, so it is shown from the trackside. The replay camera
+  can pass under a bridge deck. Only the focused car's engine is heard.
+- Debris grip is a coarse grid that follows the same events as the voxel
+  debris, not each visible piece (tuning constants: `debris_field.gd`).
+- Camera view (V) and highlights (R / pad X) are fixed inputs, not rebindable.
 
 ---
 
