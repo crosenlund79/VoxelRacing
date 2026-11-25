@@ -40,8 +40,6 @@ const C_BARRIER := 2
 const C_DIVIDER := 3
 const C_KERB := 4
 const C_PIT := 5
-## P003: a flower voxel on the grass (scenery, never drivable).
-const C_FLOWER := 6
 
 const TERRAIN_SHADER := preload("res://src/voxel/shaders/voxel_terrain.gdshader")
 const FLAT_SHADER_CODE := "shader_type canvas_item;\nuniform vec4 flat_color;\nvoid fragment() {\n\tfloat a = texture(TEXTURE, UV).a * COLOR.a;\n\tCOLOR = vec4(flat_color.rgb, step(0.5, a));\n}\n"
@@ -164,6 +162,7 @@ func build(p_track: Node2D, decal_layer: Node2D) -> void:
 	var t2 := Time.get_ticks_msec()
 	terrain_material = await _make_material(color, _class_image(classes), true)
 	await _build_terrain()
+	_build_flowers()
 	var t3 := Time.get_ticks_msec()
 	if deck_color != null and is_inside_tree():
 		var dcls := PackedByteArray()
@@ -328,7 +327,7 @@ func _class_image(c: PackedByteArray) -> Image:
 ## how much of it is mixed into the circuit's own grass, and the flowers.
 const MEADOW := Color("7bc950")
 const MEADOW_BLEND := 0.55
-const FLOWER_SHARE := 0.06
+const FLOWER_SHARE := 0.02
 const FLOWERS := [Color("f7b731"), Color("f45b9b"), Color("fff4de"), Color("ff8c2e")]
 
 
@@ -336,23 +335,55 @@ func is_meadow() -> bool:
 	return theme != null and (theme.variant == 1 or theme.variant == 4)
 
 
-## Flower voxels like the menu island's: a share of the open grass (away from
-## the road) gets a raised cell in a flower colour (class C_FLOWER, so the
-## terrain shader leaves its colour alone). The grass itself is tinted
-## towards the menu's green in the terrain shader.
-func _plant_flowers(color: Image, near: PackedByteArray) -> void:
+## Flower voxels like the menu island's: little cubes in flower colours on
+## the open grass, away from the road - one instanced mesh, so the terrain
+## mesh and its build time are untouched. The grass itself is tinted towards
+## the menu's green in the terrain shader.
+var flowers: MultiMeshInstance3D
+var _flower_spots := PackedVector3Array()
+var _flower_cols := PackedColorArray()
+
+
+func _plant_flowers(near: PackedByteArray) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242 + theme.variant
 	var tries := int(nx * nz * FLOWER_SHARE)
+	_flower_spots.clear()
+	_flower_cols.clear()
 	for k in tries:
 		var i := rng.randi_range(0, nx * nz - 1)
-		if classes[i] != C_GRASS or near[i] >= 24 or heights[i] >= 2:
+		if classes[i] != C_GRASS or near[i] >= 24:
 			continue
-		classes[i] = C_FLOWER
-		heights[i] += 1
-		color.set_pixel(i % nx, i / nx, FLOWERS[rng.randi_range(0, FLOWERS.size() - 1)])
-		if (k & 8191) == 0 and _over_budget():
+		var p := origin_px + (Vector2(i % nx, i / nx) + Vector2(0.5, 0.5)) * CELL
+		_flower_spots.append(Vox.to3(p, heights[i] * CELL))
+		_flower_cols.append(FLOWERS[rng.randi_range(0, FLOWERS.size() - 1)])
+		if (k & 16383) == 0 and _over_budget():
 			await _yield_frame()
+
+
+func _build_flowers() -> void:
+	if _flower_spots.is_empty():
+		return
+	var cube := BoxMesh.new()
+	var side := CELL * Vox.PX * 0.9
+	cube.size = Vector3(side, side, side)
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.85
+	cube.material = mat
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = cube
+	mm.instance_count = _flower_spots.size()
+	for k in _flower_spots.size():
+		mm.set_instance_transform(k, Transform3D(Basis(), _flower_spots[k] + Vector3(0, side * 0.5, 0)))
+		mm.set_instance_color(k, _flower_cols[k])
+	flowers = MultiMeshInstance3D.new()
+	flowers.name = "Flowers"
+	flowers.multimesh = mm
+	flowers.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(flowers)
 
 
 func _compute_heights(color: Image) -> void:
@@ -409,7 +440,7 @@ func _compute_heights(color: Image) -> void:
 			progress = 0.36 + 0.26 * float(i) / (nx * nz)
 			await _yield_frame()
 	if meadow:
-		await _plant_flowers(color, near)
+		await _plant_flowers(near)
 
 
 ## Box-blurred copy by repeated halving, scaled back to the map size.
