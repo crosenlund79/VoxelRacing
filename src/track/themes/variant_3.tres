@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="TrackTheme" format=3]
+
+[ext_resource type="Script" path="res://src/track/track_theme.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+variant = 3
+display_name = "Winter"
+grip_scale = 0.74
+acceleration_scale = 0.96
+turn_scale = 1.0
+brake_scale = 0.8
+weather = "snow"
+night_ambient = Color(0.4, 0.48, 0.74, 1)
+lamp_color = Color(1, 0.66, 0.34, 1)
+lamp_energy = 1.25
+headlight_energy = 1.15
+scenery = Array[String](["scenery/prop_1", "scenery/prop_2", "scenery/prop_3"])
+scenery_weights = Array[float]([0.34, 0.3, 0.2])
+scenery_sway = Array[bool]([true, false, false])
+dust_color = Color(0.93, 0.96, 1.0, 0.8)

@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AiParams" format=3]
+
+[ext_resource type="Script" path="res://src/ai/ai_params.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+corner_commitment = 1.0
+commitment_variation = 0.07
+overcommit_chance = 0.08
+overcommit_extra = 0.12
+pass_impulse_chance = 0.8
+pass_speed_margin = 5.0
+lane_change_rate = 140.0
+attack_min_confidence = 0.55
+attack_rate = 2.0
+confidence_variation = 0.35
+waste_chance = 0.04
+brilliance_rate = 8.0
+ammo_discipline = 0.4
+grudge_bonus = 0.12
+grudge_time = 20.0
+hazard_lookahead = 0.6
+hazard_reaction = 0.32
+line_wander = 26.0
+line_wander_period = 4.0
+pass_side = 2
+route_whim = 0.9
+pit_speeding = 0.1
+pit_patience = 1.0
+pit_stay_out_chance = 0.15
+ammo_spend_curve = 0.8
+ammo_impulse = 0.08

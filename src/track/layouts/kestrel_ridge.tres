@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="TrackLayout" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/track/track_layout.gd" id="1"]
+[ext_resource type="Resource" path="res://src/track/layouts/kestrel_jump_rules.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Kestrel Ridge"
+control_points = PackedVector2Array(1200, 2000, 3700, 2000, 3800, 650, 3000, 500, 2800, 850, 2800, 2650, 2380, 2650, 2380, 1300, 1900, 1300, 1500, 1460, 1100, 1280, 850, 1280, 750, 600, 0, 600, 0, 2000)
+corner_radii = PackedFloat32Array(100, 330, 260, 120, 200, 95, 95, 130, 320, 320, 180, 160, 200, 240, 240)
+road_width = 150.0
+sample_spacing = 20.0
+checkpoint_count = 14
+lap_count = 3
+grid_first_offset = 60.0
+grid_row_spacing = 80.0
+grid_column_offset = 37.0
+grid_stagger = 40.0
+elevation_zones = PackedVector2Array(6151, 6791, 7799, 8449)
+jumps = PackedVector3Array(7979, 90, 260)
+jump_rules = ExtResource("2")
+narrow_sections = PackedVector3Array(9050, 10200, 112)
+branches = Array[Dictionary]([{"kind": "pit", "from": 250.0, "to": 1520.0, "ramp": 280.0, "side": 1, "lane": 80.0, "divider": 24.0, "box": 885.0, "box_length": 110.0, "bays": 3, "bay_depth": 84.0, "bay_gap": 70.0}, {"kind": "split", "from": 5430.0, "to": 6070.0, "ramp": 170.0, "lanes": [96.0, 96.0], "divider": 26.0}])

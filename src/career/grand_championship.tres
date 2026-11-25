@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ChampionshipSchedule" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/championship/championship_schedule.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+title = "HyperCars Grand Championship"
+layouts = PackedStringArray("ravenhook", "larkspur_ring", "kestrel_ridge", "ravenhook", "larkspur_ring", "kestrel_ridge")
+variants = PackedInt32Array(1, 3, 2, 5, 4, 3)
+nights = Array[bool]([false, true, true, false, false, true])
+laps = PackedInt32Array(3, 3, 3, 7, 7, 7)
+career_style = 1
+career_bonus = 2000
+blurb = "The ultimate championship: all nine rivals, every circuit and environment, long races and a seven-lap Grand Final at night in the snow. Win it to become the HyperCars Champion."
+career_tagline = "The ultimate championship"
+career_accent = Color(0.9098, 0.3765, 0.2353, 1)

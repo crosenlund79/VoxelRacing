@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TrackLayout" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/track/track_layout.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Larkspur Ring"
+control_points = PackedVector2Array(1400, 2600, 4300, 2600, 4550, 1400, 4200, 350, 2700, 300, 2350, 1550, 1850, 1550, 1500, 700, 400, 650, 150, 1700, 150, 2600)
+corner_radii = PackedFloat32Array(100, 120, 700, 420, 380, 105, 105, 420, 450, 600, 300)
+road_width = 150.0
+sample_spacing = 20.0
+checkpoint_count = 14
+lap_count = 3
+grid_first_offset = 60.0
+grid_row_spacing = 80.0
+grid_column_offset = 37.0
+grid_stagger = 40.0
+branches = Array[Dictionary]([{"kind": "pit", "from": 300.0, "to": 1750.0, "ramp": 280.0, "side": 1, "lane": 80.0, "divider": 24.0, "box": 1025.0, "box_length": 110.0, "bays": 3, "bay_depth": 84.0, "bay_gap": 70.0}, {"kind": "split", "from": 4150.0, "to": 4950.0, "ramp": 170.0, "lanes": [84.0, 112.0], "divider": 26.0}])

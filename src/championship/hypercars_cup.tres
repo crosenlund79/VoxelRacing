@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ChampionshipSchedule" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/championship/championship_schedule.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+title = "HyperCars Cup"
+layouts = PackedStringArray("kestrel_ridge", "larkspur_ring", "ravenhook", "larkspur_ring", "ravenhook", "kestrel_ridge")
+variants = PackedInt32Array(1, 2, 5, 3, 4, 4)
+nights = Array[bool]([false, false, false, true, false, true])
+laps = PackedInt32Array(3, 3, 3, 3, 3, 7)
+short_rounds = PackedInt32Array(1, 2, 5)

@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="AiParams" format=3]
+
+[ext_resource type="Script" path="res://src/ai/ai_params.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+brake_anticipation = 0.2
+corner_commitment = 0.97
+commitment_variation = 0.01
+pass_on_straights_only = true
+pass_lookahead = 120.0
+pass_speed_margin = 6.0
+follow_gap = 95.0
+lane_change_rate = 105.0
+attack_min_confidence = 0.8
+attack_rate = 1.5
+ammo_reserve = 2
+mine_min_quality = 0.75
+mine_rate = 1.0
+tactical_aim_time = 0.3
+super_min_targets = 2
+ammo_discipline = 0.9
+grudge_bonus = 0.05
+grudge_time = 12.0
+hazard_lookahead = 1.3
+hazard_reaction = 0.15
+line_wander = 0.0
+pit_threshold = 0.45
+pit_speeding = 0.002
+pit_patience = 5.0
+route_whim = 0.03
+route_traffic_weight = 0.2
+ammo_spend_curve = 1.0
+ammo_spend_target = 0.9

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ChampionshipSchedule" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/championship/championship_schedule.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+title = "Pro Series"
+layouts = PackedStringArray("larkspur_ring", "kestrel_ridge", "ravenhook", "kestrel_ridge", "larkspur_ring", "ravenhook")
+variants = PackedInt32Array(2, 5, 3, 3, 1, 4)
+nights = Array[bool]([false, false, false, true, true, true])
+laps = PackedInt32Array(3, 3, 3, 3, 7, 7)
+has_final = false
+career_style = 1
+career_bonus = 1000
+blurb = "Six rounds in every kind of weather, day and night, ending with two seven-lap races. Tactical combat: time your shots, keep your car in shape."
+career_tagline = "The big league"
+career_accent = Color(0.4549, 0.7412, 0.9490, 1)

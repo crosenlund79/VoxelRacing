@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="TrackTheme" format=3]
+
+[ext_resource type="Script" path="res://src/track/track_theme.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+variant = 5
+display_name = "Tabletop Mayhem"
+grip_scale = 1.0
+acceleration_scale = 1.28
+turn_scale = 1.0
+brake_scale = 1.0
+max_speed_scale = 1.0
+night_ambient = Color(0.5, 0.4, 0.34, 1)
+lamp_color = Color(1, 0.8, 0.5, 1)
+lamp_energy = 1.35
+headlight_energy = 0.9
+lamp_count = 8
+scenery = Array[String](["scenery/prop_1", "scenery/prop_2", "scenery/prop_3"])
+scenery_weights = Array[float]([0.22, 0.38, 0.4])
+scenery_sway = Array[bool]([false, false, false])
+scenery_count = 44
+landmarks = Array[String](["scenery/pencil", "scenery/card", "scenery/paperclip"])
+landmark_counts = Array[int]([7, 6, 7])
+landmark_facing = Array[bool]([false, false, false])
+dust_color = Color(0.82, 0.64, 0.42, 0.6)
+grandstands = false

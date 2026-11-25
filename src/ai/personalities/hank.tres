@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AiParams" format=3]
+
+[ext_resource type="Script" path="res://src/ai/ai_params.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+corner_commitment = 0.99
+commitment_variation = 0.01
+defend_distance = 120.0
+defend_strength = 0.9
+defend_commitment = 0.94
+pass_speed_margin = 8.0
+follow_gap = 90.0
+lane_change_rate = 125.0
+attack_min_confidence = 0.7
+attack_rate = 1.5
+mine_min_quality = 0.4
+mine_rate = 3.0
+retaliation_time = 8.0
+retaliation_boost = 2.5
+tactical_aim_time = 0.1
+rear_eagerness = 2.0
+ammo_discipline = 0.6
+grudge_bonus = 0.18
+grudge_time = 20.0
+hazard_lookahead = 0.7
+hazard_reaction = 0.3
+line_wander = 6.0
+pit_threshold = 0.32
+route_traffic_weight = 0.15
+pit_patience = 4.0

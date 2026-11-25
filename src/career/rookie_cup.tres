@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ChampionshipSchedule" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/championship/championship_schedule.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+title = "Rookie Cup"
+layouts = PackedStringArray("kestrel_ridge", "larkspur_ring", "ravenhook")
+variants = PackedInt32Array(1, 4, 1)
+nights = Array[bool]([false, false, false])
+laps = PackedInt32Array(3, 3, 3)
+has_final = false
+career_style = 0
+career_bonus = 500
+blurb = "Your first formal championship: three short daytime races, one on each circuit, Classic combat. Learn the tracks and the rivals."
+career_tagline = "Where reputations begin"
+career_accent = Color(0.4863, 0.7686, 0.4157, 1)

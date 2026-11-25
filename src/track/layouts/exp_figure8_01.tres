@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TrackLayout" format=3]
+
+[ext_resource type="Script" path="res://src/track/track_layout.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+control_points = PackedVector2Array(0, 0, 2400, 1500, 2400, 0, 0, 1500)
+corner_radii = PackedFloat32Array(220, 220, 220, 220)
+road_width = 150.0
+sample_spacing = 20.0
+checkpoint_count = 12
+lap_count = 3
+grid_first_offset = 60.0
+grid_row_spacing = 80.0
+grid_column_offset = 37.0
+grid_stagger = 40.0
+elevation_zones = PackedVector2Array(1440, 2240)
+jumps = PackedVector3Array(6050, 90, 130)

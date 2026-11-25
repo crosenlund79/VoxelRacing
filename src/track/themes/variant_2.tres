@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="TrackTheme" format=3]
+
+[ext_resource type="Script" path="res://src/track/track_theme.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+variant = 2
+display_name = "Wasteland"
+grip_scale = 0.88
+acceleration_scale = 0.93
+turn_scale = 0.94
+brake_scale = 0.94
+ground_tint = Color(0.8, 0.74, 0.64, 1)
+road_tint = Color(0.78, 0.8, 0.86, 1)
+weather = "rain"
+night_ambient = Color(0.38, 0.37, 0.47, 1)
+lamp_color = Color(1, 0.82, 0.55, 1)
+lamp_energy = 1.25
+headlight_energy = 1.05
+scenery = Array[String](["scenery/prop_1", "scenery/prop_2", "scenery/prop_3", "scenery/rock"])
+scenery_weights = Array[float]([0.16, 0.36, 0.26, 0.08])
+scenery_sway = Array[bool]([true, false, false, false])
+dust_color = Color(0.55, 0.5, 0.38, 0.7)

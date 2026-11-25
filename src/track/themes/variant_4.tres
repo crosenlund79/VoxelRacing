@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="TrackTheme" format=3]
+
+[ext_resource type="Script" path="res://src/track/track_theme.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+variant = 4
+display_name = "The Raceway"
+grip_scale = 1.05
+acceleration_scale = 1.0
+turn_scale = 1.0
+brake_scale = 1.0
+max_speed_scale = 1.05
+night_ambient = Color(0.36, 0.4, 0.52, 1)
+lamp_color = Color(0.92, 0.96, 1, 1)
+lamp_energy = 1.45
+headlight_energy = 0.85
+lamp_count = 16
+scenery = Array[String](["scenery/prop_1", "scenery/prop_3"])
+scenery_weights = Array[float]([0.25, 0.3])
+scenery_sway = Array[bool]([false, false])
+scenery_count = 34
+landmarks = Array[String](["scenery/prop_2"])
+landmark_counts = Array[int]([26])
+landmark_facing = Array[bool]([true])
+kerbs = true
+pit_building = true
+dust_color = Color(0.62, 0.66, 0.5, 0.6)

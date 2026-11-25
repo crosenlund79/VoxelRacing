@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponRules" format=3]
+
+[ext_resource type="Script" path="res://src/combat/weapon_rules.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+front_weapon = 1
+rear_weapon = 5
+tactical_front_cooldown = 2.4
+tactical_rear_cooldown = 3.5
+tactical_shared_lock = 0.3
+wreck_time = 0.8
+respawn_grace = 0.7

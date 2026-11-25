@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="AiParams" format=3]
+
+[ext_resource type="Script" path="res://src/ai/ai_params.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+brake_anticipation = 0.08
+corner_commitment = 1.05
+commitment_variation = 0.015
+steer_deadband_degrees = 2.5
+pressure_distance = 110.0
+fluster_chance_per_second = 0.6
+fluster_duration = 1.2
+fluster_lift_chance = 0.35
+fluster_overcorrection = 0.6
+attack_min_confidence = 0.6
+attack_rate = 2.0
+pressure_attack_drop = 0.35
+mine_min_quality = 0.5
+tactical_aim_time = 0.15
+ammo_discipline = 0.55
+grudge_bonus = 0.08
+grudge_time = 15.0
+hazard_lookahead = 0.8
+hazard_reaction = 0.22
+line_wander = 8.0
+pit_threshold = 0.38
+route_traffic_weight = 0.4
+pit_patience = 2.0
