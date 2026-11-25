@@ -43,7 +43,6 @@ const DECAL_MARGIN := 1.18
 static var enabled := true
 ## The camera preset lasts for the whole session.
 static var view_index := 0
-static var _keys_shown := false
 
 var main: Node2D
 var vtrack: VoxelTrack
