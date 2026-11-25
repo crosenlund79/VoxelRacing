@@ -127,6 +127,9 @@ static func _build(kind: Kind, tex: Texture2D, display: Vector2, hframes: int) -
 					y1 = 1 + (1 if (c.s > 0.35 and c.v > 0.55) else 0)
 				Kind.TYRES:
 					y1 = 6
+					if r < 0.42:  # the hollow middle of the stack
+						y1 = 1
+						c = Color(0.1, 0.09, 0.09)
 				Kind.STAND:
 					var back := 1.0 - (z + 0.5) / nzc  # image top = back of the stand
 					y1 = 2 + int(floor(back * 5.0)) * 3
@@ -152,8 +155,10 @@ static func _build(kind: Kind, tex: Texture2D, display: Vector2, hframes: int) -
 			for y in range(y0, y1):
 				var k := 0.78 + 0.22 * float(y - y0) / maxf(1.0, float(y1 - y0 - 1))
 				var vc := c if y == y1 - 1 else Color(c.r * k, c.g * k, c.b * k)
-				if kind == Kind.TYRES and y % 2 == 1:
-					vc = vc.darkened(0.35)
+				if kind == Kind.TYRES:
+					vc = Color(0.13, 0.12, 0.13).lerp(c, 0.35) if y % 2 == 0 else Color(0.06, 0.06, 0.07)
+					if y == y1 - 1 and r >= 0.42:
+						vc = vc.lightened(0.18)
 				if kind == Kind.STAND and y < y1 - 1:
 					vc = Color(0.55, 0.54, 0.56).darkened(0.1 * (y % 3))
 				g.set_v(x, y, z, Vox.METAL if kind == Kind.FLAT and c.s < 0.1 and c.v > 0.6 else Vox.SOLID, vc)

@@ -26,11 +26,13 @@ extends Node3D
 const HIDE_LAYER := 1 << 9
 const DECAL_LAYER := 1 << 8
 ## Camera presets: pitch (degrees from the ground), zoom, name.
+## Tilt-shift: depth-of-field blur at the far top / bottom of the screen
+## (the pitched orthographic camera sees depth change with screen height).
 const VIEWS := [
-	[58.0, 1.22, "MINIATURE"],
-	[72.0, 1.12, "HIGH"],
-	[44.0, 1.34, "LOW"],
-	[90.0, 1.0, "TOP-DOWN"],
+	[58.0, 1.22, "MINIATURE", 1.7],
+	[72.0, 1.12, "HIGH", 0.0],
+	[44.0, 1.34, "LOW", 2.2],
+	[90.0, 1.0, "TOP-DOWN", 0.0],
 ]
 const CAMERA_DISTANCE := 48.0
 ## Decal viewport (tyre marks): size, and how much more ground it covers than the screen.
@@ -46,6 +48,8 @@ static var voxel_mode := true
 var main: Node2D
 var vtrack: VoxelTrack
 var camera: Camera3D
+var _tilt: MeshInstance3D
+const TILT_SHADER := preload("res://src/voxel/shaders/tilt_shift.gdshader")
 var sun: DirectionalLight3D
 var world_env: WorldEnvironment
 var decal_vp: SubViewport
@@ -87,6 +91,17 @@ func setup(p_main: Node2D) -> void:
 	camera.near = 1.0
 	camera.far = CAMERA_DISTANCE * 3.0
 	add_child(camera)
+	_tilt = MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE
+	_tilt.mesh = quad
+	_tilt.extra_cull_margin = 16384.0
+	_tilt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var tm := ShaderMaterial.new()
+	tm.shader = TILT_SHADER
+	_tilt.material_override = tm
+	camera.add_child(_tilt)
+	_tilt.position = Vector3(0, 0, -2.0)
 	_build_cars()
 	_setup_decals()
 	_hint = Label.new()
@@ -143,7 +158,8 @@ func _apply_mode() -> void:
 	else:
 		vp.canvas_cull_mask = _saved_mask | HIDE_LAYER | DECAL_LAYER
 	visible = on
-	camera.current = on
+	# split-screen views have their own cameras: the full-screen one would be hidden
+	camera.current = on and main.get("player_views") == null
 	if not on and main.camera != null:
 		main.camera.zoom = Vector2.ONE
 	if main.get("player_views") != null:
@@ -583,6 +599,7 @@ func _sync(delta: float) -> void:
 	var z2 := Vector2(zoom, zoom * sin(pitch))
 	cam2.zoom = z2
 	_place_camera(camera, centre, pitch, zoom)
+	_tilt_shift(view[3])
 	_sync_cars(delta)
 	# tyre marks: the decal viewport covers the visible ground (plus a margin)
 	var dz := z2 * (float(DECAL_SIZE.x) / 1280.0) / DECAL_MARGIN
@@ -593,6 +610,12 @@ func _sync(delta: float) -> void:
 	m.set_shader_parameter("decal_size", Vector2(DECAL_SIZE))
 	if main.get("player_views") != null and _split_cams.size() > 0:
 		_sync_split_views(pitch, zoom)
+
+
+## Tilt-shift strength for the camera preset (0 = off).
+func _tilt_shift(amount: float) -> void:
+	_tilt.visible = amount > 0.0
+	(_tilt.material_override as ShaderMaterial).set_shader_parameter("amount", amount)
 
 
 static func _place_camera(cam: Camera3D, centre: Vector2, pitch: float, zoom: float) -> void:

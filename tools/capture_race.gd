@@ -43,6 +43,8 @@ func _initialize() -> void:
 	main.track_variant = int(args.get("variant", "1"))
 	main.night = args.get("night", "0") == "1"
 	main.voice_enabled = false
+	if args.get("two", "0") == "1":
+		main.human_count = 2
 	_main = main
 	_args = args
 	root.add_child.call_deferred(main)
