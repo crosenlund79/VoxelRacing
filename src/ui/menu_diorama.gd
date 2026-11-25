@@ -14,6 +14,8 @@ const CARS := ["cars/body_player", "cars/body_ai_1", "cars/body_ai_2", "cars/bod
 const TILT_SHADER := preload("res://src/voxel/shaders/tilt_shift.gdshader")
 
 var camera: Camera3D
+var _env: WorldEnvironment
+var _environment: Environment
 var _path := Curve3D.new()
 var _length := 0.0
 var _cars: Array[Node3D] = []
@@ -55,6 +57,8 @@ func _ready() -> void:
 	e.adjustment_saturation = 1.15
 	env.environment = e
 	add_child(env)
+	_env = env
+	_environment = e
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color(1.0, 0.78, 0.52)
 	sun.light_energy = 1.35
@@ -91,6 +95,18 @@ func _ready() -> void:
 	camera.add_child(tilt)
 	tilt.position = Vector3(0, 0, -1.0)
 	_place_camera()
+
+
+## Shown with the title, or put away while a race uses the 3D world: an
+## environment applies to the whole world even when hidden, so it is released.
+func set_active(on: bool) -> void:
+	visible = on
+	set_process(on)
+	_env.environment = _environment if on else null
+	if on:
+		camera.make_current()
+	else:
+		camera.clear_current()
 
 
 ## Shows the player's chosen car (a logical car image name) in the pack.

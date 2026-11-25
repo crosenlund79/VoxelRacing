@@ -240,9 +240,7 @@ func setup(p_resolver: AssetResolver, p_settings: AudioSettings) -> void:
 
 ## Shows the title (backdrop, menus, music) and focuses the first button.
 func show_title() -> void:
-	_backdrop.visible = true
-	_backdrop.camera.make_current()
-	_backdrop.set_process(true)
+	_backdrop.set_active(true)
 	_ui.visible = true
 	set_process(true)
 	music.play("music/music_menu")  # (keeps playing when it already is)
@@ -253,9 +251,7 @@ func show_title() -> void:
 ## Hides everything while a race runs (keeps the scene for a quick return).
 func hide_title() -> void:
 	_ui.visible = false
-	_backdrop.visible = false
-	_backdrop.camera.clear_current()
-	_backdrop.set_process(false)
+	_backdrop.set_active(false)
 	set_process(false)  # (the music carries on: the race scene takes it over)
 
 

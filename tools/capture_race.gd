@@ -77,7 +77,7 @@ func _start() -> void:
 
 func _physics_process(_delta: float) -> bool:
 	if not _started:
-		if _main.is_inside_tree():
+		if _main.is_inside_tree() and (_main.voxel == null or _main.voxel.ready_3d):
 			_started = true
 			_start()
 		return false
