@@ -6,6 +6,8 @@ extends PanelContainer
 
 signal closed
 
+const Icons = preload("res://src/ui/achievement_icons.gd")
+
 var store: AchievementStore
 var _resolver: AssetResolver
 var _count: Label
@@ -88,22 +90,22 @@ func refresh() -> void:
 	_count.text = "%d / %d unlocked" % [store.unlocked_count(), AchievementCatalog.ENTRIES.size()]
 	for c in _list.get_children():
 		c.free()
-	var badge := _resolver.get_texture(AssetCatalog.ACHIEVEMENT_BADGE)
-	var locked_tex := _resolver.get_texture(AssetCatalog.ACHIEVEMENT_LOCKED)
 	for e in AchievementCatalog.ENTRIES:
 		var got := store.is_unlocked(e.id)
 		var secret: bool = e.hidden and not got
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		row.focus_mode = Control.FOCUS_ALL
-		var icon := TextureRect.new()
-		icon.texture = badge if got else locked_tex
+		var icon := TextureRect.new()  # its own voxel badge: full colour, or a locked silhouette ("?" while secret)
+		icon.texture = Icons.icon(e.id, got, e.hidden)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.custom_minimum_size = Vector2(40, 40)
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.custom_minimum_size = Vector2(Icons.SIZE, Icons.SIZE)
 		row.add_child(icon)
 		var text := VBoxContainer.new()
 		text.add_theme_constant_override("separation", -6)
+		text.alignment = BoxContainer.ALIGNMENT_CENTER
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(text)
 		text.add_child(HyperTheme.label("???" if secret else e.name, 19, HyperTheme.GOLD if got else HyperTheme.CREAM, 700))

@@ -7,10 +7,12 @@ extends CanvasLayer
 ## later, so every unlock is still shown, readably, once the screen closes.
 
 const SHOW_TIME := 3.2
+const Icons = preload("res://src/ui/achievement_icons.gd")
 
 var _resolver: AssetResolver
 var _panel: PanelContainer
 var _name: Label
+var _icon: TextureRect
 var _queue: Array[String] = []
 var _busy := false
 var _held := false
@@ -32,12 +34,12 @@ func setup(resolver: AssetResolver) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	_panel.add_child(row)
-	var icon := TextureRect.new()
-	icon.texture = resolver.get_texture(AssetCatalog.ACHIEVEMENT_BADGE)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.custom_minimum_size = AssetCatalog.SPECS[AssetCatalog.ACHIEVEMENT_BADGE].display_size
-	row.add_child(icon)
+	_icon = TextureRect.new()  # the achievement's own voxel badge (set per toast)
+	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_icon.custom_minimum_size = Vector2(Icons.SIZE, Icons.SIZE)
+	row.add_child(_icon)
 	var text := VBoxContainer.new()
 	text.add_theme_constant_override("separation", -4)
 	row.add_child(text)
@@ -93,6 +95,7 @@ func _next() -> void:
 	_current = _queue.pop_front()
 	var e := AchievementCatalog.entry(_current)
 	_name.text = e.get("name", "?")
+	_icon.texture = Icons.icon(_current, true)
 	_panel.visible = true
 	_panel.reset_size()
 	var w := _panel.get_combined_minimum_size().x
