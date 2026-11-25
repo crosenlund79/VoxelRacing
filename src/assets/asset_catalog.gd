@@ -13,7 +13,6 @@ const TARMAC := "track/tarmac"
 const GRASS := "track/grass"
 const WALL := "track/wall"
 const START_LINE := "track/start_line"
-const HUD_PANEL := "ui/hud_panel"
 const STAR_GOLD := "ui/star_gold"
 ## Kill feed / rankings: a permanent elimination, and a collision kill.
 const TOMBSTONE := "ui/tombstone"
@@ -22,8 +21,6 @@ const TICKET := "ui/ticket"
 const PIT_SIGN := "track/pit_sign"
 const STAR_SILVER := "ui/star_silver"
 const STAR_BRONZE := "ui/star_bronze"
-const BUTTON := "ui/button"
-const LOGO := "ui/logo"
 const TREE_ROUND := "scenery/tree_round"
 const TREE_BLOOM := "scenery/tree_bloom"
 const BUSH := "scenery/bush"
@@ -35,24 +32,12 @@ const GRANDSTAND := "scenery/grandstand"
 const ROAD_WEAR := "decals/road_wear"
 const GRID_BOX := "decals/grid_box"
 const TIRE_MARK := "decals/tire_mark"
-const SMOKE := "fx/smoke"
-const DUST := "fx/dust"
-const SPARK := "fx/spark"
 ## Visual damage (2026-11-23): one shared wear overlay blended into every car's
 ## body as its condition drops (scratches, dents, soot).
-const CAR_WEAR := "fx/car_wear"
-const CONFETTI := "fx/confetti"
-const MISSILE := "weapons/missile"
-const MINE := "weapons/mine"
-const BLAST := "fx/blast"
 const LAMP_POST := "scenery/lamp_post"
-const HOMING_MISSILE := "weapons/homing_missile"
-const SUPER_MISSILE := "weapons/super_missile"
-const GARAGE_BACKDROP := "ui/garage_backdrop"
 const ACHIEVEMENT_BADGE := "ui/achievement_badge"
 const ACHIEVEMENT_LOCKED := "ui/achievement_locked"
 ## P2: one shared wheel image for every car, drawn four times per car.
-const WHEEL := "cars/wheel"
 ## Championship rewards: the one junker every displaced rival drives.
 const CAR_JUNKER := "cars/car_junker"
 
@@ -107,8 +92,6 @@ const SPECS := {
 		"notes": "Championship: the battered junker a rival drives after the player has won their car; same contract as the player car. LEGACY flattened car (wheels painted in): your own older drawing only, used when no body drawing exists; there is no packaged template. Prefer body_*."},
 	"cars/body_junker": {"template_size": Vector2i(128, 72), "display_size": Vector2(64, 36),
 		"notes": "Wheel-free junker body (championship rewards); same contract as the other bodies. One image for every displaced rival (each gets a slight tint)."},
-	WHEEL: {"template_size": Vector2i(48, 28), "display_size": Vector2(12, 7),
-		"notes": "Shared wheel (P2), top-down, rolling direction along X (car nose right), centred pivot, transparent background. One image for all ten cars; four instances per car at the positions in src/presentation/default_wheel_layout.tres. While driving, its colours scroll along X inside its own outline (rolling tread): a tread that repeats seamlessly along X rolls best; one drawing, no extra frames."},
 	TARMAC: {"template_size": Vector2i(256, 256), "tile_world_size": 256.0,
 		"notes": "Seamless repeating road surface, opaque."},
 	GRASS: {"template_size": Vector2i(256, 256), "tile_world_size": 256.0,
@@ -117,8 +100,6 @@ const SPECS := {
 		"notes": "Barrier strip, seamless left-right, repeated along the track edge; transparent background."},
 	START_LINE: {"template_size": Vector2i(32, 128), "display_size": Vector2(24, 150),
 		"notes": "Start/finish strip, long axis across the road; stretched to road width."},
-	HUD_PANEL: {"template_size": Vector2i(96, 96), "patch_margin": 24,
-		"notes": "Nine-patch panel; 24 px corners are not stretched (scaled with the texture)."},
 	TOMBSTONE: {"template_size": Vector2i(48, 48), "display_size": Vector2(20, 20),
 		"notes": "Kill feed and rankings: a permanent elimination (DNF) caused by a driver; square, centred, transparent."},
 	PIT_SIGN: {"template_size": Vector2i(128, 64), "display_size": Vector2(96, 48),
@@ -133,10 +114,6 @@ const SPECS := {
 		"notes": "2nd place marker; same contract as the gold star."},
 	STAR_BRONZE: {"template_size": Vector2i(48, 48), "display_size": Vector2(22, 22),
 		"notes": "3rd place marker; same contract as the gold star."},
-	BUTTON: {"template_size": Vector2i(96, 48), "patch_margin": 16,
-		"notes": "Menu button nine-patch (16 px corners); hover/pressed/focus states are tints of it."},
-	LOGO: {"template_size": Vector2i(880, 240), "display_size": Vector2(660, 180),
-		"notes": "Title logo; transparent background, centred."},
 	TREE_ROUND: {"template_size": Vector2i(128, 128), "display_size": Vector2(128, 128),
 		"notes": "Top-down tree canopy, centred, transparent; sways gently."},
 	TREE_BLOOM: {"template_size": Vector2i(112, 112), "display_size": Vector2(112, 112),
@@ -155,25 +132,6 @@ const SPECS := {
 		"notes": "Painted grid-slot bracket; open side faces the driving direction (+X)."},
 	TIRE_MARK: {"template_size": Vector2i(32, 12), "display_size": Vector2(10, 26),
 		"notes": "Pair of rear-tyre marks along +X (stamped repeatedly while sliding); seamless left-right."},
-	SMOKE: {"template_size": Vector2i(32, 32), "display_size": Vector2(32, 32), "notes": "Tyre-smoke particle, soft, transparent."},
-	DUST: {"template_size": Vector2i(32, 32), "display_size": Vector2(32, 32), "notes": "Dust particle, soft, transparent."},
-	SPARK: {"template_size": Vector2i(24, 24), "display_size": Vector2(24, 24), "notes": "Impact spark particle."},
-	CAR_WEAR: {"template_size": Vector2i(128, 72), "display_size": Vector2(64, 36),
-		"notes": "Damage wear (2026-11-23): scratches, dents and soot on a transparent background, top-down, nose right (+X), the same frame as a car body. One image for every car: the game blends it into each car's body (only where the body is painted) more strongly as the car's condition drops. No per-car damage drawings."},
-	CONFETTI: {"template_size": Vector2i(12, 12), "display_size": Vector2(12, 12),
-		"notes": "White confetti piece; tinted at runtime, so keep it white/light."},
-	MISSILE: {"template_size": Vector2i(40, 16), "display_size": Vector2(30, 12),
-		"notes": "Missile, nose pointing right (+X), centred; also the HUD missile icon. Homing/super missiles are tinted."},
-	MINE: {"template_size": Vector2i(64, 32), "display_size": Vector2(26, 26), "frames": 2,
-		"notes": "Mine: horizontal strip of 2 frames (32x32 each: lamp off / lamp on), blinks while armed; also the HUD mine icon."},
-	BLAST: {"template_size": Vector2i(96, 96), "display_size": Vector2(110, 110),
-		"notes": "Explosion burst, centred, transparent; scaled up and faded out."},
-	HOMING_MISSILE: {"template_size": Vector2i(40, 16), "display_size": Vector2(30, 12),
-		"notes": "Homing missile, nose pointing right (+X), centred; also the HUD / garage icon."},
-	SUPER_MISSILE: {"template_size": Vector2i(40, 20), "display_size": Vector2(34, 17),
-		"notes": "Super missile (orbits its car), nose pointing right (+X), centred; also the HUD / garage icon."},
-	GARAGE_BACKDROP: {"template_size": Vector2i(640, 360), "display_size": Vector2(1280, 720),
-		"notes": "Garage screen background, full screen (16:9), opaque; the centre is covered by the weapon cards."},
 	ACHIEVEMENT_BADGE: {"template_size": Vector2i(64, 64), "display_size": Vector2(48, 48),
 		"notes": "Unlocked achievement medal (toast and list); square, centred, transparent."},
 	ACHIEVEMENT_LOCKED: {"template_size": Vector2i(64, 64), "display_size": Vector2(48, 48),

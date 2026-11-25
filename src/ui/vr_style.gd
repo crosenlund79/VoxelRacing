@@ -122,3 +122,47 @@ static func checker(cells_x: int = 16, cells_y: int = 2, cell: int = 4) -> Image
 		for x in cells_x:
 			img.fill_rect(Rect2i(x * cell, y * cell, cell, cell), PAPER if (x + y) % 2 == 0 else INK)
 	return ImageTexture.create_from_image(img)
+
+
+static var _backdrop: Texture2D
+
+
+## The screens' backdrop (garage, championship, career, credits): a dusk
+## gradient over a chequered pit floor of big voxel tiles, drawn at a low
+## resolution and shown with crisp pixels.
+static func backdrop() -> Texture2D:
+	if _backdrop != null:
+		return _backdrop
+	var w := 320
+	var h := 180
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y in h:
+		var t := float(y) / h
+		var c := INK.lerp(Color("4a2f66"), smoothstep(0.0, 0.75, t))
+		for x in w:
+			img.set_pixel(x, y, c)
+	# the pit floor: tiles in perspective from the horizon down
+	var horizon := 112
+	for y in range(horizon, h):
+		var d := float(y - horizon + 6)
+		var row := int(log(d) * 7.0)
+		for x in w:
+			var u := (x - w * 0.5) / d
+			var col := int(floor(u * 2.2))
+			var light := 0.04 if (row + col) % 2 == 0 else 0.0
+			var c := Color("2e2952").lerp(Color("3d356a"), float(y - horizon) / (h - horizon)).lightened(light)
+			img.set_pixel(x, y, c)
+	# a chequered skirting band along the horizon, and a red stripe
+	for x in w:
+		for y in range(horizon - 6, horizon):
+			img.set_pixel(x, y, PAPER.darkened(0.15) if ((x / 3) + (y / 3)) % 2 == 0 else INK)
+		img.set_pixel(x, horizon - 7, RED)
+		img.set_pixel(x, horizon - 8, RED)
+	var tex := ImageTexture.create_from_image(img)
+	_backdrop = tex
+	return tex
+
+
+## The panel image (nine-patch) and its margin, for NinePatchRect panels.
+static func panel_texture() -> Texture2D:
+	return panel().texture

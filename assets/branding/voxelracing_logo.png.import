@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cy6eklyv671bl"
-path="res://.godot/imported/template_dust.png-d60096c3c0f5aec79baf7f82a96963ec.ctex"
+uid="uid://bgtoulkc8uht7"
+path="res://.godot/imported/voxelracing_logo.png-deb0b2b55bb4d2d7293b5aabede59edc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/graphics/fx/template_dust.png"
-dest_files=["res://.godot/imported/template_dust.png-d60096c3c0f5aec79baf7f82a96963ec.ctex"]
+source_file="res://assets/branding/voxelracing_logo.png"
+dest_files=["res://.godot/imported/voxelracing_logo.png-deb0b2b55bb4d2d7293b5aabede59edc.ctex"]
 
 [params]
 

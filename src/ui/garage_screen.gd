@@ -59,10 +59,11 @@ func setup(p_garage: PlayerGarage, resolver: AssetResolver) -> void:
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_root)
 	var bg := TextureRect.new()
-	bg.texture = resolver.get_texture(AssetCatalog.GARAGE_BACKDROP)
+	bg.texture = VrStyle.backdrop()
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_SCALE
-	bg.size = AssetCatalog.SPECS[AssetCatalog.GARAGE_BACKDROP].display_size
+	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bg.size = Vector2(1280, 720)
 	_root.add_child(bg)
 
 	var title := HyperTheme.label("GARAGE", 60, HyperTheme.GOLD, 700)

@@ -1,32 +1,31 @@
 class_name CreditsScreen
 extends CanvasLayer
-## CREDITS (main menu): who and what made HyperCars, from the project's own
+## CREDITS (main menu): who and what made VoxelRacing, from the project's own
 ## records - no invented names. Confirm or Back closes it.
 
 signal closed
 
 ## The credits text. Keep it true: placeholder artwork is credited as the
 ## templates it is; the user's own drawings and recordings as theirs.
-const TEXT := """HYPERCARS
+const TEXT := """VOXELRACING
 
-Created, designed and directed by the HyperCars creator.
+Created, designed and directed by the VoxelRacing creator.
+Built on HyperCars, the creator's top-down combat racing game: its cars, rivals,
+circuits, rules, music and voices live on underneath every voxel.
 
 Music: "HyperCars - Theme", "HyperCars - Racing Theme" and "HyperCars - Battle Royale",
 supplied by the creator. Announcer and rival voice recordings supplied by the creator.
 
-Artwork: the creator's own drawings (championship stars, crash and tombstone icons,
-grid boxes, confetti). All other graphics are replaceable template artwork painted for
-the project during AI-assisted development (Claude, by Anthropic), waiting for the
-creator's drawings. Sound effects and engine sounds are synthesised templates.
+Voxel world, cars, damage, debris, logo and interface: generated in the engine from
+the HyperCars artwork during AI-assisted development (Claude, by Anthropic), directed
+by the creator. Voxel mesher adapted from the creator's SirensWentQuiet.
 
-Programming: AI-assisted development with Claude Code, directed by the creator.
-
-Font: Fredoka, SIL Open Font License 1.1 (assets/fonts/Fredoka_OFL.txt).
+Font: Pixel Operator by Jayvee Enaguas, CC0 1.0 (assets/fonts/pixel_operator/LICENSE.txt).
 Engine: Godot Engine 4.7, MIT License (godotengine.org).
 Tests: GUT - Godot Unit Test, MIT License (development only).
 
 Mechanically inspired by Super Cars II (Gremlin Graphics, 1991, Amiga).
-HyperCars is an independent fan project with its own artwork, names and characters;
+VoxelRacing is an independent fan project with its own artwork, names and characters;
 it is not affiliated with or endorsed by the original game's makers.
 """
 
@@ -41,9 +40,10 @@ func setup(resolver: AssetResolver) -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(root)
 	var bg := TextureRect.new()
-	bg.texture = resolver.get_texture(AssetCatalog.GARAGE_BACKDROP)
+	bg.texture = VrStyle.backdrop()
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	bg.size = Vector2(1280, 720)
 	root.add_child(bg)
 	_panel = PanelContainer.new()

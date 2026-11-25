@@ -94,6 +94,14 @@ func _ready() -> void:
 	cam.make_current()
 
 
+## Holds the logo at a moment of its animation (baked pictures).
+func freeze(t: float) -> void:
+	_time = t
+	animate = true
+	_process(0.0)
+	animate = false
+
+
 func _process(delta: float) -> void:
 	if not animate or model == null:
 		return

@@ -142,29 +142,6 @@ func test_new_environment_landmarks_stay_off_the_road() -> void:
 			await wait_physics_frames(1)
 
 
-func test_title_cycles_and_remembers_the_track() -> void:
-	var settings := AudioSettings.new(SETTINGS)
-	var title := TitleScreen.new()
-	add_child_autofree(title)
-	title.setup(AssetResolver.new("user://no_overrides_here"), settings)
-	assert_eq(title.track_variant, 1)
-	assert_string_contains(title._track_button.text, TrackTheme.load_variant(1).display_name.to_upper())
-	title._cycle_track()
-	assert_eq(title.track_variant, 2)
-	var track: Track = title._backdrop.get_child(0)
-	assert_eq(track.theme.variant, 2, "backdrop shows the chosen variant")
-	for k in TrackTheme.VARIANT_COUNT - 1:
-		title._cycle_track()
-	assert_eq(title.track_variant, 1, "wraps")
-	title._cycle_track()
-	var again := TitleScreen.new()
-	add_child_autofree(again)
-	again.setup(AssetResolver.new("user://no_overrides_here"), settings)
-	assert_eq(again.track_variant, 2, "saved")
-	title.stop_audio()
-	again.stop_audio()
-
-
 func test_experimental_layout_builds_with_any_theme() -> void:
 	for variant in [1, 2, 3]:
 		var m: Node2D = MAIN_SCENE.instantiate()

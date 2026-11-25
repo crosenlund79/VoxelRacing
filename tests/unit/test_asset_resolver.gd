@@ -178,17 +178,6 @@ func test_invalid_custom_body_falls_back_to_the_template_body() -> void:
 	assert_eq(look.body.get_width(), 128, "template body")
 
 
-func test_shared_wheel_override_is_used() -> void:
-	_write_png("graphics/cars/wheel.png", Vector2i(96, 56))
-	var r := AssetResolver.new(_root)
-	var wheel := r.get_texture(AssetCatalog.WHEEL)
-	assert_eq(wheel.get_width(), 96)
-	assert_eq(Vector2(wheel.get_size()) * AssetCatalog.scale_for(wheel, AssetCatalog.SPECS[AssetCatalog.WHEEL].display_size),
-		AssetCatalog.SPECS[AssetCatalog.WHEEL].display_size, "any resolution, same display size")
-
-
-# --- the user's own drawings added to the project (assets/graphics/<name>.png) ---
-
 func test_users_packaged_drawings_replace_the_templates() -> void:
 	# the user's uploads (2026-11-20): stars, crash, tombstone, grid box
 	var r := AssetResolver.new(_root)

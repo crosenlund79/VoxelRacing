@@ -466,13 +466,9 @@ static func condition_color(fraction: float) -> Color:
 
 ## Icon per weapon type (also used by the garage).
 static func weapon_icons(resolver: AssetResolver) -> Dictionary:
-	return {
-		WeaponRules.Weapon.FRONT_MISSILE: resolver.get_texture(AssetCatalog.MISSILE),
-		WeaponRules.Weapon.REAR_MISSILE: resolver.get_texture(AssetCatalog.MISSILE),
-		WeaponRules.Weapon.HOMING_MISSILE: resolver.get_texture(AssetCatalog.HOMING_MISSILE),
-		WeaponRules.Weapon.SUPER_MISSILE: resolver.get_texture(AssetCatalog.SUPER_MISSILE),
-		WeaponRules.Weapon.MINE: _first_frame(resolver.get_texture(AssetCatalog.MINE), AssetCatalog.SPECS[AssetCatalog.MINE].frames),
-	}
+	# VoxelRacing: the weapons' own voxel models, rendered at startup (the
+	# shared dictionary fills in as the renders arrive)
+	return VoxelIconStudio.weapons
 
 
 ## First frame of a horizontal sprite strip (icons show one frame).

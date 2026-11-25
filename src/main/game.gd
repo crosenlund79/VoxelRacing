@@ -157,11 +157,17 @@ func _ready() -> void:
 	loading = LoadingRace.new()
 	loading.name = "LoadingRace"
 	add_child(loading)
+	if VoxelStage.available() and VoxelIconStudio.icons.is_empty():
+		var studio := VoxelIconStudio.new()
+		studio.name = "IconStudio"
+		add_child(studio)
+		studio.done.connect(studio.queue_free)
+		studio.render_all(resolver)
 	var layer := CanvasLayer.new()
 	layer.layer = 50
 	add_child(layer)
 	_fade = ColorRect.new()
-	_fade.color = Color("1c1614")
+	_fade.color = VrStyle.INK
 	_fade.size = Vector2(1280, 720)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_fade)

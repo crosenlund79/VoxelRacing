@@ -29,12 +29,11 @@ var _laps_name: Label
 ## driver_ids in row order; car_textures/names keyed by driver id.
 func setup(resolver: AssetResolver, history: RaceHistory, car_textures: Dictionary, names: Dictionary) -> void:
 	_history = history
-	texture = resolver.get_texture(AssetCatalog.HUD_PANEL)
-	var margin := int(AssetCatalog.SPECS[AssetCatalog.HUD_PANEL].patch_margin * texture.get_width() / 96.0)
-	patch_margin_left = margin
-	patch_margin_right = margin
-	patch_margin_top = margin
-	patch_margin_bottom = margin
+	texture = VrStyle.panel_texture()
+	patch_margin_left = 8
+	patch_margin_right = 12
+	patch_margin_top = 8
+	patch_margin_bottom = 20
 	_stars = [resolver.get_texture(AssetCatalog.STAR_GOLD), resolver.get_texture(AssetCatalog.STAR_SILVER),
 		resolver.get_texture(AssetCatalog.STAR_BRONZE)]
 

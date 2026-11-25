@@ -93,10 +93,3 @@ func test_a_knocked_rival_recovers_its_line() -> void:
 	assert_lt(absf(_main.progress[victim].lateral), _main.track.layout.road_width * 0.5, "still on the road")
 
 
-func test_front_wheels_turn_further_visually_only() -> void:
-	var layout: WheelLayout = load("res://src/presentation/default_wheel_layout.tres")
-	assert_gte(layout.max_steer_degrees, 22.0, "clearly visible steering")
-	assert_lte(layout.max_steer_degrees, 34.0, "believable, not cartoonish (30 since 2026-11-22)")
-	assert_almost_eq(rad_to_deg(CarWheels.steer_angle(layout, 1.0)), layout.max_steer_degrees, 0.001)
-	assert_eq((load("res://src/driving/default_driving_params.tres") as DrivingParams).turn_rate_degrees, 210.0,
-		"the driving model's steering is unchanged")

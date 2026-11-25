@@ -330,6 +330,11 @@ func _sync_weapons(delta: float) -> void:
 		var ang: float = (p.dir as Vector2).angle() if p.has("dir") else 0.0
 		_missiles[k].rotation = Vector3(0, Vox.yaw(ang), 0)
 		var big: bool = int(p.type) == WeaponRules.Weapon.SUPER_MISSILE
+		var kind := "super" if big else ("homing" if int(p.type) == WeaponRules.Weapon.HOMING_MISSILE else "missile")
+		if _missiles[k].get_meta("kind", "") != kind:
+			_missiles[k].mesh = VoxelWeapons.missile_mesh(kind)
+			_missiles[k].set_meta("kind", kind)
+			_missiles[k].set_instance_shader_parameter("lamp_glow", 1.0)
 		_missiles[k].scale = Vector3.ONE * (1.35 if big else 1.0)
 		if trail:
 			var back: Vector3 = _missiles[k].global_transform * Vector3(-0.7, 0, 0)

@@ -19,7 +19,7 @@ extends Node3D
 ##     viewport that the terrain shader samples per voxel, so they lie on the
 ##     road under the cars;
 ##   * day / night follows the game's TIME setting and the L key (LightingPilot).
-## Keys: V cycles the camera, G toggles the original 2D presentation (A / B).
+## Keys: V cycles the camera presets.
 
 ## Canvas visibility layers (bit values): the 2D world hidden in voxel mode,
 ## and the ground decals drawn only into the decal viewport.
@@ -41,9 +41,8 @@ const DECAL_MARGIN := 1.18
 
 ## Off for headless runs (tests) or when the player chose the 2D look.
 static var enabled := true
-## The camera preset and the 2D / voxel choice last for the whole session.
+## The camera preset lasts for the whole session.
 static var view_index := 0
-static var voxel_mode := true
 static var _keys_shown := false
 
 var main: Node2D
@@ -169,26 +168,21 @@ func _exit_tree() -> void:
 		get_viewport().canvas_cull_mask = _saved_mask
 
 
-# ------------------------------------------------------------ 2D / 3D switch
+# ------------------------------------------------------------ the 2D world off screen
 
-## Culls HyperCars' 2D world visuals (voxel mode) or shows them (2D mode).
+## The simulation's 2D world stays (physics, rules, track data); its pictures
+## leave the screen: the voxel world shows the race.
 func _apply_mode() -> void:
 	var vp := get_viewport()
 	if _saved_mask == 0:
 		_saved_mask = vp.canvas_cull_mask
 		_tag_2d_world()
-	var on := voxel_mode and ready_3d
-	if on:
-		vp.canvas_cull_mask = _saved_mask & ~(HIDE_LAYER | DECAL_LAYER)
-	else:
-		vp.canvas_cull_mask = _saved_mask | HIDE_LAYER | DECAL_LAYER
-	visible = on
+	vp.canvas_cull_mask = _saved_mask & ~(HIDE_LAYER | DECAL_LAYER)
+	visible = true
 	# split-screen views have their own cameras: the full-screen one would be hidden
-	camera.current = on and main.get("player_views") == null
-	if not on and main.camera != null:
-		main.camera.zoom = Vector2.ONE
+	camera.current = main.get("player_views") == null
 	if main.get("player_views") != null:
-		_setup_split_views(on)
+		_setup_split_views(true)
 
 
 ## Visibility layers: what the voxel world replaces is moved to HIDE_LAYER;
@@ -220,18 +214,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var k := event as InputEventKey
 	var code := k.physical_keycode if k.physical_keycode != KEY_NONE else k.keycode
-	if code != KEY_V and code != KEY_G:
+	if code != KEY_V:
 		return
 	for action in InputMap.get_actions():  # never steal a key the player bound to something
 		if not String(action).begins_with("ui_") and InputMap.event_is_action(event, action, true):
 			return
-	if code == KEY_V and voxel_mode:
-		view_index = (view_index + 1) % VIEWS.size()
-		_show_hint("CAMERA: %s   (V)" % VIEWS[view_index][2])
-	elif code == KEY_G:
-		voxel_mode = not voxel_mode
-		_apply_mode()
-		_show_hint("VOXEL WORLD   (G)" if voxel_mode else "ORIGINAL 2D   (G)")
+	view_index = (view_index + 1) % VIEWS.size()
+	_show_hint("CAMERA: %s   (V)" % VIEWS[view_index][2])
 	get_viewport().set_input_as_handled()
 
 
@@ -656,7 +645,7 @@ func _process(delta: float) -> void:
 		_hint_left -= delta
 		_hint.visible = _hint_left > 0.0
 		_hint.modulate.a = clampf(_hint_left * 2.0, 0.0, 1.0)
-	if not ready_3d or not voxel_mode:
+	if not ready_3d:
 		return
 	_sync(delta)
 
