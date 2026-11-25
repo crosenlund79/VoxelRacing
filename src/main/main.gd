@@ -202,6 +202,8 @@ var _impacts: Array = []
 var _seen_dnf: Array[int] = []
 ## Lighting pilot (presentation experiment; L toggles). Off by default.
 var lighting: LightingPilot
+## VoxelRacing: the 3D voxel presentation of this race (null when headless).
+var voxel: VoxelStage = null
 ## Garage race (M3.5): the player's money and weapons for this game session;
 ## null = quick race (standard loadout, no money). Set before the first race.
 var garage: PlayerGarage
@@ -482,6 +484,10 @@ func _ready() -> void:
 			weather.name = "Weather"
 			add_child(weather)
 			weather.setup(track_theme.weather, night)
+		if VoxelStage.available():  # VoxelRacing: the race shown as a voxel miniature
+			voxel = VoxelStage.new()
+			add_child(voxel)
+			voxel.setup(self)
 	if achievements != null:
 		achievement_tracker = AchievementTracker.new()
 		achievement_tracker.name = "AchievementTracker"
