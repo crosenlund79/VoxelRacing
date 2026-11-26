@@ -486,11 +486,12 @@ here. The GPU items need real-hardware evidence first.
 
 ## 15. Hardware verification requirements (your Windows PC)
 
-A diagnostic kit is built by GitHub Actions from the investigation branch:
+A diagnostic kit is built by GitHub Actions from the investigation branch
+(run https://github.com/crosenlund79/VoxelRacing/actions/runs/45857292899):
 the workflow "Performance diagnostic kit (NOT the playable release)", with
 the artifact `VoxelRacing-PERF-DIAGNOSTIC-KIT-<sha>`. Extract it, close other
-programs, run `run_benchmarks.bat` (about 25 minutes, hands off), then zip the
-`results` folder and send it back. It collects:
+programs, run `run_benchmarks.bat` (hands off), then zip the
+`results` folder and send it back (about 30 minutes, 29 runs). It collects:
 
 * `systeminfo.txt` and `dxdiag.txt` (CPU, GPU, driver, RAM, display)
 * day race at 720p / 1080p / 1440p / 2160p (resolution scaling on a real GPU)
@@ -499,8 +500,8 @@ programs, run `run_benchmarks.bat` (about 25 minutes, hands off), then zip the
 * heavy combat, replay (the start stall), menu, setup (preview hitches),
   garage, split screen
 * Winter and Raceway at night, Tabletop by day (environment cost)
-* isolations: no sun shadow, no point/spot lights, no spectators, no
-  post-processing (whether these matter on a real GPU)
+* isolations: no sun shadow, no point/spot lights, no spectators, no meadow
+  flowers, no SSAO, no post-processing (whether these matter on a real GPU)
 * D3D12 and OpenGL renderers (fallback cost and the instance-parameter issue)
 * a race through the real game flow, the loading split (cold/warm), a long
   race, and 4 menu→race→menu cycles (memory on Windows)
