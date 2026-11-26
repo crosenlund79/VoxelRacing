@@ -712,8 +712,8 @@ func _open_settings() -> void:
 
 
 func _open_device_picker(from_settings: bool) -> void:
+	_device_picker.open(from_settings)  # (placed first: the page transition starts from its place)
 	_show_only(_device_picker)
-	_device_picker.open(from_settings)
 
 
 func _open_lan() -> void:

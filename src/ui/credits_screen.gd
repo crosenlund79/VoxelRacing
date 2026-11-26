@@ -34,8 +34,8 @@ const COLUMNS := [
 			["Voxel mesher adapted from the creator's SirensWentQuiet.", true],
 		]],
 		["FONT", VrStyle.GREEN, [
-			["Pixel Operator by Jayvee Enaguas", false],
-			["CC0 1.0 (assets/fonts/pixel_operator/LICENSE.txt)", true],
+			["Kenney Future by Kenney (www.kenney.nl)", false],
+			["CC0 1.0 (assets/fonts/kenney_future/LICENSE.txt)", true],
 		]],
 	],
 	[
