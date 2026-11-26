@@ -25,10 +25,10 @@ const NX := 48
 const NY := 20
 const NZ := 27
 const ZC := 13
-## Wheels: radius / centre height in vehicle voxels (6 display px, as the old
-## cars) and tyre width.
-const WHEEL_R := 4.5
-const WHEEL_Y := 4.5
+## Wheels: radius / centre height in vehicle voxels (7 display px: Cartoon
+## Motorsport's bigger wheels) and tyre width.
+const WHEEL_R := 5.25
+const WHEEL_Y := 5.25
 const WHEEL_W := 4
 
 const CORE := 0
@@ -196,29 +196,32 @@ static func part_mesh(m: Model, id: int) -> ArrayMesh:
 static func wheel_mesh() -> ArrayMesh:
 	if _wheel != null:
 		return _wheel
-	var d := 9
+	var d := 11
 	var g := VoxelGrid.new(Vector3i(d, d, WHEEL_W), vs(), Vector3.ZERO)
 	for y in d:
 		for x in d:
-			var p := Vector2(x + 0.5 - WHEEL_R, y + 0.5 - WHEEL_R)
+			var p := Vector2(x + 0.5 - d * 0.5, y + 0.5 - d * 0.5)
 			var r := p.length()
 			if r > WHEEL_R + 0.2:
 				continue
 			for z in WHEEL_W:
 				var outer := z == 0 or z == WHEEL_W - 1
-				if r < 2.7:
+				if r < 3.2:
+					# a big toy-car rim: five spokes, a dark hub
 					var spoke := int(floor((p.angle() + PI) / (TAU / 10.0))) % 2 == 0
-					var c := Color(0.82, 0.8, 0.74)
-					if r < 1.0:
-						c = Color(0.45, 0.44, 0.42)
+					var c := Color(0.85, 0.83, 0.78)
+					if r < 1.1:
+						c = Color(0.42, 0.41, 0.4)
+					elif r > 2.6:
+						c = Color(0.7, 0.69, 0.66)
 					elif not spoke and outer:
-						c = Color(0.3, 0.29, 0.28)
-					g.set_v(x, y, z, Vox.METAL, c if outer else Color(0.36, 0.35, 0.34))
+						c = Color(0.24, 0.23, 0.23)
+					g.set_v(x, y, z, Vox.METAL, c if outer else Color(0.34, 0.33, 0.33))
 				else:
-					var sector := int(floor((p.angle() + PI) / (TAU / 14.0))) % 2
-					var c := Color(0.15, 0.14, 0.15) if sector == 0 else Color(0.07, 0.07, 0.08)
-					if r < 3.4:
-						c = Color(0.2, 0.19, 0.2)
+					var sector := int(floor((p.angle() + PI) / (TAU / 16.0))) % 2
+					var c := Color(0.16, 0.15, 0.16) if sector == 0 else Color(0.08, 0.08, 0.09)
+					if r < 4.1:
+						c = Color(0.21, 0.2, 0.21)
 					g.set_v(x, y, z, Vox.SOLID, c)
 	_wheel = VoxelMesher.build_mesh(g, VoxelCars.material(), Vector3(d, d, WHEEL_W) * 0.5 * vs(), 0.0)
 	return _wheel
@@ -577,6 +580,9 @@ static func _body(b: B, s: Dictionary) -> void:
 	var rhw: float = s.get("rhw", 9.0)
 	var rounded: bool = s.get("round", true)
 	var tyre: float = s.get("tyre_w", 1.0)
+	var tyre_r: float = s.get("tyre_rear", tyre)
+	var flare: float = s.get("flare", 0.0)
+	var arch_lift: float = s.get("arch_lift", 0.0)
 	# solid, cabin and arch masks (local index)
 	var n := NX * NY * NZ
 	var solid := PackedByteArray()
@@ -594,7 +600,11 @@ static func _body(b: B, s: Dictionary) -> void:
 		if u < 0 or u >= L:
 			continue
 		var uc := u + 0.5
-		var w := _pl(hw_pts, uc)
+		# flared wheel arches: the body swells out (and up) over each wheel
+		var fl := 0.0
+		for a in [b.fa, b.ra]:
+			fl = maxf(fl, clampf((WHEEL_R + 3.2 - absf(uc - float(a))) / 1.8, 0.0, 1.0))
+		var w := minf(_pl(hw_pts, uc) + flare * fl, 13.0)
 		var t0 := int(floor(_pl(top_pts, uc)))
 		var bo := int(floor(_pl(bot_pts, uc)))
 		belt_of[x] = t0
@@ -604,6 +614,8 @@ static func _body(b: B, s: Dictionary) -> void:
 			if az > w:
 				continue
 			var t := t0 + (int(top_fn.call(u, zc)) if top_fn.is_valid() else 0)
+			if az >= b.track - 2.5:
+				t += int(round(arch_lift * fl))
 			var bb := bo
 			if rounded and az > w - 1.0:
 				t -= 1
@@ -631,7 +643,7 @@ static func _body(b: B, s: Dictionary) -> void:
 	# wheel arches
 	for a in [b.fa, b.ra]:
 		var ax: float = x0 + a
-		var inner := b.track - WHEEL_W * 0.5 * tyre - 1.0
+		var inner := b.track - WHEEL_W * 0.5 * (tyre if a == b.fa else tyre_r) - 1.0
 		for x in range(int(ax - WHEEL_R - 2), int(ax + WHEEL_R + 3)):
 			if x < 0 or x >= NX:
 				continue
@@ -955,213 +967,269 @@ static func _mirrors(b: B, u: int, y: int, zc: int, c: Color) -> void:
 
 
 # ============================================================ the designs
+#
+# Cartoon Motorsport: toy-car proportions - big wheels at the corners under
+# flared arches, short overhangs, chunky bumpers standing proud of the body,
+# expressive faces (a bonnet brow over a recessed grille, big lamps), and
+# each car's defining feature pushed a little further. No accessories: the
+# personality is the design.
 
-## Rocco "Mad Dog": a classic American muscle car - long bonnet with a power
-## bulge, short deck, tunnel-back roof, full-width black grille with quad
-## lamps, chrome bumpers, bumblebee stripe, black vinyl roof and a tall
-## wing on the tail (his gold and black).
+## A chunky toy bumper across the nose (front) or tail: a bar one voxel proud
+## of the body with rounded ends; `lip` adds a dark splitter under it.
+static func _bumper(b: B, front: bool, y0: int, y1: int, hw: int, c: Color, mat := Vox.SOLID, lip := Color(0, 0, 0, 0)) -> void:
+	var x := b.x0 + (b.L if front else -1)
+	var pn := "bumper_F" if front else "bumper_R"
+	for y in range(y0, y1 + 1):
+		for zc in range(-hw, hw + 1):
+			if absi(zc) == hw and (y == y1 or y == y0) and y1 > y0:
+				continue
+			if b.tag_at(x, y, ZC + zc) == "exhaust":
+				continue
+			b.put(x, y, ZC + zc, mat, c, pn)
+	if lip.a > 0.0:
+		for zc in range(-hw + 1, hw):
+			if b.tag_at(x, y0 - 1, ZC + zc) != "exhaust":
+				b.put(x, y0 - 1, ZC + zc, Vox.SOLID, lip, pn)
+
+
+## The bonnet's brow: its front edge overhangs the grille by a voxel.
+static func _brow(b: B, y: int, hw: int, c: Color) -> void:
+	for zc in range(-hw, hw + 1):
+		b.put(b.x0 + b.L, y, ZC + zc, Vox.SOLID, c, "hood")
+
+
+## A square lamp on the nose or tail, both sides: `size` x `size` voxels
+## from (y0, zc0) outwards (no cut corners: small ones would read as crosses).
+static func _lamp_round(b: B, front: bool, y0: int, zc0: int, size := 3, col := Color(0, 0, 0, 0)) -> void:
+	for dy in size:
+		for dz in size:
+			b.lamp_face(front, y0 + dy, y0 + dy, zc0 + dz, zc0 + dz, 1, col)
+
+
+## Rocco "Mad Dog": a classic American muscle car, pushed - long bonnet with
+## a power bulge and a shaker scoop, a raked stance on fat rear tyres, short
+## deck, tunnel-back roof, a full-width black grille under a scowling bonnet
+## brow with four round lamps, chrome bumpers, chrome side pipes, the black
+## tail stripe and a tall wing; gold and black.
 static func _muscle(b: B, cp: Color) -> void:
-	var paint := cp if cp.a > 0.0 else Color(0.85, 0.64, 0.18)
+	var paint := cp if cp.a > 0.0 else Color(0.9, 0.66, 0.15)
 	var black := Color(0.06, 0.06, 0.07)
 	var bulge := func(u: int, zc: int) -> int:
-		return 1 if u >= 30 and u <= 43 and absi(zc) <= 3 else 0
+		return 1 if u >= 29 and u <= 43 and absi(zc) <= 4 else 0
 	_body(b, {
-		"L": 46, "fa": 36.5, "ra": 9.0, "track": 9.0, "paint": paint,
-		"top": [[0, 9], [2, 10.2], [44, 10.2], [45, 9.4]],
-		"bot": [[0, 3], [4, 2], [42, 2], [45, 3]],
-		"hw": [[0, 11.6], [2, 12.6], [9, 13.0], [17, 12.4], [23, 12.4], [31, 12.8], [37, 13.0], [44, 12.7], [45, 12.2]],
-		"top_fn": bulge,
-		"c0": 12, "rw": 17, "ws": 23, "c1": 29, "roof": [[12, 10], [17, 15.4], [23, 15.4], [29, 10]],
-		"chw": 11.0, "rhw": 9.4, "sail": true, "roof_col": black, "bumper": 4, "bumper_col": CHROME,
-		"grille_hw": 11.0, "interior": Color(0.1, 0.09, 0.09), "seat_u": 18, "tips": [[-6, 0], [6, 0]],
+		"L": 46, "fa": 37.6, "ra": 8.6, "track": 10.3, "tyre_w": 1.05, "tyre_rear": 1.4, "flare": 1.0, "arch_lift": 1.0,
+		"paint": paint, "top_fn": bulge,
+		"top": [[0, 11.4], [2, 12.6], [30, 12.2], [44, 11.8], [45, 11.2]],
+		"bot": [[0, 3], [3, 2.5], [43, 2.5], [45, 3]],
+		"hw": [[0, 11.4], [2, 12.0], [16, 11.8], [24, 11.8], [45, 12.0]],
+		"c0": 11, "rw": 15, "ws": 22, "c1": 28, "roof": [[11, 12], [15, 17.6], [22, 17.6], [28, 12]],
+		"chw": 10.8, "rhw": 9.2, "sail": true, "roof_col": black, "bumper": 4,
+		"grille_hw": 11.0, "interior": Color(0.1, 0.09, 0.09), "seat_u": 17, "tips": [[-6, 0], [6, 0]],
 		"engine_col": Color(0.85, 0.2, 0.1),
 	})
-	# the full-width black grille with quad lamps in chrome bezels
-	b.face(true, 5, 8, 0, 11, black, "grille")
-	b.face(true, 2, 4, 0, 12, CHROME, "bumper_F", Vox.METAL)
-	b.face(false, 2, 4, 0, 12, CHROME, "bumper_R", Vox.METAL)
-	for zc in [[5, 6], [9, 10]]:
-		b.lamp_face(true, 6, 7, zc[0], zc[1])
-	# power bulge with a black scoop and black bonnet centre
-	b.stripe_top(0, 3, black, 30, 43)
-	b.face(true, 11, 11, 0, 2, black, "hood")
-	b.box(40, 41, 12, 12, -2, 2, Vox.SOLID, black, "scoop")
-	# bumblebee stripe round the tail
+	b.face(true, 6, 10, 0, 11, black, "grille")
+	_lamp_round(b, true, 7, 3)
+	_lamp_round(b, true, 7, 7)
+	_brow(b, 11, 11, paint)
+	_bumper(b, true, 3, 5, 12, CHROME, Vox.METAL, black)
+	# black bonnet bulge, shaker scoop, the black stripe round the tail
+	b.stripe_top(0, 4, black, 29, 43)
+	b.box(33, 37, 14, 15, -2, 2, Vox.SOLID, black, "scoop")
+	b.box(37, 37, 15, 15, -1, 1, Vox.SOLID, Color(0.2, 0.2, 0.21), "scoop")
 	b.stripe_top(0, 13, black, 3, 5)
-	b.stripe_side(3, 11, black, 3, 5)
-	# wide tail lamps either side of a black panel
-	b.face(false, 5, 8, 0, 12, black, "panel_R")
-	b.lamp_face(false, 6, 7, 3, 10, 1)
-	# the tall wing (Rocco's drawing has one)
-	_wing(b, 0, 3, 16, 12, paint, 10, 11, true, 1)
-	b.box(1, 2, 11, 15, 11, 11, Vox.SOLID, paint.darkened(0.15), "wing", true)
-	_mirrors(b, 28, 11, 11, CHROME)
+	b.stripe_side(3, 12, black, 3, 5)
+	b.face(false, 6, 11, 0, 12, black, "panel_R")
+	b.lamp_face(false, 7, 9, 3, 10, 1)
+	_bumper(b, false, 3, 5, 12, CHROME, Vox.METAL)
+	# chrome side pipes along the sills
+	b.box(13, 27, 3, 3, 13, 13, Vox.METAL, CHROME, "exhaust_S", true)
+	_wing(b, 0, 3, 18, 12, paint, 0, 0, true, 1)
+	b.box(1, 2, 12, 17, 11, 11, Vox.SOLID, paint.darkened(0.15), "wing", true)
+	_mirrors(b, 27, 13, 11, CHROME)
 
 
-## Victor "The Professor": a sober, quick performance saloon - three boxes,
-## four doors, split grille, twin lamps, small boot lip; sage green with a
-## cream pinstripe.
+## Victor "The Professor": a quick performance saloon - three crisp boxes on
+## big wheels in boxy flared arches, four doors, a split grille between twin
+## round lamps, a body-coloured bumper with a dark intake, a boot lip; sage
+## green with a cream pinstripe.
 static func _sedan(b: B, cp: Color) -> void:
-	var paint := cp if cp.a > 0.0 else Color(0.46, 0.55, 0.46)
-	var cream := Color(0.92, 0.88, 0.74)
+	var paint := cp if cp.a > 0.0 else Color(0.47, 0.57, 0.47)
+	var cream := Color(0.93, 0.89, 0.74)
 	_body(b, {
-		"L": 46, "fa": 36.5, "ra": 9.5, "track": 9.0, "paint": paint,
-		"top": [[0, 9.4], [2, 10.2], [30, 10.2], [42, 9.8], [45, 9.0]],
-		"bot": [[0, 3], [3, 2], [43, 2], [45, 3]],
-		"hw": [[0, 11.6], [2, 12.5], [8, 12.8], [40, 12.8], [44, 12.3], [45, 11.6]],
-		"c0": 10, "rw": 14, "ws": 25, "c1": 31, "roof": [[10, 10], [14, 15.4], [25, 15.4], [31, 10]],
-		"chw": 11.5, "rhw": 10.0, "doors": 4, "bp": 20, "bumper": 4, "bumper_col": paint.darkened(0.1),
-		"grille_hw": 5.0, "interior": Color(0.55, 0.42, 0.3), "seat_u": 22, "pillar_col": TRIM,
+		"L": 46, "fa": 37.6, "ra": 8.6, "track": 10.3, "tyre_w": 1.1, "tyre_rear": 1.15, "flare": 1.0,
+		"paint": paint,
+		"top": [[0, 11.4], [2, 12.2], [31, 12.2], [42, 11.8], [45, 11.0]],
+		"bot": [[0, 3], [3, 2.5], [43, 2.5], [45, 3]],
+		"hw": [[0, 11.4], [2, 11.8], [45, 11.8]],
+		"c0": 9, "rw": 13, "ws": 25, "c1": 31, "roof": [[9, 12], [13, 18.6], [25, 18.6], [31, 12]],
+		"chw": 11.0, "rhw": 9.4, "doors": 4, "bp": 19, "bumper": 5, "grille_hw": 5.0,
+		"interior": Color(0.55, 0.42, 0.3), "seat_u": 21, "pillar_col": TRIM,
 		"tips": [[-5, 0], [-7, 0]], "engine_col": Color(0.25, 0.3, 0.45),
 	})
-	# split grille, twin lamps, a dark intake in the bumper
-	b.face(true, 6, 8, 1, 4, TRIM, "grille")
-	b.face(true, 6, 8, 0, 0, paint, "grille")
-	b.face(true, 3, 3, 0, 8, TRIM, "bumper_F")
-	b.lamp_face(true, 7, 8, 6, 7)
-	b.lamp_face(true, 7, 8, 9, 11)
-	b.face(true, 6, 6, 6, 11, CHROME, "grille", Vox.METAL)
-	# tail lamps wrapping round the corners, boot lip
-	b.lamp_face(false, 7, 8, 5, 11, 1)
-	b.box(0, 1, 11, 11, -10, 10, Vox.SOLID, paint, "trunk")
-	b.stripe_side(8, 8, cream, 3, 42)
-	_mirrors(b, 30, 11, 12, paint)
+	b.face(true, 7, 10, 0, 11, TRIM, "grille")
+	b.face(true, 7, 10, 0, 0, paint, "grille")
+	b.face(true, 7, 10, 4, 4, paint, "grille")
+	_lamp_round(b, true, 8, 5)
+	_lamp_round(b, true, 8, 8)
+	_brow(b, 11, 10, paint)
+	_bumper(b, true, 3, 6, 11, paint.darkened(0.04), Vox.SOLID, TRIM)
+	b.paint_box(46, 46, 4, 4, 0, 7, TRIM, true, "bumper")
+	b.lamp_face(false, 8, 10, 5, 11, 1)
+	_bumper(b, false, 3, 6, 11, paint.darkened(0.04))
+	b.box(0, 1, 13, 13, -10, 10, Vox.SOLID, paint, "trunk")
+	b.stripe_side(9, 9, cream, 2, 43)
+	_mirrors(b, 30, 13, 11, paint)
 
 
-## Ellie "Sparrow": a light British-style roadster - open top, low and round,
-## pop-up lamps, a little windscreen and roll hoops; steel blue with white
-## chevrons.
+## Ellie "Sparrow": a light British-style roadster - small and round, big
+## round-topped fenders, open top, a little chrome-framed windscreen, roll
+## hoops, pop-up lamps standing up like eyes and a smiling mouth; steel blue
+## with two white chevrons.
 static func _roadster(b: B, cp: Color) -> void:
-	var paint := cp if cp.a > 0.0 else Color(0.29, 0.39, 0.5)
-	var white := Color(0.95, 0.95, 0.92)
+	var paint := cp if cp.a > 0.0 else Color(0.3, 0.42, 0.56)
+	var white := Color(0.96, 0.96, 0.93)
 	_body(b, {
-		"L": 40, "fa": 31.5, "ra": 8.5, "track": 8.6, "paint": paint, "open": true, "ohw": 8.0,
-		"top": [[0, 8.2], [3, 9.0], [33, 9.0], [37, 8.4], [39, 7.4]],
-		"bot": [[0, 3], [3, 2], [37, 2], [39, 3]],
-		"hw": [[0, 10.2], [2, 11.0], [7, 11.6], [33, 11.6], [37, 10.8], [39, 9.6]],
-		"c0": 12, "c1": 23, "chw": 8.0, "bumper": 3, "bumper_col": CHROME, "grille_hw": 4.0,
-		"interior": Color(0.45, 0.15, 0.1), "seat_u": 15, "tips": [[-5, 0]], "seats": [[-6, -3], [3, 6]],
+		"L": 40, "fa": 32.6, "ra": 7.4, "track": 10.0, "flare": 1.3, "arch_lift": 1.0,
+		"paint": paint, "open": true, "ohw": 7.6,
+		"top": [[0, 10.2], [3, 11.0], [33, 11.0], [37, 10.4], [39, 9.4]],
+		"bot": [[0, 3], [3, 2.5], [37, 2.5], [39, 3]],
+		"hw": [[0, 9.8], [2, 10.8], [36, 10.8], [39, 9.6]],
+		"c0": 12, "c1": 23, "chw": 7.6, "bumper": 3, "grille_hw": 5.0,
+		"interior": Color(0.5, 0.17, 0.1), "seat_u": 15, "tips": [[-5, 0]], "seats": [[-6, -3], [3, 6]],
 		"engine_col": Color(0.2, 0.2, 0.22),
 	})
-	# the little windscreen in a chrome frame, roll hoops behind the seats
-	b.box(23, 23, 10, 11, -8, 8, Vox.GLASS, Color(0.6, 0.7, 0.78), "windscreen")
-	b.box(23, 23, 10, 12, 9, 9, Vox.METAL, CHROME, "cell", true)
-	b.box(23, 23, 12, 12, -8, 8, Vox.METAL, CHROME, "windscreen")
-	for zc in [[3, 6]]:
-		b.box(13, 13, 10, 12, zc[0], zc[0], Vox.METAL, CHROME, "cell", true)
-		b.box(13, 13, 10, 12, zc[1], zc[1], Vox.METAL, CHROME, "cell", true)
-		b.box(13, 13, 12, 12, zc[0], zc[1], Vox.METAL, CHROME, "cell", true)
+	b.box(23, 23, 12, 13, -8, 8, Vox.GLASS, Color(0.6, 0.7, 0.78), "windscreen")
+	b.box(23, 23, 12, 14, 9, 9, Vox.METAL, CHROME, "cell", true)
+	b.box(23, 23, 14, 14, -8, 8, Vox.METAL, CHROME, "windscreen")
+	for zc in [3, 6]:
+		b.box(13, 13, 12, 14, zc, zc, Vox.METAL, CHROME, "cell", true)
+	b.box(13, 13, 14, 14, 3, 6, Vox.METAL, CHROME, "cell", true)
 	# pop-up lamps standing up on the bonnet
-	b.box(33, 35, 9, 10, 5, 8, Vox.SOLID, paint, "head_S", true)
-	b.box(35, 35, 9, 10, 6, 7, Vox.HEAD, LENS, "head_S", true)
-	b.face(true, 4, 5, 0, 4, TRIM, "grille")
-	b.lamp_face(false, 6, 7, 6, 8, 1)
-	# white chevrons on the bonnet
-	for u in range(26, 34):
+	b.box(32, 34, 12, 13, 5, 8, Vox.SOLID, paint, "head_S", true)
+	b.box(34, 34, 12, 13, 6, 7, Vox.HEAD, LENS, "head_S", true)
+	# a smiling mouth
+	b.face(true, 5, 5, 0, 3, TRIM, "grille")
+	b.face(true, 6, 6, 4, 5, TRIM, "grille")
+	_bumper(b, true, 3, 4, 9, CHROME, Vox.METAL)
+	_lamp_round(b, false, 7, 6, 2)
+	_bumper(b, false, 3, 4, 9, CHROME, Vox.METAL)
+	for u in range(27, 34):
 		for zc in range(0, 8):
-			if (u - zc + 60) % 6 < 2:
+			var k := (u - zc + 60) % 7
+			if k < 2 and u - zc >= 24:
 				b.paint_box(u, u, 0, NY - 1, zc, zc, white, true, "hood")
-	_mirrors(b, 22, 10, 10, CHROME)
+	_mirrors(b, 22, 12, 10, CHROME)
 
 
-## Hank "The Wall": a modern American pony car - high belt, slit windows,
-## blacked-out pillars, a wide grille with slim lamps at its ends, a big
+## Hank "The Wall": a modern American pony car - a high, heavy body on fat
+## rear tyres, slit windows under a low roof, blacked-out pillars, a wide
+## black grille with slanted slim lamps glaring under the bonnet brow, a
 ## power dome and a ducktail; teal with twin white stripes.
 static func _pony(b: B, cp: Color) -> void:
-	var paint := cp if cp.a > 0.0 else Color(0.17, 0.55, 0.55)
-	var white := Color(0.95, 0.95, 0.92)
+	var paint := cp if cp.a > 0.0 else Color(0.15, 0.56, 0.56)
+	var white := Color(0.96, 0.96, 0.93)
 	var dome := func(u: int, zc: int) -> int:
 		return 1 if u >= 30 and u <= 42 and absi(zc) <= 4 else 0
 	_body(b, {
-		"L": 46, "fa": 36.5, "ra": 9.5, "track": 9.2, "paint": paint, "top_fn": dome,
-		"top": [[0, 10.2], [2, 11.2], [29, 11.2], [44, 10.8], [45, 10.2]],
-		"bot": [[0, 3], [3, 2], [43, 2], [45, 3]],
-		"hw": [[0, 12.0], [2, 12.8], [10, 13.0], [38, 13.0], [44, 12.6], [45, 12.0]],
-		"c0": 13, "rw": 17, "ws": 24, "c1": 29, "roof": [[13, 11], [17, 15.2], [24, 15.2], [29, 11]],
-		"chw": 11.0, "rhw": 9.4, "pillar_col": TRIM, "bumper": 5, "grille_hw": 11.0,
+		"L": 46, "fa": 37.6, "ra": 8.6, "track": 10.3, "tyre_w": 1.1, "tyre_rear": 1.35, "flare": 0.9, "arch_lift": 1.0,
+		"paint": paint, "top_fn": dome,
+		"top": [[0, 12.4], [2, 13.2], [29, 13.2], [44, 12.8], [45, 12.2]],
+		"bot": [[0, 3], [3, 2.5], [43, 2.5], [45, 3]],
+		"hw": [[0, 11.6], [2, 12.0], [45, 12.0]],
+		"c0": 13, "rw": 17, "ws": 23, "c1": 29, "roof": [[13, 13], [17, 18.2], [23, 18.2], [29, 13]],
+		"chw": 10.6, "rhw": 9.2, "pillar_col": TRIM, "bumper": 5, "grille_hw": 11.0,
 		"interior": Color(0.1, 0.1, 0.11), "seat_u": 18, "tips": [[-7, 0], [7, 0]], "engine_col": Color(0.15, 0.15, 0.17),
 	})
-	b.face(true, 6, 9, 0, 11, TRIM, "grille")
-	b.lamp_face(true, 8, 9, 8, 11)
-	b.face(true, 3, 4, 0, 9, TRIM, "bumper_F")
+	b.face(true, 7, 11, 0, 11, TRIM, "grille")
+	b.lamp_face(true, 11, 11, 7, 9)
+	b.lamp_face(true, 10, 10, 9, 11)
+	_brow(b, 12, 11, paint)
+	_bumper(b, true, 3, 5, 12, paint, Vox.SOLID, TRIM)
+	b.paint_box(46, 46, 4, 4, 0, 8, TRIM, true, "bumper")
 	b.stripe_top(2, 4, white)
-	_wing(b, 0, 1, 12, 11, paint, 0, 0, false, 1)
-	b.face(false, 8, 9, 0, 3, TRIM, "panel_R")
-	b.lamp_face(false, 8, 9, 4, 10, 1)
-	b.face(false, 3, 4, 0, 11, TRIM, "bumper_R")
-	_mirrors(b, 28, 12, 11, TRIM)
+	_wing(b, 0, 1, 14, 11, paint, 0, 0, false, 1)
+	b.face(false, 9, 11, 0, 3, TRIM, "panel_R")
+	b.lamp_face(false, 9, 10, 4, 10, 1)
+	_bumper(b, false, 3, 5, 12, paint, Vox.SOLID, TRIM)
+	_mirrors(b, 28, 14, 11, TRIM)
 
 
-## Maya "Ghost": a rear-engined GT coupe - round lamps on raised front
-## fenders, a bonnet sloping between them, a fastback falling to a louvred
-## engine lid and a ducktail; cream with a blue centre stripe.
+## Maya "Ghost": a rear-engined GT coupe - a round, bubbly body, big round
+## lamps on high front fenders (a frog's eyes), a bonnet sloping between
+## them, the fastback falling to a slatted engine lid, wide rear hips and a
+## ducktail; cream with a blue centre stripe.
 static func _coupe(b: B, cp: Color) -> void:
-	var paint := cp if cp.a > 0.0 else Color(0.87, 0.85, 0.76)
-	var blue := Color(0.5, 0.6, 0.86)
+	var paint := cp if cp.a > 0.0 else Color(0.9, 0.87, 0.77)
+	var blue := Color(0.48, 0.6, 0.88)
 	var peaks := func(u: int, zc: int) -> int:
-		if u >= 29 and absi(zc) >= 8:
-			return 1
+		if u >= 29 and absi(zc) >= 7:
+			return 2
 		if u <= 14 and u >= 2 and absi(zc) >= 9:
 			return 1
 		return 0
 	_body(b, {
-		"L": 42, "fa": 33.5, "ra": 9.5, "track": 9.0, "paint": paint, "top_fn": peaks,
-		"top": [[0, 8.6], [4, 9.6], [26, 9.8], [30, 9.4], [38, 8.2], [41, 7.0]],
-		"bot": [[0, 3], [3, 2], [39, 2], [41, 3]],
-		"hw": [[0, 11.0], [3, 12.0], [8, 12.9], [14, 12.6], [22, 12.0], [32, 12.6], [38, 12.3], [41, 10.6]],
-		"c0": 4, "rw": 16, "ws": 21, "c1": 27, "roof": [[4, 10], [9, 12.2], [16, 14.4], [21, 14.4], [27, 10]],
-		"chw": 10.4, "rhw": 8.4, "rear_glass_from": 10, "engine": "rear", "rad_front": true,
-		"bumper": 4, "grille_hw": 5.0, "interior": Color(0.45, 0.3, 0.2), "seat_u": 17,
-		"tips": [[-1, 0], [1, 0]], "engine_col": Color(0.3, 0.3, 0.32), "doors": 2,
+		"L": 42, "fa": 34.6, "ra": 8.4, "track": 10.2, "tyre_rear": 1.25, "flare": 0.9,
+		"paint": paint, "top_fn": peaks,
+		"top": [[0, 10.4], [4, 11.6], [26, 11.8], [30, 11.2], [38, 10.0], [41, 8.8]],
+		"bot": [[0, 3], [3, 2.5], [39, 2.5], [41, 3]],
+		"hw": [[0, 10.6], [3, 11.6], [22, 11.2], [38, 11.6], [41, 10.2]],
+		"c0": 4, "rw": 16, "ws": 21, "c1": 27, "roof": [[4, 12], [9, 15.2], [16, 17.8], [21, 17.8], [27, 12]],
+		"chw": 10.0, "rhw": 8.0, "rear_glass_from": 10, "engine": "rear",
+		"bumper": 4, "grille_hw": 5.0, "interior": Color(0.47, 0.31, 0.2), "seat_u": 17,
+		"tips": [[-1, 0], [1, 0]], "engine_col": Color(0.3, 0.3, 0.32),
 	})
-	b.lamp_face(true, 8, 9, 8, 10)
-	b.face(true, 3, 4, 0, 6, TRIM, "bumper_F")
-	b.lamp_face(false, 7, 7, 1, 11, 1)
+	_lamp_round(b, true, 10, 8, 3)
+	b.face(true, 4, 5, 0, 5, TRIM, "grille")
+	_bumper(b, true, 3, 4, 9, paint, Vox.SOLID, TRIM)
+	b.lamp_face(false, 9, 9, 1, 10, 1)
 	b.stripe_top(0, 1, blue)
-	# louvres on the engine lid, the ducktail
 	for u in range(5, 10, 2):
 		b.paint_box(u, u, 0, NY - 1, 0, 6, TRIM, true, "trunk")
-	_wing(b, 1, 3, 10, 9, paint, 0, 0, false, 1)
-	_mirrors(b, 26, 11, 10, paint)
+	_wing(b, 1, 3, 12, 9, paint, 0, 0, false, 1)
+	_bumper(b, false, 3, 4, 10, paint, Vox.SOLID, TRIM)
+	_mirrors(b, 26, 13, 10, paint)
 
 
-## Dante "Showboat": an Italian mid-engined exotic - a low wedge, raised front
-## fenders, a long raked windscreen, side intakes, a slatted engine cover and
-## a big rear wing on endplates; burgundy with gold stripes.
+## Dante "Showboat": an Italian mid-engined exotic - a low, long wedge,
+## high front fenders, a long raked windscreen, deep side intakes, a slatted
+## engine cover and a big rear wing on endplates; burgundy with gold.
 static func _exotic(b: B, cp: Color) -> void:
-	var paint := cp if cp.a > 0.0 else Color(0.45, 0.09, 0.17)
-	var gold := Color(0.92, 0.72, 0.27)
+	var paint := cp if cp.a > 0.0 else Color(0.5, 0.08, 0.17)
+	var gold := Color(0.94, 0.74, 0.27)
 	var peaks := func(u: int, zc: int) -> int:
 		return 1 if u >= 31 and u <= 42 and absi(zc) >= 9 else 0
 	_body(b, {
-		"L": 46, "fa": 37.0, "ra": 9.0, "track": 9.2, "paint": paint, "top_fn": peaks,
-		"top": [[0, 10.0], [3, 10.2], [16, 9.8], [30, 8.8], [40, 7.8], [45, 6.6]],
-		"bot": [[0, 3], [3, 2], [43, 2], [45, 2.5]],
-		"hw": [[0, 12.0], [2, 12.8], [10, 13.0], [20, 12.6], [30, 12.6], [38, 12.8], [44, 11.8], [45, 11.0]],
-		"c0": 15, "rw": 18, "ws": 23, "c1": 32, "roof": [[15, 10], [18, 13.2], [23, 13.2], [32, 9]],
-		"chw": 10.0, "rhw": 8.0, "engine": "rear", "bumper": 3, "grille_hw": 9.0,
-		"interior": Color(0.35, 0.25, 0.18), "seat_u": 20, "tips": [[-1, 2], [1, 2]], "pillar_col": paint,
+		"L": 46, "fa": 37.6, "ra": 8.6, "track": 10.3, "tyre_w": 1.05, "tyre_rear": 1.4, "flare": 1.0, "arch_lift": 1.0,
+		"paint": paint, "top_fn": peaks,
+		"top": [[0, 11.8], [3, 12.0], [16, 11.4], [30, 10.2], [40, 9.2], [45, 8.0]],
+		"bot": [[0, 3], [3, 2.5], [43, 2.5], [45, 2.5]],
+		"hw": [[0, 11.6], [2, 12.0], [20, 11.4], [38, 11.8], [45, 10.6]],
+		"c0": 15, "rw": 18, "ws": 23, "c1": 32, "roof": [[15, 12], [18, 16.2], [23, 16.2], [32, 10.4]],
+		"chw": 9.6, "rhw": 7.6, "engine": "rear", "bumper": 3, "grille_hw": 9.0,
+		"interior": Color(0.36, 0.25, 0.18), "seat_u": 20, "tips": [[-1, 2], [1, 2]], "pillar_col": paint,
 		"engine_col": Color(0.85, 0.15, 0.1),
 	})
-	b.lamp_face(true, 6, 7, 7, 10)
-	b.face(true, 3, 4, 0, 9, TRIM, "bumper_F")
+	b.lamp_face(true, 8, 9, 7, 10)
+	b.face(true, 4, 6, 0, 9, TRIM, "bumper_F")
+	_bumper(b, true, 3, 3, 11, TRIM)
 	b.stripe_top(2, 3, gold)
-	# slatted engine cover, side intakes
 	for u in range(3, 15, 2):
 		b.paint_box(u, u, 0, NY - 1, 0, 7, TRIM, true, "trunk")
-	b.paint_box(11, 15, 5, 8, 12, 13, TRIM, true)
-	b.lamp_face(false, 8, 9, 4, 5, 1)
-	b.lamp_face(false, 8, 9, 8, 9, 1)
-	_wing(b, 0, 3, 12, 12, paint, 0, 0, true, 1)
-	b.box(0, 2, 10, 11, 12, 12, Vox.SOLID, paint.darkened(0.2), "wing", true)
-	_mirrors(b, 31, 10, 10, paint)
+	b.paint_box(11, 15, 5, 9, 11, 13, TRIM, true)
+	_lamp_round(b, false, 9, 3, 2)
+	_lamp_round(b, false, 9, 7, 2)
+	_bumper(b, false, 3, 4, 11, TRIM)
+	_wing(b, 0, 3, 14, 12, paint, 0, 0, true, 1)
+	b.box(0, 2, 12, 13, 12, 12, Vox.SOLID, paint.darkened(0.2), "wing", true)
+	_mirrors(b, 31, 12, 10, paint)
 
 
-## Nina "The Hunter": a modern mid-engined American supercar - sharp nose,
-## slim angular lamps, huge side intakes, black pillars and a spoiler on
-## struts; pink with black.
+## Nina "The Hunter": a modern mid-engined American supercar - a sharp,
+## predatory nose with slim slanted lamps, a deep black front intake, huge
+## side intakes, black pillars and roof, wide rear hips on fat tyres and a
+## spoiler on struts; pink with black.
 static func _supercar(b: B, cp: Color) -> void:
-	var paint := cp if cp.a > 0.0 else Color(0.76, 0.27, 0.47)
+	var paint := cp if cp.a > 0.0 else Color(0.8, 0.27, 0.49)
 	var peaks := func(u: int, zc: int) -> int:
 		if u >= 31 and u <= 42 and absi(zc) >= 9:
 			return 1
@@ -1169,28 +1237,31 @@ static func _supercar(b: B, cp: Color) -> void:
 			return 1
 		return 0
 	_body(b, {
-		"L": 46, "fa": 37.0, "ra": 9.5, "track": 9.2, "paint": paint, "top_fn": peaks,
-		"top": [[0, 10.2], [3, 10.4], [15, 10.0], [30, 8.8], [42, 7.6], [45, 7.0]],
-		"bot": [[0, 3], [3, 2], [43, 2], [45, 2.5]],
-		"hw": [[0, 12.2], [3, 13.0], [12, 13.0], [22, 12.2], [30, 12.6], [40, 12.8], [45, 11.4]],
-		"c0": 16, "rw": 19, "ws": 24, "c1": 31, "roof": [[16, 10], [19, 13.4], [24, 13.4], [31, 9]],
-		"chw": 10.0, "rhw": 8.0, "engine": "rear", "pillar_col": TRIM, "roof_col": TRIM, "bumper": 3,
+		"L": 46, "fa": 37.6, "ra": 8.6, "track": 10.3, "tyre_w": 1.05, "tyre_rear": 1.4, "flare": 1.0, "arch_lift": 1.0,
+		"paint": paint, "top_fn": peaks,
+		"top": [[0, 12.0], [3, 12.2], [15, 11.8], [30, 10.2], [42, 9.2], [45, 8.6]],
+		"bot": [[0, 3], [3, 2.5], [43, 2.5], [45, 2.5]],
+		"hw": [[0, 11.8], [3, 12.2], [22, 11.4], [40, 12.0], [45, 11.0]],
+		"c0": 16, "rw": 19, "ws": 24, "c1": 31, "roof": [[16, 12], [19, 16.4], [24, 16.4], [31, 10.4]],
+		"chw": 9.6, "rhw": 7.6, "engine": "rear", "pillar_col": TRIM, "roof_col": TRIM, "bumper": 3,
 		"grille_hw": 8.0, "interior": Color(0.1, 0.1, 0.11), "seat_u": 21, "tips": [[-1, 0], [1, 0], [-3, 0], [3, 0]],
 		"engine_col": Color(0.85, 0.85, 0.88),
 	})
-	b.lamp_face(true, 7, 7, 6, 11)
-	b.lamp_face(true, 8, 8, 9, 11)
-	b.face(true, 3, 5, 0, 8, TRIM, "bumper_F")
-	b.paint_box(13, 17, 5, 9, 12, 13, TRIM, true)
-	b.lamp_face(false, 9, 9, 4, 11, 1)
-	b.face(false, 6, 8, 0, 3, TRIM, "panel_R")
-	_wing(b, 1, 3, 13, 11, paint, 8, 11, true, 1)
-	_mirrors(b, 30, 10, 10, TRIM)
+	b.lamp_face(true, 9, 9, 6, 11)
+	b.lamp_face(true, 10, 10, 9, 11)
+	b.face(true, 4, 7, 0, 8, TRIM, "bumper_F")
+	_bumper(b, true, 3, 3, 11, TRIM)
+	b.paint_box(13, 17, 5, 10, 11, 13, TRIM, true)
+	b.lamp_face(false, 10, 10, 4, 11, 1)
+	b.face(false, 6, 9, 0, 3, TRIM, "panel_R")
+	_bumper(b, false, 3, 4, 11, TRIM)
+	_wing(b, 1, 3, 15, 11, paint, 8, 13, true, 1)
+	_mirrors(b, 30, 12, 10, TRIM)
 
 
-## The player: a Le Mans GT racer - very low roof, mid engine, round lamps
-## under covers, NACA ducts, a Kamm tail with a lip spoiler; twin racing
-## stripes over the whole car.
+## The player: a Le Mans GT racer - very low and wide, round lamps on the
+## fender fronts, a dark mouth, side ducts, a long Kamm tail with a lip
+## spoiler, fat rear tyres; twin racing stripes over the whole car.
 static func _gt(b: B, paint: Color, stripe: Color) -> void:
 	var peaks := func(u: int, zc: int) -> int:
 		if u >= 31 and u <= 42 and absi(zc) >= 9:
@@ -1199,85 +1270,94 @@ static func _gt(b: B, paint: Color, stripe: Color) -> void:
 			return 1
 		return 0
 	_body(b, {
-		"L": 46, "fa": 36.5, "ra": 9.5, "track": 9.2, "paint": paint, "top_fn": peaks,
-		"top": [[0, 10.0], [3, 10.2], [16, 9.6], [30, 9.0], [42, 8.0], [45, 7.0]],
-		"bot": [[0, 3], [3, 2], [43, 2], [45, 2.5]],
-		"hw": [[0, 12.4], [3, 13.0], [14, 13.0], [22, 12.4], [32, 12.8], [42, 12.5], [45, 11.4]],
-		"c0": 15, "rw": 18, "ws": 23, "c1": 29, "roof": [[15, 10], [18, 13.2], [23, 13.2], [29, 9]],
-		"chw": 10.5, "rhw": 8.4, "engine": "rear", "bumper": 3, "grille_hw": 7.0,
+		"L": 46, "fa": 37.6, "ra": 8.6, "track": 10.3, "tyre_w": 1.05, "tyre_rear": 1.3, "flare": 1.0, "arch_lift": 1.0,
+		"paint": paint, "top_fn": peaks,
+		"top": [[0, 11.6], [3, 11.8], [16, 11.2], [30, 10.6], [42, 9.6], [45, 8.6]],
+		"bot": [[0, 3], [3, 2.5], [43, 2.5], [45, 2.5]],
+		"hw": [[0, 12.0], [3, 12.2], [22, 11.6], [42, 12.0], [45, 11.0]],
+		"c0": 15, "rw": 18, "ws": 23, "c1": 29, "roof": [[15, 12], [18, 16.0], [23, 16.0], [29, 10.6]],
+		"chw": 10.2, "rhw": 8.2, "engine": "rear", "bumper": 3, "grille_hw": 7.0,
 		"interior": Color(0.12, 0.12, 0.13), "seat_u": 19, "tips": [[-2, 1], [2, 1]],
 		"engine_col": Color(0.3, 0.3, 0.33),
 	})
-	b.lamp_face(true, 7, 8, 8, 10)
-	b.face(true, 3, 4, 0, 7, TRIM, "bumper_F")
+	_lamp_round(b, true, 8, 8, 3)
+	b.face(true, 5, 7, 0, 6, TRIM, "grille")
+	_bumper(b, true, 3, 4, 10, paint, Vox.SOLID, TRIM)
 	b.stripe_top(1, 3, stripe)
 	b.paint_box(24, 26, 0, NY - 1, 5, 6, TRIM, true, "door")
 	for u in range(4, 13, 2):
 		b.paint_box(u, u, 0, NY - 1, 0, 0, TRIM, false, "trunk")
-	b.lamp_face(false, 8, 9, 7, 10, 1)
-	b.face(false, 5, 6, 0, 5, TRIM, "panel_R")
-	_wing(b, 0, 1, 11, 11, paint, 0, 0, false, 1)
-	_mirrors(b, 28, 10, 10, paint)
+	_lamp_round(b, false, 9, 8)
+	_lamp_round(b, false, 9, 4)
+	b.face(false, 6, 8, 0, 3, TRIM, "panel_R")
+	_bumper(b, false, 3, 5, 11, TRIM)
+	_wing(b, 0, 1, 13, 11, paint, 0, 0, false, 1)
+	_mirrors(b, 28, 12, 10, paint)
 
 
-## Finn "Wildcard": a rally hatchback - tall and boxy with flared arches,
-## a roof scoop, a lamp pod on the bonnet, mud flaps and a big wing on the
-## hatch; black with a yellow zigzag.
+## Finn "Wildcard": a rally hatchback - a tall, stubby box on knobbly big
+## wheels in square flared arches, a chunky black bumper, a lamp pod on the
+## bonnet, a roof scoop, mud flaps and a wing on the hatch; black with a
+## yellow zigzag.
 static func _rally(b: B, cp: Color) -> void:
 	var paint := cp if cp.a > 0.0 else Color(0.12, 0.12, 0.13)
-	var yellow := Color(0.97, 0.76, 0.16)
+	var yellow := Color(0.98, 0.77, 0.16)
 	_body(b, {
-		"L": 40, "fa": 31.5, "ra": 8.5, "track": 9.5, "paint": paint,
-		"top": [[0, 10.0], [2, 10.6], [26, 10.6], [37, 10.2], [39, 9.2]],
+		"L": 40, "fa": 32.6, "ra": 7.4, "track": 10.6, "tyre_w": 1.1, "flare": 2.0, "arch_lift": 1.0,
+		"paint": paint,
+		"top": [[0, 12.0], [2, 12.6], [26, 12.6], [37, 12.2], [39, 11.2]],
 		"bot": [[0, 3.5], [2, 3], [37, 3], [39, 3.5]],
-		"hw": [[0, 11.6], [1, 12.6], [3, 13.0], [14, 13.0], [15, 12.0], [23, 12.0], [24, 13.0], [37, 13.0], [39, 12.0]],
-		"c0": 3, "rw": 6, "ws": 21, "c1": 27, "roof": [[3, 11], [6, 16.2], [21, 16.2], [27, 11]],
-		"chw": 11.2, "rhw": 10.0, "doors": 2, "bp": 15, "bumper": 5, "bumper_col": TRIM,
+		"hw": [[0, 10.8], [2, 11.0], [39, 10.8]],
+		"c0": 3, "rw": 6, "ws": 21, "c1": 27, "roof": [[3, 13], [6, 18], [21, 18], [27, 13]],
+		"chw": 10.4, "rhw": 9.4, "doors": 2, "bp": 15, "bumper": 5,
 		"grille_hw": 6.0, "interior": Color(0.15, 0.15, 0.2), "seat_u": 16, "tips": [[8, 0]],
 		"engine_col": Color(0.95, 0.7, 0.15), "pillar_col": paint,
 	})
-	b.face(true, 6, 8, 0, 6, TRIM, "grille")
-	b.lamp_face(true, 7, 8, 7, 10)
-	b.lamp_face(false, 7, 9, 9, 11, 1)
-	# zigzag down the sides, yellow roof scoop and wing
+	b.face(true, 8, 10, 0, 6, TRIM, "grille")
+	b.lamp_face(true, 9, 10, 7, 10)
+	_brow(b, 12, 10, paint)
+	_bumper(b, true, 3, 6, 11, Color(0.16, 0.16, 0.17))
+	b.lamp_face(false, 9, 11, 9, 10, 1)
+	_bumper(b, false, 3, 5, 11, Color(0.16, 0.16, 0.17))
 	var zig := func(u: int, y: int) -> bool:
-		var t := 5 + absi((u % 8) - 4)
+		var t := 6 + absi((u % 8) - 4)
 		return y == t or y == t + 1
-	b.stripe_side(5, 10, yellow, 1, 38, zig)
-	b.box(12, 15, 17, 17, -2, 2, Vox.SOLID, yellow, "scoop")
-	b.box(15, 15, 17, 17, -1, 1, Vox.SOLID, TRIM, "scoop")
-	_wing(b, 3, 6, 17, 11, paint, 6, 15, true, 1)
-	b.paint_box(3, 6, 17, 17, 0, 11, yellow, true, "wing")
+	b.stripe_side(6, 12, yellow, 1, 38, zig)
+	b.box(12, 15, 19, 19, -2, 2, Vox.SOLID, yellow, "scoop")
+	b.box(15, 15, 19, 19, -1, 1, Vox.SOLID, TRIM, "scoop")
+	_wing(b, 2, 5, 19, 11, yellow, 6, 18, false, 1)
 	# lamp pod on the bonnet front
-	b.box(33, 34, 11, 12, -7, 7, Vox.SOLID, TRIM, "pod")
+	b.box(33, 34, 13, 14, -7, 7, Vox.SOLID, TRIM, "pod")
 	for zc in [-6, -2, 2, 6]:
-		b.box(35, 35, 11, 12, zc - 1, zc, Vox.HEAD, LENS, "pod")
-	# mud flaps behind the wheels
+		b.box(35, 35, 13, 14, zc - 1, zc, Vox.HEAD, LENS, "pod")
 	for a in [[b.fa, "flap_F"], [b.ra, "flap_R"]]:
 		var u := int(float(a[0]) - WHEEL_R - 1.5)
-		b.box(u, u, 1, 4, 9, 11, Vox.SOLID, Color(0.75, 0.12, 0.1), String(a[1]) + "_S", true)
-	_mirrors(b, 26, 12, 12, paint)
+		b.box(u, u, 1, 5, 10, 12, Vox.SOLID, Color(0.78, 0.12, 0.1), String(a[1]) + "_S", true)
+	_mirrors(b, 26, 14, 11, paint)
 
 
-## The junker: an old, battered estate car - boxy long roof, chrome turned
-## rusty, panels from other cars in other colours, a roof rack.
+## The junker: an old, saggy estate car - a long boxy roof, rusty chrome,
+## round lamps in a tired face and panels from other cars in other colours.
 static func _wagon(b: B, cp: Color) -> void:
 	var paint := cp if cp.a > 0.0 else Color(0.6, 0.58, 0.5)
 	var rust := Color(0.45, 0.24, 0.12)
+	var tired := Color(0.58, 0.55, 0.5)
 	_body(b, {
-		"L": 44, "fa": 34.5, "ra": 9.5, "track": 9.0, "paint": paint, "round": false,
-		"top": [[0, 9.6], [2, 10.2], [42, 10.2], [43, 9.6]],
-		"bot": [[0, 2.6], [43, 2.6]],
-		"hw": [[0, 12.0], [1, 12.5], [42, 12.5], [43, 12.0]],
-		"c0": 1, "rw": 3, "ws": 25, "c1": 30, "roof": [[1, 10], [3, 15.4], [25, 15.4], [30, 10]],
-		"chw": 11.6, "rhw": 10.6, "doors": 4, "bp": 20, "bumper": 4, "bumper_col": Color(0.55, 0.5, 0.45),
-		"grille_hw": 7.0, "interior": Color(0.35, 0.3, 0.25), "seat_u": 22, "tips": [[-6, 0]],
+		"L": 44, "fa": 35.6, "ra": 8.4, "track": 10.2, "flare": 0.6, "round": false,
+		"paint": paint,
+		"top": [[0, 11.4], [2, 12.0], [42, 12.0], [43, 11.4]],
+		"bot": [[0, 3], [43, 3]],
+		"hw": [[0, 11.6], [1, 12.0], [42, 12.0], [43, 11.6]],
+		"c0": 1, "rw": 3, "ws": 25, "c1": 30, "roof": [[1, 12], [3, 18.6], [25, 18.6], [30, 12]],
+		"chw": 11.2, "rhw": 10.2, "doors": 4, "bp": 19, "bumper": 4,
+		"grille_hw": 7.0, "interior": Color(0.35, 0.3, 0.25), "seat_u": 21, "tips": [[-6, 0]],
 		"engine_col": Color(0.3, 0.32, 0.3),
 	})
-	b.face(true, 5, 8, 0, 7, Color(0.4, 0.38, 0.34), "grille", Vox.METAL)
-	b.lamp_face(true, 6, 7, 8, 10)
-	b.lamp_face(false, 6, 8, 9, 11, 1)
-	# panels from scrapped cars
+	b.face(true, 6, 10, 0, 6, Color(0.42, 0.4, 0.36), "grille", Vox.METAL)
+	_lamp_round(b, true, 7, 8, 3)
+	_bumper(b, true, 3, 5, 11, tired, Vox.METAL)
+	b.lamp_face(false, 7, 10, 10, 11, 1)
+	_bumper(b, false, 3, 5, 11, tired, Vox.METAL)
 	var swaps := {"door_FL": Color(0.38, 0.47, 0.58), "fender_R": Color(0.42, 0.55, 0.32), "trunk": Color(0.5, 0.33, 0.2),
 		"door_RR": Color(0.72, 0.7, 0.62), "hood": Color(0.55, 0.53, 0.47)}
 	var g := b.g
@@ -1292,13 +1372,9 @@ static func _wagon(b: B, cp: Color) -> void:
 					continue
 				if swaps.has(t):
 					g.set_v(x, y, z, mt, (swaps[t] as Color) * g.get_c(x, y, z) / paint)
-				if b.m.parts[b.m.tags[b.idx(x, y, z)]].layer == OUTER and Vox.hash3(x * 3, y * 5, z * 7) < 0.045:
+				if b.m.parts[b.m.tags[b.idx(x, y, z)]].layer == OUTER and Vox.hash3(x * 3, y * 5, z * 7) < 0.04:
 					g.set_v(x, y, z, mt, rust.lerp(g.get_c(x, y, z), 0.3))
-	# a roof rack
-	b.box(6, 22, 16, 16, 8, 8, Vox.METAL, Color(0.3, 0.3, 0.3), "rack", true)
-	for u in [8, 14, 20]:
-		b.box(u, u, 16, 16, -7, 7, Vox.METAL, Color(0.3, 0.3, 0.3), "rack")
-	_mirrors(b, 29, 11, 12, CHROME)
+	_mirrors(b, 29, 13, 12, CHROME)
 
 
 ## Greta "Clockwork": a Formula-style single-seater - open wheels on
@@ -1310,9 +1386,9 @@ static func _formula(b: B, cp: Color) -> void:
 	var cream := Color(0.92, 0.9, 0.78)
 	b.L = 46
 	b.x0 = 1
-	b.fa = 37.5
-	b.ra = 8.0
-	b.track = 10.6
+	b.fa = 38.0
+	b.ra = 7.6
+	b.track = 10.3
 	b.paint = paint
 	var carbon := Color(0.1, 0.1, 0.11)
 	# the tub (crash cell): floor, sides, cockpit rim, seat, helmet
@@ -1379,8 +1455,8 @@ static func _formula(b: B, cp: Color) -> void:
 		var u := int(floor(a))
 		for side in [-1, 1]:
 			for zc in range(3, int(b.track) - 1):
-				b.put(b.x0 + u, 4, ZC + zc * side, Vox.METAL, carbon, "cell")
-				b.put(b.x0 + u - 1, 5, ZC + zc * side, Vox.METAL, carbon, "cell")
+				b.put(b.x0 + u, 5, ZC + zc * side, Vox.METAL, carbon, "cell")
+				b.put(b.x0 + u - 1, 6, ZC + zc * side, Vox.METAL, carbon, "cell")
 	b.box(3, 6, 3, 5, -1, 1, Vox.METAL, Color(0.3, 0.3, 0.32), "cell")
 	b.box(2, 2, 4, 4, 0, 0, Vox.METAL, Color(0.6, 0.6, 0.62), "exhaust")
 	b.box(0, 0, 7, 7, 0, 0, Vox.TAIL, RED_LENS, "tail_L")
@@ -1393,4 +1469,4 @@ static func _formula(b: B, cp: Color) -> void:
 	b.m.roof_top = 10.0 * vs()
 	b.m.roof_x = (b.x0 + 17.0) * vs() - pivot().x
 	b.m.cabin = AABB(Vector3((b.x0 + 23.0) * vs() - pivot().x - 0.3, 0.0, -0.3), Vector3(0.6, 8.0 * vs(), 0.6))
-	b.m.tyre = Vector2(1.15, 1.4)
+	b.m.tyre = Vector2(1.2, 1.45)

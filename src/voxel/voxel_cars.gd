@@ -10,8 +10,9 @@ extends RefCounted
 const MODEL_SHADER := preload("res://src/voxel/shaders/voxel_model.gdshader")
 const DISPLAY := Vector2(64.0, 36.0)
 ## The old car voxel (2 px) stays the size of small voxel effects (weapons,
-## flair, debris); wheels: centre height WHEEL_R * Vox.CAR_VOXEL_PX = 6 px.
-const WHEEL_R := 3
+## flair, debris); wheels: centre height WHEEL_R * Vox.CAR_VOXEL_PX = 7 px
+## (Cartoon Motorsport: bigger wheels, were 6 px).
+const WHEEL_R := 3.5
 
 static var _material: ShaderMaterial
 

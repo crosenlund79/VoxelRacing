@@ -81,6 +81,16 @@ Extract it and run `VoxelRacing.exe`.
   | Finn "Wildcard" | rally hatchback, lamp pod and roof scoop |
   | Nina "The Hunter" | mid-engined American supercar, pink |
   | The junker | battered estate car with mismatched panels |
+- **Vehicle art refinement - Cartoon Motorsport** (previous state on branch
+  `checkpoint/before-cartoon-motorsport`): the same cars as miniature toy
+  racers - bigger wheels (7 px) at the corners under flared arches, short
+  overhangs, chunky bumpers standing proud of the body, expressive faces
+  (bonnet brows over recessed grilles, bigger lamps), taller cabins and
+  each car's defining feature pushed further (Rocco's raked stance, fat rear
+  tyres, shaker scoop and chrome side pipes; Hank's glaring slit lamps;
+  Maya's lamps high on her fenders; Finn's square flares). All novelty
+  gadgets are gone. Screenshots: `docs/screenshots/cartoon/`. Sound
+  effects inventory: `docs/SOUND_INVENTORY.md`.
 
 <p align="center">
 <img src="docs/screenshots/p005/01_main_menu_logo_cars.jpg" width="49%" alt="Main menu">

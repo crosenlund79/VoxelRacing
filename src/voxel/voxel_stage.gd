@@ -422,7 +422,7 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 	tail.visible = false
 	root.add_child(tail)
 	lights.append(tail)
-	# P004: the driver's own touches - number, exhausts, rims, a gadget
+	# the driver's own touches: exhaust markers, rims in the driver's colour
 	var flair := _add_flair(i, tilt, model, spins)
 	# the driver, for the overtaking taunt (hidden until a head pops out)
 	var head := Node3D.new()
@@ -628,10 +628,10 @@ const SPRING_K := 140.0
 const SPRING_C := 15.0
 
 
-## The driver's own touches (VoxelFlair): rims in the driver's colour and
-## their signature gadget, placed on the vehicle design (roof, nose, tail).
+## The driver's own touches (VoxelFlair): rims in the driver's colour.
 ## P006: no racing numbers on the cars; the exhausts are the vehicle's own
-## pipes (markers here for the puffs and pops).
+## pipes (markers here for the puffs and pops). Cartoon Motorsport: no
+## gadgets either - each car's personality is its own design.
 func _add_flair(i: int, tilt: Node3D, model: VoxelVehicle.Model, spins: Array) -> Dictionary:
 	var out := {"exhausts": [], "key": null}
 	if model == null:
@@ -645,24 +645,6 @@ func _add_flair(i: int, tilt: Node3D, model: VoxelVehicle.Model, spins: Array) -
 	var id := i % VoxelFlair.RIMS.size()
 	for w in spins:
 		(w as GeometryInstance3D).set_instance_shader_parameter("tint", VoxelFlair.RIMS[id])
-	var gd := VoxelFlair.gadget(id)
-	if not gd.is_empty():
-		var gm := MeshInstance3D.new()
-		gm.mesh = gd[0]
-		var vs := VoxelCars.voxel_size()
-		match String(gd[1]):
-			"roof":
-				gm.position = Vector3(model.roof_x, model.roof_top, 0.0)
-			"tail_roof":
-				gm.position = Vector3(model.tail_x + 0.45, model.roof_top * 0.72, model.cabin.size.z * 0.3)
-			"sides":
-				gm.position = Vector3(model.roof_x, vs * 3.0, 0.0)
-			"nose":
-				gm.position = Vector3(model.nose_x + vs * 0.3, vs * 0.5, 0.0)
-			"key":
-				gm.position = Vector3(model.tail_x - vs * 0.6, vs * 3.0, 0.0)
-				out.key = gm
-		tilt.add_child(gm)
 	return out
 
 
