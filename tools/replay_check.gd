@@ -17,6 +17,8 @@ var _last_clip := -1
 var _mined := false
 var _laps := 1
 var _min_grip := 1.0
+var _seen_podium := false
+var _podium_at := 0
 var _grip_cars := {}
 
 
@@ -97,7 +99,13 @@ func _physics_process(_d: float) -> bool:
 	elif _seen_replay and _done_at < 0:
 		_done_at = t
 		print("REPLAY finished; captures: %d" % rp.recorder.captures.size())
-	if _done_at > 0 and t == _done_at + 30:
+	if _main.get("_podium") != null and not _seen_podium:
+		_seen_podium = true
+		_podium_at = t
+		print("CHECK PASS: podium shown")
+	if _seen_podium and t - _podium_at in [60, 150, 260]:
+		_shot("podium_%d" % (t - _podium_at))
+	if _done_at > 0 and _main.get("_podium") == null and t >= _done_at + 30 and (not _seen_podium or t > _podium_at + 30):
 		_shot("z_results")
 		print("CHECK replay played and returned: ", _seen_replay)
 		print("CHECK debris traction: %d cars lost grip on debris, lowest grip x%.2f, debris left %.1f" % [_grip_cars.size(), _min_grip, _main.debris_field.total()])
