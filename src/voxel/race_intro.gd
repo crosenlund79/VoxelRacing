@@ -158,10 +158,11 @@ func _shoot() -> void:
 		centre /= _grid.size()
 		var c0 := centre + _t3 * (lo - centre.dot(_t3))
 		var c1 := centre + _t3 * (hi - centre.dot(_t3))
-		var side := _r3 * 9.5
-		pos = (c0 - _t3 * 3.0).lerp(c1 + _t3 * 2.0, k) + side + Vector3.UP * 1.5
-		look = pos - side + _t3 * 2.5 + Vector3.UP * 0.2
-		fov = 46.0
+		# inside the track's edge, gliding just above the cars' roofs
+		var side := _r3 * 3.4
+		pos = (c0 - _t3 * 3.0).lerp(c1 + _t3 * 2.0, k) + side + Vector3.UP * 2.7
+		look = pos - side * 0.9 + _t3 * 4.5 - Vector3.UP * 2.4
+		fov = 54.0
 	elif _t < 6.0:  # the hero: low front three-quarter, slowly turning
 		var k := (_t - 4.8) / 1.2
 		var hp: Vector3 = stage.cars3d[_hero].root.global_position

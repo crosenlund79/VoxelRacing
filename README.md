@@ -45,6 +45,13 @@ Extract it and run `VoxelRacing.exe`.
   Screenshots: `docs/screenshots/p004/`.
 
 <p align="center">
+<img src="docs/screenshots/p004/05_intro_grid_dolly_drivers_and_crowd.jpg" width="49%" alt="Race intro over the grid">
+<img src="docs/screenshots/p004/14_podium_celebration.jpg" width="49%" alt="Podium">
+<img src="docs/screenshots/p004/18_garage_workshop_damaged_car.jpg" width="49%" alt="Garage workshop">
+<img src="docs/screenshots/p004/12_replay_mine_cam.jpg" width="49%" alt="Replay mine cam">
+</p>
+
+<p align="center">
 <img src="docs/screenshots/p003/11_replay_missile_cam.jpg" width="49%" alt="Replay: missile cam">
 <img src="docs/screenshots/p003/16_replay_destruction_cam.jpg" width="49%" alt="Replay: destruction cam">
 <img src="docs/screenshots/p003/06_night_lamp_posts.jpg" width="49%" alt="Night race with lamp posts">
