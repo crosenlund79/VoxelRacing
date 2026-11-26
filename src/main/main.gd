@@ -1941,7 +1941,7 @@ func _refresh_hud() -> void:
 		var following := RivalRoster.short_name(director.target_id) if director.target_id > 0 else "-"
 		hud.update_spectator(history.race_count() + (0 if session.state == RaceSession.State.FINISHED else 1),
 			leader.tracker.current_lap() if leader != null else 1, session.racers[0].tracker.lap_count,
-			session.elapsed, "x%d" % sim_speed, following, weapons_enabled)
+			session.elapsed, "\u00d7%d" % sim_speed, following, weapons_enabled)
 		hud.update_combat(false, 0, 0, 0, 0, 0.0)
 		_refresh_condition(hud, director.target_id, director.target_id > 0, false)
 		return

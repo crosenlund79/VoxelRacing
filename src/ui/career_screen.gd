@@ -17,6 +17,8 @@ signal back_requested
 
 const CARD_W := 740.0
 
+const VrWidgets := preload("res://src/ui/vr_widgets.gd")
+
 var career: Career
 var garage: PlayerGarage
 var cars: CarCollection
@@ -62,11 +64,14 @@ func setup(resolver: AssetResolver) -> void:
 	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	bg.size = Vector2(1280, 720)
 	_root.add_child(bg)
-	_title = HyperTheme.label("CAREER", 46, HyperTheme.GOLD, 700)
-	_title.position = Vector2(40, 24)
+	var head_icon := VrWidgets.icon("career", 36)
+	head_icon.position = Vector2(36, 30)
+	_root.add_child(head_icon)
+	_title = VrWidgets.text("Career", 30, HyperTheme.GOLD, "regular", 2)
+	_title.position = Vector2(84, 30)
 	_root.add_child(_title)
-	_sub = HyperTheme.label("", 20, HyperTheme.CREAM, 600)
-	_sub.position = Vector2(42, 84)
+	_sub = VrWidgets.text("", 14, HyperTheme.CREAM, "regular", 2)
+	_sub.position = Vector2(86, 84)
 	_root.add_child(_sub)
 	var stages := VBoxContainer.new()
 	stages.position = Vector2(30, 122)
@@ -77,7 +82,8 @@ func setup(resolver: AssetResolver) -> void:
 		b.custom_minimum_size = Vector2(CARD_W, 152)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		b.add_theme_font_size_override("font_size", 17)
+		VrWidgets.style_button(b)
+		b.add_theme_font_size_override("font_size", 14)
 		b.add_theme_color_override("font_disabled_color", Color(HyperTheme.CREAM, 0.72))  # (won / locked cards stay readable)
 		var stage := i
 		b.pressed.connect(func() -> void: stage_requested.emit(stage))
@@ -86,32 +92,34 @@ func setup(resolver: AssetResolver) -> void:
 		_cards.append(b)
 
 	var side := PanelContainer.new()
+	side.add_theme_stylebox_override("panel", VrWidgets.panel(0.88))
 	side.position = Vector2(790, 122)
 	side.custom_minimum_size = Vector2(460, 476)
 	_root.add_child(side)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
 	side.add_child(box)
-	box.add_child(HyperTheme.label("YOUR CAR", 17, HyperTheme.GOLD, 700))
+	box.add_child(VrWidgets.text("Your car", 14, HyperTheme.GOLD))
 	_car_icon = TextureRect.new()
 	_car_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_car_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_car_icon.custom_minimum_size = Vector2(420, 92)
 	box.add_child(_car_icon)
-	_car_label = HyperTheme.label("", 18, HyperTheme.CREAM, 600)
+	_car_label = VrWidgets.text("", 14, HyperTheme.CREAM)
 	_car_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_car_label)
-	_status = HyperTheme.label("", 18, HyperTheme.CREAM, 600)
+	_status = VrWidgets.text("", 13, HyperTheme.CREAM)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size = Vector2(420, 0)
 	box.add_child(_status)
-	_main_button = _button("CONTINUE", func() -> void: stage_requested.emit(_main_stage()))
-	_car_button = _button("CAR", func() -> void: car_cycle_requested.emit())
-	_garage_button = _button("GARAGE", func() -> void: garage_requested.emit())
-	_standings_button = _button("STANDINGS", func() -> void: standings_requested.emit())
-	_fame_button = _button("HALL OF FAME", _toggle_fame)
-	_new_button = _button("NEW CAREER", _on_new)
-	_back_button = _button("BACK", func() -> void: back_requested.emit())
+	_main_button = _button("CONTINUE", func() -> void: stage_requested.emit(_main_stage()), "start")
+	VrWidgets.style_button(_main_button, Color("2f7d4a"))
+	_car_button = _button("CAR", func() -> void: car_cycle_requested.emit(), "car")
+	_garage_button = _button("GARAGE", func() -> void: garage_requested.emit(), "garage")
+	_standings_button = _button("STANDINGS", func() -> void: standings_requested.emit(), "standings")
+	_fame_button = _button("HALL OF FAME", _toggle_fame, "trophy_gold")
+	_new_button = _button("NEW CAREER", _on_new, "new_garage")
+	_back_button = _button("BACK", func() -> void: back_requested.emit(), "back")
 	for b in [_main_button, _car_button, _garage_button, _standings_button, _fame_button, _new_button, _back_button]:
 		box.add_child(b)
 	_notice = HyperTheme.label("", 18, Color("ff8a6a"), 700)
@@ -123,6 +131,7 @@ func setup(resolver: AssetResolver) -> void:
 	_hint.add_theme_constant_override("outline_size", 6)
 	_hint.add_theme_color_override("font_outline_color", HyperTheme.OUTLINE)
 	_hint.position = Vector2(34, 680)
+	_hint.visible = false  # (Prototype 005: no permanent control instructions)
 	_root.add_child(_hint)
 
 	_fame_bg = ColorRect.new()  # (the hub behind the Hall of Fame is dimmed away)
@@ -149,15 +158,11 @@ func setup(resolver: AssetResolver) -> void:
 	visible = false
 
 
-func _button(text: String, action: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.theme = _root.theme
-	HyperTheme.style_button(b, false, 420)  # (the main menu's buttons)
-	b.custom_minimum_size.y = 36
-	b.add_theme_font_size_override("font_size", 18)
+func _button(text: String, action: Callable, icon: String = "") -> Button:
+	var b := VrWidgets.icon_button(icon if icon != "" else "next", "", 36, text, 14)
+	b.custom_minimum_size = Vector2(420, 36)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.pressed.connect(action)
-	b.mouse_entered.connect(b.grab_focus)
 	return b
 
 
@@ -234,7 +239,7 @@ func _loadout_text() -> String:
 	for slot in 2:
 		var w := garage.equipped[slot]
 		if w != WeaponRules.Weapon.NONE:
-			parts.append("%s x%d" % [WeaponRules.weapon_name(w), garage.count(w)])
+			parts.append("%s \u00d7%d" % [WeaponRules.weapon_name(w), garage.count(w)])
 	return ", ".join(parts) if not parts.is_empty() else "none equipped"
 
 
@@ -245,7 +250,7 @@ func card_text(i: int) -> String:
 	if career.in_championship() and career.active_stage == i:
 		state = "IN PROGRESS  -  round %d of %d" % [career.champ.round_index() + 1, s.round_count()]
 	elif career.stage_won[i]:
-		state = "WON" + ("  x%d" % career.titles[i] if career.titles[i] > 1 else "")
+		state = "WON" + ("  \u00d7%d" % career.titles[i] if career.titles[i] > 1 else "")
 	elif career.unlocked(i):
 		state = "OPEN" + ("  -  attempt %d" % (career.attempts[i] + 1) if career.attempts[i] > 0 else "")
 	else:

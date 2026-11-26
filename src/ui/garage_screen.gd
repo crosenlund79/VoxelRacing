@@ -300,7 +300,7 @@ func refresh() -> void:
 	var front := garage.equipped[PlayerGarage.FRONT]
 	var rear := garage.equipped[PlayerGarage.REAR]
 	var extra := garage.race_carried()
-	_summary.text = "FRONT: %s x%d%s      REAR: %s x%d%s" % [WeaponRules.weapon_name(front), garage.count(front) if front != W.NONE else 0,
+	_summary.text = "FRONT: %s \u00d7%d%s      REAR: %s \u00d7%d%s" % [WeaponRules.weapon_name(front), garage.count(front) if front != W.NONE else 0,
 		_extra_text(extra[PlayerGarage.FRONT]), WeaponRules.weapon_name(rear), garage.count(rear) if rear != W.NONE else 0,
 		_extra_text(extra[PlayerGarage.REAR])]
 	_carry_button.text = "CARRY: ALL OWNED" if garage.carry_all else "CARRY: EQUIPPED ONLY"

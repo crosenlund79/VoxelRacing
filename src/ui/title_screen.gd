@@ -400,14 +400,14 @@ func _build_setup(root: Control) -> void:
 	column.position = Vector2(0, 520)
 	column.custom_minimum_size = Vector2(1280, 0)
 	_setup.add_child(column)
-	_circuit = VrWidgets.Cycler.new(_cycle_layout, 420, 24, "Circuit")
+	_circuit = VrWidgets.Cycler.new(_cycle_layout, 420, 24)
 	column.add_child(_circuit)
 	_round_label = VrWidgets.text("", 22, VrStyle.PAPER)
 	_round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_round_label.custom_minimum_size = Vector2(1280, 42)
 	_round_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	column.add_child(_round_label)
-	_environment = VrWidgets.Cycler.new(_cycle_track, 340, 17, "Environment")
+	_environment = VrWidgets.Cycler.new(_cycle_track, 340, 17)
 	column.add_child(_environment)
 	_keeps_label = VrWidgets.text("", 14, Color("ff8a6a"))
 	_keeps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

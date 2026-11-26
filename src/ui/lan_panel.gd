@@ -17,19 +17,23 @@ var _back_button: Button
 var _busy := false
 
 
+const VrWidgets := preload("res://src/ui/vr_widgets.gd")
+
+
 func setup(saved_address: String) -> void:
-	custom_minimum_size = Vector2(760, 0)
+	custom_minimum_size = Vector2(620, 0)
+	add_theme_stylebox_override("panel", VrWidgets.panel(0.92))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
 	add_child(box)
-	var title := HyperTheme.label("NETWORK RACE - LAN OR INTERNET", 30, HyperTheme.GOLD, 700)
+	var title := HyperTheme.label("LAN / internet", 24, HyperTheme.GOLD, 700)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(row)
-	row.add_child(HyperTheme.label("Host address:", 20, HyperTheme.CREAM, 600))
+	row.add_child(HyperTheme.label("Host address", 16, HyperTheme.CREAM, 600))
 	_address = LineEdit.new()
 	_address.text = saved_address
 	_address.placeholder_text = "192.168.1.20 or 203.0.113.7"
@@ -45,10 +49,10 @@ func setup(saved_address: String) -> void:
 	_back_button = _button("BACK", _back)
 	for b in [_host_button, _join_button, _back_button]:
 		buttons.add_child(b)
-	_status = HyperTheme.label("", 18, HyperTheme.CREAM, 500)
+	_status = HyperTheme.label("", 14, HyperTheme.CREAM, 500)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(700, 60)
+	_status.custom_minimum_size = Vector2(580, 40)
 	box.add_child(_status)
 	visibility_changed.connect(func() -> void:
 		if not visible and _busy:
@@ -96,6 +100,8 @@ func _back() -> void:
 func _button(text: String, action: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(200, 46)
+	b.custom_minimum_size = Vector2(170, 40)
+	VrWidgets.style_button(b)
+	b.add_theme_font_size_override("font_size", 15)
 	b.pressed.connect(action)
 	return b

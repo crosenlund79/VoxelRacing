@@ -14,7 +14,7 @@ const DISPLAY_CARS := ["cars/body_player", "cars/body_ai_1", "cars/body_ai_2", "
 ## Where they stand (beside VOXEL at the top left, beside RACING at the
 ## bottom right), how they are turned (a three-quarter view towards the
 ## logo), and their bob phase.
-const CORNERS := [[Vector3(-7.7, 1.35, 1.2), -0.55, 0.0], [Vector3(7.9, -1.6, 1.2), PI + 0.55, 2.1]]
+const CORNERS := [[Vector3(-7.2, 1.85, 1.2), -0.55, 0.0], [Vector3(7.35, -2.05, 1.2), PI + 0.55, 2.1]]
 
 const GLYPHS := {
 	"V": ["11..11", "11..11", "11..11", "11..11", ".1111.", ".1111.", "..11.."],

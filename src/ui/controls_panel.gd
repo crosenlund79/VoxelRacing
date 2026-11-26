@@ -226,8 +226,8 @@ func _build_page(index: int, actions: Array) -> Control:
 		_grids.append(map)
 		map.add_child(VrWidgets.text("", 13))
 		for h in [["keyboard", ControlBindings.KEYBOARD], ["keyboard", ControlBindings.KEYBOARD], ["gamepad", ControlBindings.PAD], ["gamepad", ControlBindings.PAD]]:
-			var ic := VrWidgets.icon(h[0], 18)
-			ic.custom_minimum_size = Vector2(SLOT_SIZE.x, 20)
+			var ic := VrWidgets.icon(h[0], 24)
+			ic.custom_minimum_size = Vector2(SLOT_SIZE.x, 26)
 			map.add_child(ic)
 			_headers.append([ic, h[1]])
 		for a in remap + fixed:

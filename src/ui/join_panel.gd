@@ -18,20 +18,24 @@ var _slots: Array[Label] = []
 var _hint: Label
 
 
+const VrWidgets := preload("res://src/ui/vr_widgets.gd")
+
+
 func setup() -> void:
-	custom_minimum_size = Vector2(760, 0)
+	custom_minimum_size = Vector2(600, 0)
+	add_theme_stylebox_override("panel", VrWidgets.panel(0.92))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
 	add_child(box)
-	var title := HyperTheme.label("TWO PLAYERS - SPLIT SCREEN", 32, HyperTheme.GOLD, 700)
+	var title := HyperTheme.label("Split screen", 24, HyperTheme.GOLD, 700)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	for n in 2:
-		var l := HyperTheme.label("", 24, HyperTheme.CREAM, 600)
+		var l := HyperTheme.label("", 18, HyperTheme.CREAM, 600)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(l)
 		_slots.append(l)
-	_hint = HyperTheme.label("", 17, HyperTheme.CREAM_DIM, 500)
+	_hint = HyperTheme.label("", 14, HyperTheme.CREAM_DIM, 500)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_hint)
 	Input.joy_connection_changed.connect(_on_joy_connection)
@@ -93,6 +97,16 @@ func press(device: int, cancel: bool = false) -> void:
 	_refresh()
 
 
+## Joining is about every device (each player presses on their own), so this
+## prompt names the keyboard key and the gamepad button together.
+static func _both_keys(action: String) -> String:
+	var keep := PlayerControls.device_kind
+	PlayerControls.device_kind = ""
+	var t := PlayerControls.key_text(action)
+	PlayerControls.device_kind = keep
+	return t
+
+
 static func device_name(device: int) -> String:
 	if device == PlayerControls.KEYBOARD:
 		return "Keyboard"
@@ -103,7 +117,7 @@ static func device_name(device: int) -> String:
 func _refresh() -> void:
 	for n in 2:
 		var joined := n < devices.size()
-		_slots[n].text = "PLAYER %d:  %s" % [n + 1, device_name(devices[n]) if joined else "press %s to join" % PlayerControls.key_text(PlayerControls.FIRE)]
+		_slots[n].text = "Player %d:  %s" % [n + 1, device_name(devices[n]) if joined else "%s to join" % _both_keys(PlayerControls.FIRE)]
 		_slots[n].add_theme_color_override("font_color", HyperTheme.GOLD if joined else HyperTheme.CREAM_DIM)
 	_hint.text = PlayerControls.fmt("Both ready: press {fire} again to continue    {back}: leave") if devices.size() == 2 \
 		else PlayerControls.fmt("{fire}: join (keyboard: one player)    {back}: back")

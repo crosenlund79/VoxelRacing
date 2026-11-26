@@ -273,10 +273,11 @@ func _build_ui() -> void:
 	_hints.add_theme_font_override("font", VrStyle.font("regular"))
 	_hints.add_theme_font_size_override("font_size", VrStyle.px(16))
 	_hints.add_theme_color_override("font_color", VrStyle.PAPER)
-	_hints.text = ("PHOTO MODE\n" +
-		"Mouse drag / right stick: orbit      WASD / left stick: move      Q / E (LB / RB): height\n" +
-		"Wheel, + / - (triggers): zoom      Tab (Y): next car      H (Select): hide this\n" +
-		"Enter / F12 (A): save a picture      Esc / P (B): back to the race")
+	# (only the chosen input device's controls: Prototype 005)
+	if PlayerControls.uses_gamepad():
+		_hints.text = "Photo mode\nR stick: orbit    L stick: move    LB / RB: height    Triggers: zoom\nY: next car    Select: hide    A: save picture    B: back"
+	else:
+		_hints.text = "Photo mode\nMouse drag: orbit    WASD: move    Q / E: height    Wheel: zoom\nTab: next car    H: hide    Enter: save picture    P: back"
 	bar.add_child(_hints)
 	_toast = Label.new()
 	_toast.add_theme_font_override("font", VrStyle.font("bold"))

@@ -8,6 +8,7 @@ signal closed
 
 const Icons = preload("res://src/ui/achievement_icons.gd")
 const UiJuice := preload("res://src/ui/ui_juice.gd")
+const VrWidgets := preload("res://src/ui/vr_widgets.gd")
 
 var store: AchievementStore
 var _resolver: AssetResolver
@@ -24,16 +25,24 @@ var _confirm_yes: Button
 func setup(p_store: AchievementStore, resolver: AssetResolver) -> void:
 	store = p_store
 	_resolver = resolver
-	custom_minimum_size = Vector2(1180, 640)
+	custom_minimum_size = Vector2(1140, 600)
+	add_theme_stylebox_override("panel", VrWidgets.panel(0.92))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
 	add_child(box)
 	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
 	box.add_child(head)
-	var title := HyperTheme.label("ACHIEVEMENTS", 32, HyperTheme.GOLD, 700)
+	_back = VrWidgets.icon_button("back", "Back", 34)
+	_back.pressed.connect(func() -> void: closed.emit())
+	head.add_child(_back)
+	head.add_child(VrWidgets.icon("achievements", 24))
+	var title := VrWidgets.text("Achievements", 20, HyperTheme.GOLD)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(title)
-	_count = HyperTheme.label("", 22, HyperTheme.CREAM, 600)
+	_count = VrWidgets.text("", 16, HyperTheme.CREAM)
+	_count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(_count)
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 20)
@@ -50,32 +59,26 @@ func setup(p_store: AchievementStore, resolver: AssetResolver) -> void:
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 4)
 	cols.add_child(right)
-	right.add_child(HyperTheme.label("LIVING LEGENDS - rival careers", 20, HyperTheme.GOLD, 700))
-	right.add_child(HyperTheme.label("Completed races you raced or watched", 14, HyperTheme.CREAM_DIM, 500))
+	right.add_child(VrWidgets.text("Living legends", 16, HyperTheme.GOLD))
+	right.add_child(VrWidgets.text("Rival careers", 12, HyperTheme.CREAM_DIM))
 	_rivals = GridContainer.new()
 	_rivals.columns = 5
 	_rivals.add_theme_constant_override("h_separation", 14)
 	_rivals.add_theme_constant_override("v_separation", 0)
 	right.add_child(_rivals)
 	var buttons := HBoxContainer.new()
-	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	buttons.add_theme_constant_override("separation", 16)
+	buttons.alignment = BoxContainer.ALIGNMENT_END
+	buttons.add_theme_constant_override("separation", 10)
 	box.add_child(buttons)
-	_back = Button.new()
-	_back.text = "BACK"
-	_back.pressed.connect(func() -> void: closed.emit())
-	buttons.add_child(_back)
-	_reset = Button.new()
-	_reset.text = "RESET ACHIEVEMENTS"
+	_reset = VrWidgets.icon_button("restart", "Reset achievements", 34)
 	_reset.pressed.connect(_ask_reset)
-	buttons.add_child(_reset)
 	_confirm_row = HBoxContainer.new()
-	_confirm_row.add_theme_constant_override("separation", 12)
+	_confirm_row.add_theme_constant_override("separation", 10)
 	_confirm_row.visible = false
 	buttons.add_child(_confirm_row)
-	_confirm_row.add_child(HyperTheme.label("Erase all achievements and rival careers?", 18, HyperTheme.RED, 700))
-	_confirm_yes = Button.new()
-	_confirm_yes.text = "YES, ERASE"
+	buttons.add_child(_reset)
+	_confirm_row.add_child(VrWidgets.text("Erase all achievements and rival careers?", 14, HyperTheme.RED))
+	_confirm_yes = VrWidgets.icon_button("check", "", 34, " Erase", 14)
 	_confirm_yes.pressed.connect(_do_reset)
 	_confirm_row.add_child(_confirm_yes)
 	var no := Button.new()

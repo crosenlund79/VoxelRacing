@@ -43,6 +43,18 @@ Extract it and run `VoxelRacing.exe`.
   after the race, a voxel workshop as the garage, a generated crowd and
   workshop soundscape, livelier menus, and a photography mode.
   Screenshots: `docs/screenshots/p004/`.
+- **Prototype 005 - Less Is More** (previous state on branch
+  `checkpoint/prototype-004`): a simpler, icon-first interface. Kenney
+  Future typography, a set of voxel icons with short optional tooltips
+  (on / off, delay and duration in Settings), a one-time input device
+  choice so prompts show only your keyboard or gamepad keys, a compact race
+  setup where the circuit and environment names are the selectors and a
+  voxel miniature of the circuit is the centrepiece, an icon-only race
+  preparation card, three clear racing choices (Quick Race, Championship,
+  Career), one combat system (no more Classic / Tactical) with rivals who
+  keep their cool for the first seconds instead of emptying their racks at
+  the start line, two little display cars by the logo, and new grandstands
+  in muted concrete, steel and slate. Screenshots: `docs/screenshots/p005/`.
 
 <p align="center">
 <img src="docs/screenshots/p004/05_intro_grid_dolly_drivers_and_crowd.jpg" width="49%" alt="Race intro over the grid">
@@ -101,8 +113,10 @@ All other controls are HyperCars' (CONTROLS in the menu; see below).
   (bounces, settles, persists, kicked about by passing cars through a spatial
   hash), sparks, fire, smoke puffs, voxel stars; all driven by the existing
   damage, combat and collision events.
-- **Interface** (`src/ui/vr_style.gd`, `hyper_theme.gd`): VoxelRacing palette,
-  Pixel Operator (CC0), generated voxel-block buttons and panels.
+- **Interface** (`src/ui/vr_style.gd`, `hyper_theme.gd`, `vr_widgets.gd`):
+  VoxelRacing palette, Kenney Future (CC0, `assets/fonts/kenney_future/`),
+  compact chips and panels; voxel icons drawn in code (`vr_icons.gd`), short
+  tooltips (`vr_tips.gd`), the input device choice (`device_picker.gd`).
 - **Branding**: the logo is a live voxel model (`voxel_logo.gd`);
   `tools/make_branding.gd` bakes `assets/branding/` (window icon, splash).
 
@@ -171,13 +185,15 @@ your progress is saved after every round, and the career ends with a victory cer
 and the Hall of Fame. Afterwards you can replay any championship or play every other
 mode. See `docs/CAREER.md`.
 
-**GO RACING!** opens a shared setup screen with a rotating circuit preview. The modes are:
+The main menu leads straight to the modes; each opens a compact setup with a
+voxel miniature of the circuit (Left / Right cycle the circuit and the
+environment; the icons cycle day / night, laps, weapons and the control mode).
 
 | Mode | What it is |
 |---|---|
-| Quick Race | Standard weapons, any circuit / environment / time / length |
-| Garage Race | Prize money, your own weapons, repairs and armour; the career is saved |
-| Championship | Six rounds (or three) ending in a grand final; win a rival's car |
+| Quick Race | Choose a circuit and race at once |
+| Championship | Six rounds (or three) ending in a grand final, with prize money and the garage between rounds; win a rival's car |
+| Career | The long road from rookie to overall champion (championships, garage, rewards, ending) |
 | Knockout | Nine laps, last place out every lap |
 | Battle Royale | One arena, no respawns, last car standing |
 | Spectate | The nine rivals race; follow any driver |
@@ -187,7 +203,8 @@ The game has:
 - **3 circuits:** Kestrel Ridge, Larkspur Ring, Ravenhook. They include bridges, narrowings and speed-dependent jumps.
 - **5 environments:** Green Valley, Wasteland, Winter, The Raceway and Tabletop Mayhem. Each has its own modest handling, identical for every car.
 - **Day / night** on any combination.
-- **Weapons:** Classic or Tactical combat style, or No Guns.
+- **Weapons:** on or off. One combat system: front and rear weapons each
+  have their own cooldown, with a short lock after any shot.
 - **Vehicle damage**, a kill feed and TOMBSTONE | K | D statistics.
 - **Achievements** and rival careers.
 - **The official music** and an announcer with rival taunts.
@@ -204,7 +221,9 @@ The defaults below can be changed in **CONTROLS**: every action takes two keyboa
 | Confirm (results, standings, garage) | Enter | Start |
 | Back / race menu | Esc | B |
 
-Fire never dismisses a results or standings screen. The game's hints always show your current bindings.
+Fire never dismisses a results or standings screen. At the first launch you
+choose your input device (keyboard or a gamepad; change it in Settings); the
+game's prompts then show only that device's current bindings.
 
 ## Your own art and audio
 
