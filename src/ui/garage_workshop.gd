@@ -186,7 +186,7 @@ func _build_environment() -> void:
 	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	e.tonemap_exposure = 1.1
 	e.glow_enabled = true
-	e.glow_intensity = 0.65
+	e.glow_intensity = 0.5
 	e.glow_bloom = 0.04
 	e.glow_hdr_threshold = 0.9
 	e.adjustment_enabled = true
@@ -338,14 +338,14 @@ func _build_furniture() -> void:
 ## units below, with its warm light.
 func _lamp(pivot: Node3D, cable: float) -> void:
 	var m := _mi(Props.lamp_mesh(cable), Vector3(0, -cable, 0), pivot)
-	m.set_instance_shader_parameter("lamp_glow", 0.9)
+	m.set_instance_shader_parameter("lamp_glow", 0.5)
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var l := OmniLight3D.new()
 	l.position = Vector3(0, -cable - 0.6, 0)
 	l.light_color = Color(1.0, 0.72, 0.42)
 	l.omni_range = 5.0
 	l.omni_attenuation = 1.2
-	l.light_energy = 2.4
+	l.light_energy = 2.2
 	pivot.add_child(l)
 
 
@@ -458,9 +458,6 @@ func _start_repair(c: float) -> void:
 	cells.shuffle()
 	_rep = {"t": 0.0, "from": from, "to": to, "cells": cells, "done": 0}
 	_mech.rush_to(REPAIR_SPOT, CAR_MIDDLE, REPAIR_DELAY + REPAIR_STEPS * REPAIR_STEP + 0.35)
-	for k in 6:  # a puff of workshop dust as the work starts
-		var p := Vector3(_rng.randf_range(-1.6, 1.6), 0.4, _rng.randf_range(-1.0, 1.0))
-		_fx.puff(_car.global_transform * p, Vector3(p.x * 0.3, 0.7, p.z * 0.3), Color(0.82, 0.78, 0.72), 0.32, 0.8, 0.45)
 
 
 func _step_repair(delta: float) -> void:

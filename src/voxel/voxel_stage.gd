@@ -342,6 +342,7 @@ func _apply_time_of_day(night: bool) -> void:
 # ------------------------------------------------------------ cars
 
 var _cars_holder: Node3D
+var _board_lights := 0
 
 
 func _build_cars() -> void:
@@ -939,6 +940,17 @@ func _build_props() -> void:
 		mi.rotation.y = yaw
 		if kind == VoxelProps.Kind.BOARD:
 			mi.rotation.x = -0.62  # leaning back: the face looks up at the camera
+			if _board_lights < 12:  # P004: lit advertising at night
+				_board_lights += 1
+				var bl := OmniLight3D.new()
+				bl.light_color = Color(1.0, 0.95, 0.85)
+				bl.omni_range = 3.2
+				bl.light_energy = 1.6
+				bl.visible = false
+				var face := Basis(Vector3.UP, yaw) * Vector3(0, 0, 1)
+				bl.position = mi.position + Vector3(0, 1.4, 0) + face * 1.2
+				holder.add_child(bl)
+				lamps3d.append(bl)
 		var v := _rng.randf_range(-0.05, 0.05)
 		mi.set_instance_shader_parameter("tint", Color(1.0 + v, 1.0 + v * 0.6, 1.0 + v * 0.3))
 		if VoxelProps.sways(kind):

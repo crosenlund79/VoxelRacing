@@ -60,6 +60,8 @@ var _sub: Label
 var _cam_label: Label
 var _count: Label
 var _rec: ColorRect
+var _wipe: ColorRect
+const SoundKit := preload("res://src/audio/sound_kit.gd")
 var _slowmo: Label
 var _hints: Label
 var _bars: Array[ColorRect] = []
@@ -150,6 +152,17 @@ func _begin() -> void:
 	if main.get("hud") != null and main.hud != null:
 		main.hud.visible = false
 	_burns.visible = true
+	# P004: the replay arrives with a little ceremony - bars slide in, a
+	# flash, a whoosh and the jingle
+	for k in _bars.size():
+		var bar: ColorRect = _bars[k]
+		bar.size.y = 0.0
+		bar.position.y = 0.0 if k == 0 else 720.0
+		var tw := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(bar, "size:y", float(LETTERBOX), 0.35)
+		if k == 1:
+			create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT).tween_property(bar, "position:y", 720.0 - LETTERBOX, 0.35)
+	SoundKit.play(self, "stinger", -8.0, 0.0)
 	_clip = -1
 	_next_clip()
 
@@ -880,6 +893,12 @@ func _build_ui() -> void:
 		bar.position = Vector2(0, 0 if top else 720 - LETTERBOX)
 		_ui.add_child(bar)
 		_bars.append(bar)
+	_wipe = ColorRect.new()
+	_wipe.color = Color(1.0, 0.98, 0.92)
+	_wipe.size = Vector2(1280, 720)
+	_wipe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_wipe.modulate.a = 0.0
+	_ui.add_child(_wipe)
 	_rec = ColorRect.new()
 	_rec.color = VrStyle.RED
 	_rec.size = Vector2(16, 16)
@@ -929,6 +948,18 @@ func _label(text: String, size: int, color: Color, kind: String) -> Label:
 
 func _show_titles(c: Dictionary) -> void:
 	var t := moment_titles(c.key, recorder.names)
+	# the moment's main actor's colour for the headline (P004)
+	var actor := int(c.key.get("by", -1))
+	if actor < 0:
+		actor = int(c.key.get("car", -1))
+	var col := VrStyle.YELLOW
+	if actor >= 0:
+		col = (VoxelStage.HELMETS[actor % VoxelStage.HELMETS.size()] as Color).lightened(0.15)
+	_title.add_theme_color_override("font_color", col)
+	# a flash and a whoosh between moments
+	_wipe.modulate.a = 0.85
+	create_tween().tween_property(_wipe, "modulate:a", 0.0, 0.28)
+	SoundKit.play(self, "whoosh", -10.0, 0.05)
 	_title.text = t[0]
 	_sub.text = t[1]
 	_title.modulate.a = 1.0

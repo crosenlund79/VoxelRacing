@@ -335,6 +335,22 @@ func _spawn_crowd() -> void:
 		if ok:
 			marshals.append({"p": p, "face": -(f[2] as Vector2), "phase": _rng.randf(), "ex": 0.0, "shirt": 10, "cloth": 11, "calm": true})
 			_occupied.append([p, 6.0])
+	# warm light over a few of the stands at night
+	var lit := 0
+	for an in anchors:
+		if lit >= 7 or _rng.randf() < 0.4:
+			continue
+		var f := _frame(int(an[0]), float(an[1]))
+		var p: Vector2 = f[0] + (f[2] as Vector2) * (float(f[3]) + 80.0)
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.84, 0.6)
+		l.omni_range = 6.5
+		l.light_energy = 1.3
+		l.visible = false
+		l.position = Vox.to3(p, vtrack.height_px_at(p)) + Vector3(0, 3.0, 0)
+		add_child(l)
+		stage.lamps3d.append(l)
+		lit += 1
 	_make_people("crowd", crowd_rows, false, false)
 	_make_people("flags", flag_rows, true, false)
 	_make_people("marshals", marshals, true, true)

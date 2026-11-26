@@ -180,7 +180,7 @@ func present(entries: Array, resolver: AssetResolver, title: String = "PODIUM") 
 	visible = true
 	_active = true
 	set_process(true)
-	_update(0.0)
+	_update(0.0)  # everything in place for the first frame
 
 
 ## Ends the celebration now: `finished` (once), hidden, the 3D world freed.
@@ -881,7 +881,7 @@ func _celebrate(f: Dictionary, p: Dictionary, lt: float, dt: float) -> void:
 		8:  # Finn "Wildcard": something different every time
 			_wildcard(f, p, lt, dt, at)
 		9:  # Nina "The Hunter": "I'm watching you": hand to the visor, then points at the camera
-			var to_cam := _cam.global_position - at
+			var to_cam := _cam.position - at
 			var face := atan2(to_cam.x, to_cam.z) - float(f.base_yaw)
 			var u := fposmod(lt, 2.0)
 			var eyes := _ramp(u, 0.0, 0.2) * (1.0 - _ramp(u, 0.55, 0.7))
@@ -1016,8 +1016,13 @@ func _dust(at: Vector3, n: int, strength: float) -> void:
 	for i in n:
 		var a := TAU * i / n + _rng.randf_range(-0.2, 0.2)
 		var dir := Vector3(cos(a), 0, sin(a))
-		_fx.puff(at + dir * 0.35 + Vector3(0, 0.1, 0), dir * _rng.randf_range(1.5, 2.6) * strength + Vector3(0, 0.4, 0),
-			Color(0.86, 0.8, 0.72), _rng.randf_range(0.22, 0.38), _rng.randf_range(0.5, 0.8), 0.6)
+		_fx.puff(at + dir * 0.35 + Vector3(0, 0.25, 0), dir * _rng.randf_range(1.5, 2.6) * strength + Vector3(0, 0.9 * strength, 0),
+			Color(0.86, 0.8, 0.72), _rng.randf_range(0.28, 0.45) * minf(strength, 1.4), _rng.randf_range(0.6, 0.9), 0.65)
+	# and a ring of sparks off the step
+	for i in int(n * 0.8):
+		var a := _rng.randf() * TAU
+		_fx.spark(at + Vector3(0, 0.1, 0), Vector3(cos(a) * 4.0, _rng.randf_range(2.0, 4.5), sin(a) * 4.0) * strength * 0.7,
+			Color(1.0, 0.9, 0.6), 0.08, _rng.randf_range(0.3, 0.55), 1.0, 1.0)
 
 
 func _update_effects(dt: float) -> void:
@@ -1239,7 +1244,9 @@ func _update_camera(_dt: float) -> void:
 	pos += Vector3(sin(_time * 0.9) * 0.08, sin(_time * 1.3) * 0.05, 0.0)
 	pos += Vector3(sin(_time * 61.0), sin(_time * 53.0), 0.0) * _shake * 0.25
 	_cam.fov = v[6]
-	_cam.look_at_from_position(pos, target, Vector3.UP)
+	# (the world sits at the origin: local is global, and this works before
+	# the layer enters the tree)
+	_cam.transform = Transform3D(Basis.looking_at(target - pos, Vector3.UP), pos)
 
 
 # ------------------------------------------------------------ crowd

@@ -218,8 +218,8 @@ func _shade() -> Control:
 	for horizontal in [true, false]:
 		var g := Gradient.new()
 		if horizontal:
-			g.offsets = PackedFloat32Array([0.0, 0.3, 0.6, 1.0])
-			g.colors = PackedColorArray([Color(ink, 0.7), Color(ink, 0.0), Color(ink, 0.0), Color(ink, 0.75)])
+			g.offsets = PackedFloat32Array([0.0, 0.3, 0.66, 1.0])
+			g.colors = PackedColorArray([Color(ink, 0.7), Color(ink, 0.0), Color(ink, 0.0), Color(ink, 0.6)])
 		else:
 			g.offsets = PackedFloat32Array([0.0, 0.07, 0.24, 0.34, 1.0])
 			g.colors = PackedColorArray([Color(ink, 0.5), Color(ink, 0.0), Color(ink, 0.0), Color(ink, 0.42), Color(ink, 0.6)])
@@ -292,6 +292,8 @@ func refresh() -> void:
 	_carry_button.text = "CARRY: ALL OWNED" if garage.carry_all else "CARRY: EQUIPPED ONLY"
 	for w in _cards:
 		var c: Dictionary = _cards[w]
+		if c.icon.texture == null:  # the voxel weapon renders arrive after setup (VoxelIconStudio)
+			c.icon.texture = _icons.get(w)
 		c.owned.text = "Owned: %d" % garage.count(w)
 		c.buy.disabled = not garage.can_buy(w)
 		c.sell.disabled = not garage.can_sell(w)
@@ -451,7 +453,7 @@ func _card(w: int) -> Control:
 			_play("ui/ui_select")
 		refresh())
 	box.add_child(equip)
-	_cards[w] = {"panel": panel, "owned": owned, "buy": buy, "sell": sell, "equip": equip}
+	_cards[w] = {"panel": panel, "icon": icon, "owned": owned, "buy": buy, "sell": sell, "equip": equip}
 	return panel
 
 
