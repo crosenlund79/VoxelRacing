@@ -288,20 +288,24 @@ func _act(delta: float) -> void:
 			_head.rotation.z = lerpf(_head.rotation.z, 0.15, delta * 8.0)
 			_body.position.y = maxf(0.0, sin(minf(t, 0.45) / 0.45 * PI)) * 0.22
 		_:  # "look": stands easy, looks around, scratches his head now and then
-			_pose_rest(delta)
+			var scratch := fposmod(t, 6.0) > 4.4
+			_pose_rest(delta, not scratch)
 			_head.rotation.y = sin(t * 0.9) * 0.45
 			_body.position.y = breathe
-			if fposmod(t, 6.0) > 4.4:
+			if scratch:
 				_arms[1].rotation.z = lerpf(_arms[1].rotation.z, 2.6, delta * 8.0)
 				_arms[1].rotation.x = lerpf(_arms[1].rotation.x, -0.35, delta * 8.0)
 	if t >= float(_task.get("time", 1.0)):
 		_task = {}
 
 
-func _pose_rest(delta: float) -> void:
-	for a in _arms:
-		a.rotation.z = lerpf(a.rotation.z, 0.08, delta * 7.0)
-		a.rotation.x = lerpf(a.rotation.x, 0.0, delta * 7.0)
+## Arms down, head straight (the right arm too unless `right_arm` is false).
+func _pose_rest(delta: float, right_arm: bool = true) -> void:
+	for k in _arms.size():
+		if k == 1 and not right_arm:
+			continue
+		_arms[k].rotation.z = lerpf(_arms[k].rotation.z, 0.08, delta * 7.0)
+		_arms[k].rotation.x = lerpf(_arms[k].rotation.x, 0.0, delta * 7.0)
 	_head.rotation.z = lerpf(_head.rotation.z, 0.0, delta * 6.0)
 	_head.rotation.y = lerpf(_head.rotation.y, 0.0, delta * 6.0)
 	_body.position.y = lerpf(_body.position.y, 0.0, delta * 8.0)
