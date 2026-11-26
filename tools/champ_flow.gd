@@ -75,6 +75,9 @@ func _process(_d: float) -> bool:
 				_step = 3
 				_mark = _f
 		3:
+			# (the highlights and the round podium come first: confirm until the round is reported)
+			if race != null and (_f - _mark) % 50 == 0 and race.get("_podium") == null and not race._replaying():
+				_press(PlayerControls.CONFIRM)
 			if race == null and _f > _mark + 60:
 				_shot("2_standings")
 				_check("standings after the round", _game.champ_screen.visible)

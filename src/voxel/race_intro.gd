@@ -145,12 +145,23 @@ func _shoot() -> void:
 		pos = (back - _t3 * 8.0 + Vector3.UP * 15.0).lerp(mid + _r3 * 7.0 + Vector3.UP * 6.0, k)
 		look = mid.lerp(front + _t3 * 3.0, k)
 		fov = 50.0
-	elif _t < 4.8:  # dolly along the grid, low beside the cars
+	elif _t < 4.8:  # dolly along the grid, low beside the cars (clear of both columns)
 		var k := smoothstep(2.2, 4.8, _t)
-		var side := _r3 * 7.0
-		pos = (back - _t3 * 3.0).lerp(front + _t3 * 2.0, k) + side + Vector3.UP * 1.15
-		look = pos - side * 0.8 + _t3 * 3.0 - Vector3.UP * 0.35
-		fov = 52.0
+		var centre := Vector3.ZERO
+		var lo := INF
+		var hi := -INF
+		for g in _grid:
+			centre += g[1]
+			var a := (g[1] as Vector3).dot(_t3)
+			lo = minf(lo, a)
+			hi = maxf(hi, a)
+		centre /= _grid.size()
+		var c0 := centre + _t3 * (lo - centre.dot(_t3))
+		var c1 := centre + _t3 * (hi - centre.dot(_t3))
+		var side := _r3 * 9.5
+		pos = (c0 - _t3 * 3.0).lerp(c1 + _t3 * 2.0, k) + side + Vector3.UP * 1.5
+		look = pos - side + _t3 * 2.5 + Vector3.UP * 0.2
+		fov = 46.0
 	elif _t < 6.0:  # the hero: low front three-quarter, slowly turning
 		var k := (_t - 4.8) / 1.2
 		var hp: Vector3 = stage.cars3d[_hero].root.global_position
