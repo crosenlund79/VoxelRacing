@@ -75,7 +75,7 @@ var _tex: Texture2D
 var _logical := ""
 var _wheels_on := true
 var _car_pending := false
-var _pristine: VoxelGrid
+var _pristine: VoxelVehicle.Model
 var _pristine_mesh: ArrayMesh
 var _seed := 7
 var _damage: VoxelCarDamage
@@ -342,7 +342,7 @@ func _build_furniture() -> void:
 	add_child(lamp_r)
 	_lamp(lamp_r, 2.75)
 	var tyre := VoxelCars.wheel_mesh()
-	var tyre_h := VoxelCars.WHEEL_W * VoxelCars.voxel_size()
+	var tyre_h := VoxelVehicle.WHEEL_W * VoxelVehicle.vs()
 	for k in 4:
 		_mi(tyre, Vector3(8.3, tyre_h * (k + 0.5), -2.4), self, k * 0.4).rotation.x = PI * 0.5
 	for k in 3:
@@ -414,33 +414,27 @@ func _apply_car() -> void:
 	_car_pending = false
 	_finish_repair()
 	_pristine_mesh = VoxelCars.body_mesh(_tex, _layout, _logical)
-	_pristine = VoxelCars.body_grid(_tex, _layout, _logical)
+	_pristine = VoxelCars.model(_tex, _logical)
 	_body.mesh = _pristine_mesh
 	_seed = absi(hash(_logical)) % 100000 + 7
-	var at := _layout.positions(_logical)
+	var at := VoxelCars.wheels_of(_layout, _tex, _logical)
 	var k := 0
 	for ax in [at.x, at.y]:
 		for az in [-at.z, at.z]:
 			_wheels[k].position = Vector3(ax, VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX, az) * Vox.PX
 			_wheels[k].visible = _wheels_on
+			_wheels[k].scale.z = _pristine.tyre.x if k < 2 else _pristine.tyre.y
 			k += 1
 	_damage = null
 	_shown = -1.0
 	_show_condition(_want)
 
 
-## The car's damage for a condition: the same seed always breaks the same
-## voxels in the same order, so a better condition is a subset of a worse one.
+## The car's damage for a condition: the same seed always takes off the same
+## components, so a better condition is a subset of a worse one.
 func _damage_for(c: float) -> VoxelCarDamage:
-	var d := VoxelCarDamage.new(_pristine, _body, _seed)
-	var target := VoxelCarDamage.target_loss(clampf(c / 100.0, 0.0, 1.0))
-	var guard := 0
-	while d.removed < int(target * d.total) and guard < 80:
-		var before := d.removed
-		d.break_to(target, Vector3.ZERO)  # (a few clusters a call)
-		guard += 1
-		if d.removed == before and guard > 12:
-			break
+	var d := VoxelCarDamage.new(_pristine, null, _seed)
+	d.preset(VoxelCarDamage.target_loss(clampf(c / 100.0, 0.0, 1.0)))
 	return d
 
 
@@ -451,12 +445,10 @@ func _show_condition(c: float) -> void:
 
 
 func _put_on(d: VoxelCarDamage) -> void:
-	if d.removed == 0:
-		d.dirty = false
-		_body.mesh = _pristine_mesh
-	else:
-		d.dirty = true
-		d.rebuild()
+	_body.mesh = _pristine_mesh
+	d.mesh_instance = _body
+	d.rebuild()
+	d._apply()
 
 
 # ------------------------------------------------------------ repairs
@@ -466,14 +458,13 @@ func _start_repair(c: float) -> void:
 	var from := _damage if _damage != null else _damage_for(_shown)
 	var to := _damage_for(c)
 	_shown = c
-	var cells: Array[Vector3i] = []
-	var sz := from.grid.size()
-	for y in sz.y:
-		for z in sz.z:
-			for x in sz.x:
-				if from.grid.get_m(x, y, z) == Vox.AIR and to.grid.get_m(x, y, z) != Vox.AIR:
-					cells.append(Vector3i(x, y, z))
+	# the components to put back (and the battered ones to beat straight)
+	var cells: Array[int] = []
+	for k in from.gone.size():
+		if (from.gone[k] == 1 and to.gone[k] == 0) or (from.hurt[k] == 1 and to.hurt[k] == 0):
+			cells.append(k)
 	cells.shuffle()
+	_put_on(from)
 	_rep = {"t": 0.0, "from": from, "to": to, "cells": cells, "done": 0}
 	_mech.rush_to(REPAIR_SPOT, CAR_MIDDLE, REPAIR_DELAY + REPAIR_STEPS * REPAIR_STEP + 0.35)
 
@@ -491,33 +482,27 @@ func _step_repair(delta: float) -> void:
 		_shine_now()
 
 
-## Pops back the k-th share of the missing voxels (1..REPAIR_STEPS), with
-## sparks and a star where they land.
+## Puts back the k-th share of the missing components (1..REPAIR_STEPS),
+## with sparks and a star where they land.
 func _restore_step(k: int) -> void:
 	var from: VoxelCarDamage = _rep.from
 	var to: VoxelCarDamage = _rep.to
-	var cells: Array[Vector3i] = _rep.cells
+	var cells: Array[int] = _rep.cells
 	var n := cells.size()
 	var a := (k - 1) * n / REPAIR_STEPS
 	var b := k * n / REPAIR_STEPS
 	var xf := _body.global_transform
-	var sparks := 0
 	for i in range(a, b):
-		var c := cells[i]
-		from.grid.set_v(c.x, c.y, c.z, to.grid.get_m(c.x, c.y, c.z), to.grid.get_c(c.x, c.y, c.z))
-		for o in NEIGHBOURS:  # the scorch around it is painted over
-			var q := c + o
-			if from.grid.get_m(q.x, q.y, q.z) != Vox.AIR and to.grid.get_m(q.x, q.y, q.z) != Vox.AIR:
-				from.grid.set_v(q.x, q.y, q.z, to.grid.get_m(q.x, q.y, q.z), to.grid.get_c(q.x, q.y, q.z))
-		if sparks < 5 and (i - a) % maxi(1, (b - a) / 5) == 0:
-			sparks += 1
-			_sparks(xf * _cell_pos(from.grid, c), 4)
+		var id := cells[i]
+		from.gone[id] = to.gone[id]
+		from.hurt[id] = to.hurt[id]
+		_sparks(xf * (_pristine.parts[id].centre as Vector3), 5)
 	if n == 0:  # nothing visible to mend (light scratches): sparks on the bodywork
-		for s in 3:
+		for s2 in 3:
 			_sparks(_car.global_transform * Vector3(_rng.randf_range(-1.6, 1.6), _rng.randf_range(0.5, 1.1), _rng.randf_range(-0.8, 0.8)), 4)
 	else:
-		from.dirty = true
-		from.rebuild()
+		from._count_lamps()
+		from._apply()
 	var top := xf * Vector3(_rng.randf_range(-1.2, 1.2), 1.3, _rng.randf_range(-0.6, 0.6))
 	_fx.star(top, Vector3(_rng.randf_range(-0.8, 0.8), 3.2, _rng.randf_range(-0.8, 0.8)),
 		[VrStyle.YELLOW, VrStyle.PAPER, Color(1.0, 0.62, 0.25)][k % 3], 0.42, 0.75)
@@ -543,10 +528,6 @@ func _shine_now() -> void:
 		var p := xf * Vector3(_rng.randf_range(-1.7, 1.7), _rng.randf_range(0.8, 1.35), _rng.randf_range(-0.9, 0.9))
 		_fx.star(p, Vector3(0, _rng.randf_range(0.6, 1.4), 0), Color(1.0, 1.0, 0.92), _rng.randf_range(0.26, 0.4), _rng.randf_range(0.6, 0.95))
 	_play(_ding, "ui/ui_select", 1.25)
-
-
-func _cell_pos(g: VoxelGrid, c: Vector3i) -> Vector3:
-	return g.origin + (Vector3(c) + Vector3.ONE * 1.5) * g.vs - VoxelCars.pivot()
 
 
 func _sparks(at: Vector3, n: int) -> void:

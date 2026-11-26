@@ -44,8 +44,16 @@ static var _CORNERS := _corners()
 
 ## Mesh arrays for the whole grid; `pivot` is subtracted from every vertex.
 ## jitter: per-voxel brightness variation (0 = none).
-static func build_arrays(g: VoxelGrid, pivot: Vector3 = Vector3.ZERO, jitter: float = 0.06) -> Array:
+## P006 components: `parts` (one byte per grid cell, same indexing as g.mat)
+## tags each voxel with a component id, written into UV.x as
+## emit kind + 4 * id (the model shader hides components by id). Faces
+## between two different components are kept (so a component can go and
+## leave no hole), except against components flagged in `keep` (those
+## never go).
+static func build_arrays(g: VoxelGrid, pivot: Vector3 = Vector3.ZERO, jitter: float = 0.06,
+		parts: PackedByteArray = PackedByteArray(), keep: PackedByteArray = PackedByteArray()) -> Array:
 	var mat := g.mat
+	var tagged := not parts.is_empty()
 	var col := g.col
 	var sx := g.sx
 	var sz := g.sz
@@ -89,13 +97,18 @@ static func build_arrays(g: VoxelGrid, pivot: Vector3 = Vector3.ZERO, jitter: fl
 				elif m == Vox.GLOW:
 					emit = 3.0
 				var glossy := 1.0 if (m == Vox.GLASS or m == Vox.METAL or m == Vox.HEAD or m == Vox.TAIL) else 0.0
-				var fuv := Vector2(emit, glossy + rnd * 0.9)
+				var my_part := parts[i] if tagged else 0
+				var fuv := Vector2(emit + 4.0 * my_part, glossy + rnd * 0.9)
 				var c0 := Color.hex((col[i] << 8) | 0xff)
 				var j := 1.0 + (rnd - 0.5) * 2.0 * jitter
 				for d in 6:
 					var ni := i + dn[d]
 					if mat[ni] != 0:
-						continue
+						if not tagged:
+							continue
+						var np := parts[ni]
+						if np == my_part or keep[np] != 0:
+							continue
 					var sh: float = FACE_SHADE[d] * j
 					var c := Color(c0.r * sh, c0.g * sh, c0.b * sh)
 					var a := ni
@@ -151,9 +164,10 @@ static func build_arrays(g: VoxelGrid, pivot: Vector3 = Vector3.ZERO, jitter: fl
 	return arrays
 
 
-static func build_mesh(g: VoxelGrid, material: Material, pivot: Vector3 = Vector3.ZERO, jitter: float = 0.06) -> ArrayMesh:
+static func build_mesh(g: VoxelGrid, material: Material, pivot: Vector3 = Vector3.ZERO, jitter: float = 0.06,
+		parts: PackedByteArray = PackedByteArray(), keep: PackedByteArray = PackedByteArray()) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
-	var a := build_arrays(g, pivot, jitter)
+	var a := build_arrays(g, pivot, jitter, parts, keep)
 	if not a.is_empty():
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
 		mesh.surface_set_material(0, material)

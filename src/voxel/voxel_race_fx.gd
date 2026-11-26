@@ -89,8 +89,7 @@ func setup(p_stage: VoxelStage) -> void:
 	for i in stage.cars3d.size():
 		var c: Car = _main.cars[i]
 		var d: Dictionary = stage.cars3d[i]
-		var grid: VoxelGrid = d.grid
-		var dmg := VoxelCarDamage.new(grid, d.body, 1000 + i)
+		var dmg := VoxelCarDamage.new(d.model, d.body, 1000 + i)
 		dmg.dirty = false  # the shared pristine mesh is already shown
 		damage.append(dmg)
 		_last_dir.append(Vector3.ZERO)
@@ -142,10 +141,8 @@ func _check_new_race() -> void:
 	_taunt_cool.fill(-100.0)
 	_taunt_last = -100.0
 	for i in damage.size():
-		if damage[i].removed > 0 or damage[i].wrecked:
+		if damage[i].loss() > 0.0 or damage[i].wrecked:
 			damage[i].restore()
-			damage[i].dirty = false
-			(stage.cars3d[i].body as MeshInstance3D).mesh = stage.cars3d[i].pristine_mesh
 		_was_wrecked[i] = 0
 		_set_wheels(i, true)
 
@@ -163,24 +160,19 @@ func _sync_car(i: int, delta: float) -> void:
 	if wrecked and _was_wrecked[i] == 0 and c.visible:
 		_explode(i)
 	elif not wrecked and _was_wrecked[i] == 1:
-		dmg.restore()  # respawned: a fresh body, then the damage it still carries
-		dmg.dirty = false
-		(d.body as MeshInstance3D).mesh = d.pristine_mesh
+		dmg.restore(true)  # respawned: a fresh body, then the damage it still carries
 		_set_wheels(i, true)
 	_was_wrecked[i] = 1 if wrecked else 0
 	if not wrecked and dw != null and c.visible:
 		var target := VoxelCarDamage.target_loss(dw.fraction(i))
 		if target < dmg.loss() - 0.03:  # repaired
-			dmg.restore()
+			dmg.restore(true)
 		if target > dmg.loss() + 0.003:
 			var dir := _last_dir[i] if _time - _last_hit_time[i] < 0.6 else Vector3.ZERO
 			var pieces := dmg.break_to(target, dir)
 			_spawn_bits(i, pieces, dir)
-	if dmg.dirty and _rebuilds_left > 0:
-		_rebuilds_left -= 1
+	if dmg.dirty:
 		dmg.rebuild()
-		if not wrecked and dmg.removed == 0:
-			(d.body as MeshInstance3D).mesh = d.pristine_mesh
 	# smoke: heavy damage, and the burning wreck
 	if c.visible and root.visible:
 		var share: float = dw.fraction(i) if dw != null else 1.0
@@ -270,25 +262,19 @@ func _spawn_bits(i: int, pieces: Array, dir: Vector3) -> void:
 	var d: Dictionary = stage.cars3d[i]
 	var body: MeshInstance3D = d.body
 	var xf := body.global_transform
-	var basis := xf.basis.orthonormalized()
 	var c: Car = _main.cars[i]
 	var v := c.model.velocity if c.model != null else Vector2.ZERO
 	var carv := Vector3(v.x, 0.0, v.y) * Vox.PX
-	var out_dir := (basis * dir).normalized() if dir.length() > 0.01 else Vector3.ZERO
+	var out_dir := (xf.basis.orthonormalized() * dir).normalized() if dir.length() > 0.01 else Vector3.ZERO
 	var floor_y: float = (d.root as Node3D).global_position.y if d.h > 2.0 else -INF
-	for p in pieces:
-		var wp: Vector3 = xf * (p[0] as Vector3)
-		var away: Vector3 = (wp - (d.root as Node3D).global_position)
-		away.y = 0.0
-		away = away.normalized()
-		var vel := carv * _rng.randf_range(0.5, 0.85) + (away * 0.6 + out_dir) * _rng.randf_range(1.5, 4.0) + Vector3(0, _rng.randf_range(1.5, 4.0), 0)
-		fx.debris(wp, vel, p[1], VoxelCars.voxel_size() * _rng.randf_range(0.9, 1.15), floor_y)
-	if pieces.size() >= 3:
-		fx.impact(xf * (pieces[0][0] as Vector3), out_dir, 0.2)
+	fx.throw_parts(d.model, pieces, xf, carv, out_dir, floor_y, false)
+	var at: Vector3 = xf * (d.model.parts[int(pieces[0])].centre as Vector3)
+	fx.impact(at, out_dir, 0.25 + 0.1 * pieces.size())
 
 
-## The car blows apart: chunks of its own model, wheels flying, fire, smoke,
-## a flash, and a burn mark under it.
+## The car blows apart: its remaining components thrown outward, wheels
+## flying, fire, smoke, a flash, and a burn mark under it; the charred crash
+## cell stays.
 func _explode(i: int) -> void:
 	var d: Dictionary = stage.cars3d[i]
 	var dmg := damage[i]
@@ -301,29 +287,11 @@ func _explode(i: int) -> void:
 	var carv := Vector3(v.x, 0.0, v.y) * Vox.PX
 	var floor_y: float = root.global_position.y if d.h > 2.0 else -INF
 	var pieces := dmg.explode()
-	for p in pieces:
-		var wp: Vector3 = xf * (p[0] as Vector3)
-		var out := (wp - centre)
-		out.y = maxf(out.y, 0.0) + 0.35
-		var vel := carv * 0.35 + out.normalized() * _rng.randf_range(3.0, 9.0) + Vector3(0, _rng.randf_range(3.0, 8.0), 0)
-		var glow := 0.0
-		if _rng.randf() < 0.12:
-			glow = 0.8  # embers
-		fx.debris(wp, vel, p[1], VoxelCars.voxel_size() * float(p[2]) * _rng.randf_range(0.9, 1.1), floor_y, glow)
-	# the wheels come off
-	var wheels: Array = d.wheels
-	for w in wheels:
-		var wn := w as Node3D
-		var wp := wn.global_position
-		for k in 3:
-			var out := (wp - centre)
-			out.y = 0.6
-			fx.debris(wp + Vector3(0, k * 0.1, 0), carv * 0.3 + out.normalized() * _rng.randf_range(3.0, 6.0) + Vector3(0, _rng.randf_range(3, 6), 0),
-				Color(0.1, 0.1, 0.11), VoxelCars.voxel_size() * 2.0, floor_y)
+	fx.throw_parts(d.model, pieces, xf, carv, Vector3.ZERO, floor_y, true)
+	fx.throw_wheels(d.wheels, centre, carv, floor_y)
 	_set_wheels(i, false)
 	fx.explosion(centre, 1.0)
-	dmg.dirty = true
-	dmg.rebuild()  # the burnt hull
+	dmg.rebuild()
 	_burn(c.global_position, 1.0)
 
 

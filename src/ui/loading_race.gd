@@ -256,7 +256,7 @@ func _build_world() -> void:
 		var body := MeshInstance3D.new()
 		body.mesh = VoxelCars.body_mesh(resolver.get_texture(CARS[k]), layout, CARS[k])
 		root.add_child(body)
-		var at := layout.positions(CARS[k])
+		var at := VoxelCars.wheels_of(layout, resolver.get_texture(CARS[k]), CARS[k])
 		var ws: Array = []
 		for ax in [at.x, at.y]:
 			for az in [-at.z, at.z]:

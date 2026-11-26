@@ -116,6 +116,8 @@ func set_player_car(logical: String) -> void:
 		return
 	var body := AssetCatalog.body_of(logical)
 	_bodies[0].mesh = VoxelCars.body_mesh(_resolver.get_texture(body), _layout, body)
+	if not _wheels.is_empty():
+		VoxelCars.place_wheels(_wheels[0], _layout, _resolver.get_texture(body), body)
 
 
 func _add_car(logical: String, k: int) -> void:
@@ -125,7 +127,7 @@ func _add_car(logical: String, k: int) -> void:
 	body.set_instance_shader_parameter("head_glow", 0.35)
 	body.set_instance_shader_parameter("tail_glow", 0.3)
 	root.add_child(body)
-	var at := _layout.positions(logical)
+	var at := VoxelCars.wheels_of(_layout, _resolver.get_texture(logical), logical)
 	var ws: Array = []
 	for ax in [at.x, at.y]:
 		for az in [-at.z, at.z]:

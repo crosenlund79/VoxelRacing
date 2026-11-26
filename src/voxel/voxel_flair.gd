@@ -1,24 +1,15 @@
 class_name VoxelFlair
 extends RefCounted
 ## VoxelRacing (P004): little touches that make each car its driver's own -
-## a racing number on the roof, exhaust pipes (they puff and pop), rims in
-## the driver's colour and one signature gadget per driver. Small voxel
+## exhaust pipes (they puff and pop), rims in the driver's colour and one
+## signature gadget per driver. (P006: the racing numbers and their plates
+## are gone; the vehicles carry their own exhausts.) Small voxel
 ## models in the cars' fine voxel size, added on top of the car's own model
 ## (its livery and shape stay as drawn). Presentation only.
 
-## Racing numbers by racer id (0 = the player).
-const NUMBERS := [1, 3, 13, 7, 44, 0, 99, 12, 8, 11]
 ## Rim tints by racer id (multiplies the shared wheel's colours).
 const RIMS := [Color(1.25, 1.05, 0.55), Color(0.9, 0.95, 1.15), Color(1.3, 0.6, 0.5), Color(0.8, 1.05, 1.3), Color(0.8, 1.1, 0.7),
 	Color(1.15, 1.15, 1.2), Color(1.4, 1.15, 0.45), Color(0.85, 0.85, 0.9), Color(1.1, 0.7, 1.2), Color(1.3, 0.6, 0.85)]
-
-const DIGITS := {
-	"0": ["111", "101", "101", "101", "111"], "1": ["010", "110", "010", "010", "111"],
-	"2": ["111", "001", "111", "100", "111"], "3": ["111", "001", "011", "001", "111"],
-	"4": ["101", "101", "111", "001", "001"], "5": ["111", "100", "111", "001", "111"],
-	"6": ["111", "100", "111", "101", "111"], "7": ["111", "001", "010", "010", "010"],
-	"8": ["111", "101", "111", "101", "111"], "9": ["111", "101", "111", "001", "111"],
-}
 
 static var _cache: Dictionary = {}
 
@@ -29,29 +20,6 @@ static func _vs() -> float:
 
 static func _done(g: VoxelGrid, pivot: Vector3) -> ArrayMesh:
 	return VoxelMesher.build_mesh(g, VoxelCars.material(), pivot * _vs(), 0.02)
-
-
-## A white roof plate with the number in black (lying flat, reading along +X).
-static func number_plate(n: int) -> ArrayMesh:
-	var key := "num%d" % n
-	if _cache.has(key):
-		return _cache[key]
-	var text := str(n)
-	var w := text.length() * 4 + 3
-	var g := VoxelGrid.new(Vector3i(7, 1, w), _vs(), Vector3.ZERO)
-	for z in w:
-		for x in 7:
-			g.set_v(x, 0, z, Vox.SOLID, Color(0.96, 0.95, 0.9))
-	for k in text.length():
-		var rows: Array = DIGITS.get(text[k], DIGITS["0"])
-		for r in 5:
-			for c in 3:
-				if String(rows[r])[c] == "1":
-					# read from the side: rows along -X, columns along +Z
-					g.set_v(5 - r, 0, 2 + k * 4 + c, Vox.SOLID, Color(0.08, 0.08, 0.1))
-	var mesh := _done(g, Vector3(3.5, 0.0, w * 0.5))
-	_cache[key] = mesh
-	return mesh
 
 
 static func exhaust() -> ArrayMesh:

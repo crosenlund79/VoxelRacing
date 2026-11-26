@@ -622,7 +622,7 @@ func _add_racer(e: Dictionary) -> void:
 		body.set_instance_shader_parameter("tint", tint)
 		body.set_instance_shader_parameter("head_glow", 0.45)
 		body.set_instance_shader_parameter("tail_glow", 0.35)
-		var at := _layout.positions(logical)
+		var at := VoxelCars.wheels_of(_layout, tex, logical)
 		for ax in [at.x, at.y]:
 			for az in [-at.z, at.z]:
 				_add_mesh(VoxelCars.wheel_mesh(), Vector3(ax, VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX, az) * Vox.PX, car)

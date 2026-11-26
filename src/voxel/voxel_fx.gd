@@ -8,7 +8,12 @@ extends Node3D
 ##     debris kick it up again (spatial hash lookup);
 ##   * sparks and fire: short-lived glowing voxels;
 ##   * smoke and dust: soft voxel puffs;
-##   * stars: little glowing voxel stars popping out of collisions.
+##   * stars: little glowing voxel stars popping out of collisions;
+##   * pieces (P006): whole components that broke off cars (a door, a
+##     bumper, a wing) - their own meshes and colours - fly, tumble, bounce,
+##     come to rest lying flat and stay; passing cars shove them about,
+##     light pieces further than heavy ones. Oldest pieces make room for new
+##     ones past PIECES_MAX.
 ## Presentation only: nothing here touches the race.
 
 const DEBRIS_MAX := 9000
@@ -56,6 +61,14 @@ var _f := {}
 var _p := {}
 var _s := {}
 var _lights: Array[OmniLight3D] = []
+## Component pieces (P006): [node, vel, spin, state (1 flying, 2 resting),
+## mass, half extents, floor]. Weight: heavier pieces bounce lower, skid less
+## and are shoved less.
+const PIECES_MAX := 200
+const PIECE_GRAVITY := 30.0
+var _pieces: Array[Dictionary] = []
+var _piece_next := 0
+var _piece_flying := 0
 var _light_life := PackedFloat32Array()
 
 
@@ -170,6 +183,102 @@ func debris(pos: Vector3, vel: Vector3, color: Color, size: float, floor_y: floa
 	_debris.set_instance_custom_data(i, Color(glow, 0, 0, 0))
 	_d_high = maxi(_d_high, i + 1)
 	_debris.visible_instance_count = _d_high
+
+
+## A whole component breaking off a car: `mesh` centred on its centre, placed
+## at `xf`, flying with `vel` and tumbling at `spin` (rad/s, axis * rate);
+## `mass` in voxels. It comes to rest on the ground (or `floor_y`) and stays.
+func piece(mesh: Mesh, xf: Transform3D, vel: Vector3, spin: Vector3, mass: float, floor_y: float = -INF,
+		tint: Color = Color.WHITE, charred: float = 0.0) -> void:
+	if mesh == null:
+		return
+	var p: Dictionary
+	if _pieces.size() < PIECES_MAX:
+		var mi := MeshInstance3D.new()
+		mi.name = "Piece"
+		add_child(mi)
+		p = {"node": mi}
+		_pieces.append(p)
+	else:
+		p = _pieces[_piece_next]
+		_piece_next = (_piece_next + 1) % PIECES_MAX
+		if int(p.get("state", 0)) == 1:
+			_piece_flying -= 1
+	var node: MeshInstance3D = p.node
+	node.mesh = mesh
+	node.visible = true
+	node.global_transform = xf
+	node.set_instance_shader_parameter("tint", tint)
+	node.set_instance_shader_parameter("charred", charred)
+	var ab := mesh.get_aabb()
+	p.ext = ab.size * 0.5
+	p.off = ab.get_center()
+	p.vel = vel
+	p.spin = spin
+	p.mass = maxf(mass, 1.0)
+	p.floor = floor_y
+	p.state = 1
+	_piece_flying += 1
+
+
+## Components of a vehicle breaking away: each flies as its own piece from
+## where it sat on the car (`body_xf`), with the car's velocity `carv`, out
+## from the car's centre and towards `out_dir`; `blast` throws them hard
+## (an explosion). A few sparks and dark crumbs come with them.
+func throw_parts(model: VoxelVehicle.Model, ids: Array, body_xf: Transform3D, carv: Vector3, out_dir: Vector3,
+		floor_y: float, blast: bool) -> void:
+	var centre := body_xf * Vector3(0, 0.45, 0)
+	var basis := body_xf.basis.orthonormalized()
+	for id in ids:
+		var p: Dictionary = model.parts[int(id)]
+		var mass := float(p.n)
+		var wp: Vector3 = body_xf * (p.centre as Vector3)
+		var away := wp - centre
+		var vel: Vector3
+		var k := clampf(sqrt(40.0 / maxf(mass, 1.0)), 0.45, 1.6)
+		if blast:
+			away.y = maxf(away.y, 0.0) + 0.3
+			vel = carv * 0.35 + away.normalized() * _rng.randf_range(3.0, 7.5) * k + Vector3(0, _rng.randf_range(3.0, 7.0) * k, 0)
+		else:
+			away.y = 0.0
+			vel = carv * _rng.randf_range(0.55, 0.85) + (away.normalized() * 0.7 + out_dir) * _rng.randf_range(1.2, 3.2) * k \
+				+ Vector3(0, _rng.randf_range(1.5, 3.5) * k, 0)
+		var spin := Vector3(_rng.randf_range(-1, 1), _rng.randf_range(-1, 1), _rng.randf_range(-1, 1)).normalized() \
+			* _rng.randf_range(3.0, 10.0) * k * (1.5 if blast else 1.0)
+		var xf := Transform3D(basis, wp)
+		piece(VoxelVehicle.part_mesh(model, int(id)), xf, vel, spin, mass, floor_y, Color.WHITE,
+			_rng.randf_range(0.0, 0.22) if blast else 0.0)
+		# a couple of crumbs and sparks where it tore off
+		for c in (2 if blast else 1):
+			debris(wp, vel * 0.6 + Vector3(_rng.randf_range(-1, 1), 1.0, _rng.randf_range(-1, 1)),
+				(p.colour as Color).darkened(0.3), VoxelCars.voxel_size() * _rng.randf_range(0.7, 1.0), floor_y)
+		for c in 3:
+			spark(wp, (vel.normalized() + Vector3(_rng.randf_range(-0.8, 0.8), 0.6, _rng.randf_range(-0.8, 0.8))) * _rng.randf_range(2.5, 6.0),
+				Color(1.0, _rng.randf_range(0.75, 1.0), 0.45), 0.06, _rng.randf_range(0.2, 0.4), 1.2, 1.0)
+
+
+## Wheels flying off a wreck (their own meshes, rim tint kept).
+func throw_wheels(wheels: Array, centre: Vector3, carv: Vector3, floor_y: float) -> void:
+	for w in wheels:
+		var pivot := w as Node3D
+		if pivot == null or not pivot.visible:
+			continue
+		var mi: MeshInstance3D = pivot.get_child(0) as MeshInstance3D if pivot.get_child_count() > 0 else null
+		var mesh: Mesh = mi.mesh if mi != null else VoxelCars.wheel_mesh()
+		var tint: Color = mi.get_instance_shader_parameter("tint") if mi != null and mi.get_instance_shader_parameter("tint") != null else Color.WHITE
+		var xf := mi.global_transform if mi != null else pivot.global_transform
+		var out := xf.origin - centre
+		out.y = 0.5
+		piece(mesh, xf, carv * 0.3 + out.normalized() * _rng.randf_range(3.0, 6.0) + Vector3(0, _rng.randf_range(3.0, 6.0), 0),
+			Vector3(_rng.randf_range(-6, 6), _rng.randf_range(-6, 6), _rng.randf_range(-6, 6)), 60.0, floor_y, tint, 0.3)
+
+
+func piece_count() -> int:
+	var n := 0
+	for p in _pieces:
+		if int(p.get("state", 0)) != 0:
+			n += 1
+	return n
 
 
 func spark(pos: Vector3, vel: Vector3, color: Color, size: float, life: float, glow: float = 1.0, grav: float = 1.0) -> void:
@@ -294,6 +403,26 @@ func scatter_near(centre: Vector3, vel: Vector3, radius: float) -> int:
 				kicked += 1
 			if list.is_empty():
 				_hash.erase(key)
+	for p in _pieces:
+		if int(p.get("state", 0)) != 2:
+			continue
+		var node: Node3D = p.node
+		var at := node.global_position
+		var dx := at.x - centre.x
+		var dz := at.z - centre.z
+		var reach := radius + maxf((p.ext as Vector3).x, (p.ext as Vector3).z) * 0.6
+		if dx * dx + dz * dz > reach * reach or absf(at.y - centre.y) > 1.4:
+			continue
+		var away := Vector3(dx, 0.0, dz).normalized()
+		if away == Vector3.ZERO:
+			away = Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)).normalized()
+		var k := clampf(sqrt(14.0 / float(p.mass)), 0.22, 1.3)
+		p.vel = (vel * _rng.randf_range(0.3, 0.6) + away * (1.0 + v_speed * _rng.randf_range(0.1, 0.22))) * k \
+			+ Vector3(0, (0.8 + v_speed * _rng.randf_range(0.03, 0.08)) * k, 0)
+		p.spin = Vector3(_rng.randf_range(-1, 1), _rng.randf_range(-1, 1), _rng.randf_range(-1, 1)).normalized() * _rng.randf_range(3.0, 9.0) * k
+		p.state = 1
+		_piece_flying += 1
+		kicked += 1
 	return kicked
 
 
@@ -317,6 +446,12 @@ func clear() -> void:
 	_d_next = 0
 	_d_high = 0
 	_debris.visible_instance_count = 0
+	for p in _pieces:
+		(p.node as Node3D).visible = false
+		(p.node as MeshInstance3D).mesh = null
+		p.state = 0
+	_piece_next = 0
+	_piece_flying = 0
 	for pool in [_f, _p, _s]:
 		var mm: MultiMesh = _fx if pool == _f else (_puffs if pool == _p else _stars)
 		for i in (pool.active as Array):
@@ -346,6 +481,8 @@ func settled_count() -> int:
 func _process(delta: float) -> void:
 	delta = minf(delta, 0.05) * speed
 	_step_debris(delta)
+	if _piece_flying > 0:
+		_step_pieces(delta)
 	_step_pool(_f, _fx, delta)
 	_step_pool(_p, _puffs, delta)
 	_step_pool(_s, _stars, delta)
@@ -412,6 +549,77 @@ func _step_debris(dt: float) -> void:
 		else:
 			still.append(i)
 	_flying = still
+
+
+func _step_pieces(dt: float) -> void:
+	if dt <= 0.0:
+		return
+	var flying := 0
+	for p in _pieces:
+		if int(p.get("state", 0)) != 1:
+			continue
+		var node: Node3D = p.node
+		var xf := node.global_transform
+		var v: Vector3 = p.vel
+		var spin: Vector3 = p.spin
+		var mass: float = p.mass
+		var ext: Vector3 = p.ext
+		v.y -= PIECE_GRAVITY * dt
+		v *= 1.0 - 0.3 * dt
+		var pos := xf.origin + v * dt
+		var b := xf.basis
+		if spin.length() > 0.01:
+			b = Basis(spin.normalized(), spin.length() * dt) * b
+		var half := absf(b.x.y) * ext.x + absf(b.y.y) * ext.y + absf(b.z.y) * ext.z
+		var old_floor := _piece_floor(p, xf.origin)
+		var nf := _piece_floor(p, pos)
+		if nf > old_floor + 0.3 and pos.y - half < nf:  # a wall / barrier side: bounce back
+			pos.x = xf.origin.x
+			pos.z = xf.origin.z
+			v.x *= -0.3
+			v.z *= -0.3
+			nf = old_floor
+		var rest := false
+		if pos.y - half <= nf:
+			pos.y = nf + half
+			if v.y < 0.0:
+				var bounce := 0.32 / (1.0 + mass / 60.0)
+				v.y = -v.y * bounce
+				var skid := 0.62 - 0.25 * clampf(mass / 120.0, 0.0, 1.0)
+				v.x *= skid
+				v.z *= skid
+				spin = spin * 0.45 + Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)) * minf(v.length(), 2.0)
+			if v.length() < 0.9:
+				rest = true
+		if rest:
+			# lies flat: the axis nearest the vertical turns upright (yaw kept)
+			var axes := [b.x, b.y, b.z]
+			var exts := [ext.x, ext.y, ext.z]
+			var best := 0
+			for k in 3:
+				if absf((axes[k] as Vector3).normalized().y) > absf((axes[best] as Vector3).normalized().y):
+					best = k
+			var a := (axes[best] as Vector3).normalized()
+			var up := Vector3.UP if a.y >= 0.0 else Vector3.DOWN
+			var q := Quaternion(a, up) if a.dot(up) < 0.9999 else Quaternion.IDENTITY
+			b = Basis(q) * b
+			pos.y = nf + float(exts[best])
+			v = Vector3.ZERO
+			spin = Vector3.ZERO
+			p.state = 2
+		else:
+			flying += 1
+		node.global_transform = Transform3D(b, pos)
+		p.vel = v
+		p.spin = spin
+	_piece_flying = flying
+
+
+func _piece_floor(p: Dictionary, at: Vector3) -> float:
+	var f: float = p.floor
+	if ground.is_valid():
+		f = maxf(f, ground.call(at.x, at.z))
+	return f
 
 
 func _step_pool(pool: Dictionary, mm: MultiMesh, dt: float) -> void:

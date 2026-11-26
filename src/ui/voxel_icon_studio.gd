@@ -77,6 +77,7 @@ func render_all(resolver: AssetResolver) -> void:
 		if tex == null:
 			continue
 		_body.mesh = VoxelCars.body_mesh(tex, layout, logical)
+		VoxelCars.place_wheels(_wheels, layout, tex, logical)
 		render_target_update_mode = SubViewport.UPDATE_ONCE
 		await RenderingServer.frame_post_draw
 		await RenderingServer.frame_post_draw

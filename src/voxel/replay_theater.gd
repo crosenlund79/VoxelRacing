@@ -85,8 +85,7 @@ func setup(p_stage: VoxelStage, p_recorder: ReplayRecorder) -> void:
 	add_child(_holder)
 	for i in main.cars.size():
 		var d := stage.make_car(i, _holder)
-		var dmg := VoxelCarDamage.new(d.grid, d.body, 4000 + i)
-		dmg.dirty = false
+		var dmg := VoxelCarDamage.new(d.model, d.body, 4000 + i)
 		_cars.append(d)
 		_damage.append(dmg)
 		_last_dir.append(Vector3.ZERO)
@@ -186,9 +185,7 @@ func _next_clip() -> void:
 	# the cars as they were when the moment began
 	for i in _cars.size():
 		var dmg := _damage[i]
-		dmg.restore()
-		dmg.dirty = false
-		(_cars[i].body as MeshInstance3D).mesh = _cars[i].pristine_mesh
+		dmg.restore(true)
 		_set_wheels(i, true)
 		var o := i * ReplayRecorder.K
 		var cars: PackedFloat32Array = samples[0][1]
@@ -197,11 +194,8 @@ func _next_clip() -> void:
 		var target := VoxelCarDamage.target_loss(cars[o + 8])
 		if target > 0.0:
 			dmg.break_to(target, Vector3.ZERO)
-			dmg.rebuild()
 		if wrecked:
 			dmg.explode()
-			dmg.dirty = true
-			dmg.rebuild()
 			_set_wheels(i, false)
 		_prev_pos[i] = Vector3(cars[o], cars[o + 1], cars[o + 2])
 		_last_dir[i] = Vector3.ZERO
@@ -338,9 +332,7 @@ func _apply(c: Dictionary, delta: float) -> void:
 		if wrecked and _was_wrecked[i] == 0:
 			_explode(i, p, (pb - pa) / maxf(tb - ta, 0.001))
 		elif not wrecked and _was_wrecked[i] == 1:
-			dmg.restore()
-			dmg.dirty = false
-			body.mesh = d.pristine_mesh
+			dmg.restore(true)
 			_set_wheels(i, true)
 		_was_wrecked[i] = 1 if wrecked else 0
 		if not wrecked:
@@ -350,8 +342,6 @@ func _apply(c: Dictionary, delta: float) -> void:
 				_bits(i, pieces, (pb - pa) / maxf(tb - ta, 0.001))
 		if dmg.dirty:
 			dmg.rebuild()
-			if not wrecked and dmg.removed == 0:
-				body.mesh = d.pristine_mesh
 		# smoke from wrecks and badly damaged cars
 		var rate := 9.0 if wrecked else (lerpf(1.5, 6.0, clampf((0.5 - share) / 0.4, 0.0, 1.0)) if share < 0.5 else 0.0)
 		if rate > 0.0 and _rng.randf() < delta * rate * _rate:
@@ -383,13 +373,7 @@ func _bits(i: int, pieces: Array, carv: Vector3) -> void:
 	var xf: Transform3D = (d.body as MeshInstance3D).global_transform
 	var root: Node3D = d.root
 	var out_dir := (xf.basis.orthonormalized() * _last_dir[i]).normalized() if _last_dir[i].length() > 0.01 else Vector3.ZERO
-	for p in pieces:
-		var wp: Vector3 = xf * (p[0] as Vector3)
-		var away := wp - root.global_position
-		away.y = 0.0
-		var vel := carv * _rng.randf_range(0.5, 0.85) + (away.normalized() * 0.6 + out_dir) * _rng.randf_range(1.5, 3.5) \
-			+ Vector3(0, _rng.randf_range(1.5, 3.5), 0)
-		fx.debris(wp, vel, p[1], VoxelCars.voxel_size() * _rng.randf_range(0.9, 1.15), root.position.y if root.position.y > 0.2 else -INF)
+	fx.throw_parts(d.model, pieces, xf, carv, out_dir, root.position.y if root.position.y > 0.2 else -INF, false)
 
 
 func _explode(i: int, at: Vector3, carv: Vector3) -> void:
@@ -398,23 +382,10 @@ func _explode(i: int, at: Vector3, carv: Vector3) -> void:
 	var xf: Transform3D = (d.body as MeshInstance3D).global_transform
 	var centre := at + Vector3(0, 0.5, 0)
 	var floor_y := at.y if at.y > 0.2 else -INF
-	for p in dmg.explode():
-		var wp: Vector3 = xf * (p[0] as Vector3)
-		var out := wp - centre
-		out.y = maxf(out.y, 0.0) + 0.35
-		var vel := carv * 0.35 + out.normalized() * _rng.randf_range(3.0, 8.0) + Vector3(0, _rng.randf_range(3.0, 7.0), 0)
-		fx.debris(wp, vel, p[1], VoxelCars.voxel_size() * float(p[2]) * _rng.randf_range(0.9, 1.1), floor_y, 0.8 if _rng.randf() < 0.12 else 0.0)
-	for w in (d.wheels as Array):
-		var wp := (w as Node3D).global_position
-		for k in 3:
-			var out := wp - centre
-			out.y = 0.6
-			fx.debris(wp + Vector3(0, k * 0.1, 0), carv * 0.3 + out.normalized() * _rng.randf_range(3.0, 6.0) + Vector3(0, _rng.randf_range(3, 6), 0),
-				Color(0.1, 0.1, 0.11), VoxelCars.voxel_size() * 2.0, floor_y)
+	fx.throw_parts(d.model, dmg.explode(), xf, carv, Vector3.ZERO, floor_y, true)
+	fx.throw_wheels(d.wheels, centre, carv, floor_y)
 	_set_wheels(i, false)
 	fx.explosion(centre, 1.0)
-	dmg.dirty = true
-	dmg.rebuild()
 	_burn(Vector2(at.x, at.z) / Vox.PX, 1.0)
 	_sound("weapons/explosion", at, 2.0)
 

@@ -109,7 +109,7 @@ func pick_cars() -> void:
 		body.mesh = VoxelCars.body_mesh(resolver.get_texture(logical), layout, logical)
 		body.set_instance_shader_parameter("head_glow", 0.4)
 		car.add_child(body)
-		var at := layout.positions(logical)
+		var at := VoxelCars.wheels_of(layout, resolver.get_texture(logical), logical)
 		for ax in [at.x, at.y]:
 			for az in [-at.z, at.z]:
 				var w := MeshInstance3D.new()

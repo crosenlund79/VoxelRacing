@@ -55,6 +55,32 @@ Extract it and run `VoxelRacing.exe`.
   keep their cool for the first seconds instead of emptying their racks at
   the start line, two little display cars by the logo, and new grandstands
   in muted concrete, steel and slate. Screenshots: `docs/screenshots/p005/`.
+- **Prototype 006 - Built to Break** (previous state on branch
+  `checkpoint/before-built-to-break`): every driver races their own
+  real-world-inspired car (no logos or branding), built at a finer vehicle
+  voxel (4/3 px, 1.5x the old cars) in three layers: an indestructible
+  crash cell, internals (engine, radiator, exhaust, tank) and detachable
+  body components (bumpers, grille, bonnet, boot, roof, glass, fenders,
+  doors, skirts, lamps, mirrors, spoilers and wings). Damage wears and then
+  removes whole components, mostly on the side that was hit; explosions
+  throw the rest outward and leave the charred cell; broken-off components
+  fly, tumble, settle and get shoved about by passing cars. Racing numbers
+  are gone. Lights come from each car's own lamps and go out with them.
+  Screenshots: `docs/screenshots/p006/`.
+
+  | Driver | Car |
+  |---|---|
+  | You (red) / Player 2 (blue) | Le Mans GT racer, twin stripes |
+  | Victor "The Professor" | performance saloon, sage green |
+  | Rocco "Mad Dog" | classic American muscle car, gold and black, tall wing |
+  | Ellie "Sparrow" | open British-style roadster, pop-up lamps |
+  | Hank "The Wall" | modern American pony car, teal with white stripes |
+  | Maya "Ghost" | rear-engined GT coupe, round fender lamps |
+  | Dante "Showboat" | mid-engined Italian exotic, burgundy and gold |
+  | Greta "Clockwork" | Formula-style single-seater, checkered nose |
+  | Finn "Wildcard" | rally hatchback, lamp pod and roof scoop |
+  | Nina "The Hunter" | mid-engined American supercar, pink |
+  | The junker | battered estate car with mismatched panels |
 
 <p align="center">
 <img src="docs/screenshots/p005/01_main_menu_logo_cars.jpg" width="49%" alt="Main menu">

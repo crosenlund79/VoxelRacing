@@ -372,8 +372,9 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 	holder.add_child(root)
 	var tilt := Node3D.new()
 	root.add_child(tilt)
+	var model := VoxelCars.model(c.sprite.texture, body_logical)
 	var body := MeshInstance3D.new()
-	body.mesh = VoxelCars.body_mesh(c.sprite.texture, layout, body_logical)
+	body.mesh = model.mesh
 	tilt.add_child(body)
 	var marker := MeshInstance3D.new()
 	marker.mesh = _marker_mesh()
@@ -384,7 +385,7 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 	root.add_child(marker)
 	var wheels: Array[Node3D] = []
 	var spins: Array[MeshInstance3D] = []
-	var at := layout.positions(body_logical)
+	var at := VoxelCars.wheels_of(layout, c.sprite.texture, body_logical)
 	var show_wheels: bool = look.get("wheels", true)
 	for ax in [at.x, at.y]:
 		for az in [-at.z, at.z]:
@@ -393,6 +394,7 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 			root.add_child(pivot)
 			var w := MeshInstance3D.new()
 			w.mesh = VoxelCars.wheel_mesh()
+			w.scale.z = model.tyre.x if ax > 0.0 else model.tyre.y
 			pivot.add_child(w)
 			pivot.visible = show_wheels
 			wheels.append(pivot)
@@ -400,7 +402,8 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 	var lights: Array[Light3D] = []
 	for side in [-1.0, 1.0]:
 		var spot := SpotLight3D.new()
-		spot.position = Vector3(LightingPilot.HEAD_LAMP.x, 8.0, side * LightingPilot.HEAD_LAMP.y) * Vox.PX
+		# at the design's own lamp assembly (P006), a little ahead of it
+		spot.position = model.head_lamps[0 if side < 0.0 else 1] + Vector3(0.08, 0.0, 0.0)
 		spot.basis = Basis.looking_at(Vector3(1.0, -0.2, side * 0.04).normalized(), Vector3.UP)
 		spot.spot_range = 20.0
 		spot.spot_angle = 26.0
@@ -412,7 +415,7 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 		root.add_child(spot)
 		lights.append(spot)
 	var tail := OmniLight3D.new()
-	tail.position = Vector3(-36.0, 6.0, 0.0) * Vox.PX
+	tail.position = (model.tail_lamps[0] + model.tail_lamps[1]) * 0.5 - Vector3(0.15, 0.0, 0.0)
 	tail.omni_range = 2.6
 	tail.light_energy = 0.8
 	tail.light_color = Color(1.0, 0.12, 0.06)
@@ -420,7 +423,7 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 	root.add_child(tail)
 	lights.append(tail)
 	# P004: the driver's own touches - number, exhausts, rims, a gadget
-	var flair := _add_flair(i, tilt, VoxelCars.body_grid(c.sprite.texture, layout, body_logical), spins)
+	var flair := _add_flair(i, tilt, model, spins)
 	# the driver, for the overtaking taunt (hidden until a head pops out)
 	var head := Node3D.new()
 	head.name = "Driver"
@@ -440,11 +443,11 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 		"tick_pos": c.global_position, "tick_prev": c.global_position, "tick_rot": c.global_rotation, "rot_prev": c.global_rotation,
 		"exhausts": flair.exhausts, "key": flair.key, "rev_clock": 1.0 + float(i) * 0.37, "rev": 0.0, "h_prev": 0.0,
 		"tick_v": Vector2.ZERO, "slope": 0.0, "acc_long": 0.0, "acc_lat": 0.0, "pitch_v": 0.0, "roll_v": 0.0, "wheelspin": 0.0, "spin_rear": 0.0,
-		"head_node": head, "head": 0.0, "head_side": 1.0, "head_box": body.mesh.get_aabb() if body.mesh != null else AABB(),
+		"head_node": head, "head": 0.0, "head_side": 1.0, "head_box": model.cabin,
 		"root": root, "tilt": tilt, "body": body, "wheels": wheels, "spins": spins, "lights": lights,
 		"roll": 0.0, "pitch": 0.0, "spin": 0.0, "h": 0.0, "prev_v": Vector2.ZERO, "prev_pos": c.global_position,
 		"brake": 0.0, "steer": 0.0, "prev_rot": c.global_rotation, "marker": marker, "show_wheels": show_wheels,
-		"grid": VoxelCars.body_grid(c.sprite.texture, layout, body_logical), "pristine_mesh": body.mesh,
+		"model": model, "pristine_mesh": body.mesh,
 	}
 
 
@@ -625,61 +628,39 @@ const SPRING_K := 140.0
 const SPRING_C := 15.0
 
 
-## Number plate on the bonnet, exhaust pipes at the tail, rims in the
-## driver's colour and their signature gadget (VoxelFlair). Positions come
-## from the car's own voxel grid (roof and bonnet heights, nose and tail).
-func _add_flair(i: int, tilt: Node3D, g: VoxelGrid, spins: Array) -> Dictionary:
+## The driver's own touches (VoxelFlair): rims in the driver's colour and
+## their signature gadget, placed on the vehicle design (roof, nose, tail).
+## P006: no racing numbers on the cars; the exhausts are the vehicle's own
+## pipes (markers here for the puffs and pops).
+func _add_flair(i: int, tilt: Node3D, model: VoxelVehicle.Model, spins: Array) -> Dictionary:
 	var out := {"exhausts": [], "key": null}
-	if g == null:
+	if model == null:
 		return out
-	var vs := VoxelCars.voxel_size()
-	var piv := VoxelCars.pivot()
-	var sz := g.size()
-	var zc := sz.z / 2
-	var top_at := func(gx: int) -> float:
-		for gy in range(sz.y - 1, -1, -1):
-			if g.get_m(clampi(gx, 0, sz.x - 1), gy, zc) != Vox.AIR:
-				return (gy + 1) * vs
-		return 0.0
-	var nose := 0
-	var tail := sz.x - 1
-	for gx in sz.x:
-		for gy in range(1, 5):
-			if g.get_m(gx, gy, zc) != Vox.AIR:
-				nose = maxi(nose, gx)
-				tail = mini(tail, gx)
-	var mx := func(gx: float) -> float:
-		return (gx + 0.5) * vs - piv.x
-	var id := i % VoxelFlair.NUMBERS.size()
-	var plate := MeshInstance3D.new()
-	plate.mesh = VoxelFlair.number_plate(VoxelFlair.NUMBERS[id])
-	var hood := nose - 5
-	plate.position = Vector3(mx.call(hood), top_at.call(hood) + 0.004, 0.0)
-	tilt.add_child(plate)
-	for side in [-1.0, 1.0]:
-		var ex := MeshInstance3D.new()
-		ex.mesh = VoxelFlair.exhaust()
-		ex.position = Vector3(mx.call(tail) - vs * 1.2, vs * 1.0, side * sz.z * 0.2 * vs)
+	for p in model.exhausts:
+		var ex := Node3D.new()
+		ex.name = "Exhaust"
+		ex.position = p
 		tilt.add_child(ex)
 		(out.exhausts as Array).append(ex)
+	var id := i % VoxelFlair.RIMS.size()
 	for w in spins:
 		(w as GeometryInstance3D).set_instance_shader_parameter("tint", VoxelFlair.RIMS[id])
 	var gd := VoxelFlair.gadget(id)
 	if not gd.is_empty():
 		var gm := MeshInstance3D.new()
 		gm.mesh = gd[0]
-		var roof_x := (nose + tail) / 2 - 2
+		var vs := VoxelCars.voxel_size()
 		match String(gd[1]):
 			"roof":
-				gm.position = Vector3(mx.call(roof_x), top_at.call(roof_x), 0.0)
+				gm.position = Vector3(model.roof_x, model.roof_top, 0.0)
 			"tail_roof":
-				gm.position = Vector3(mx.call(tail + 3), top_at.call(tail + 3), sz.z * 0.28 * vs)
+				gm.position = Vector3(model.tail_x + 0.45, model.roof_top * 0.72, model.cabin.size.z * 0.3)
 			"sides":
-				gm.position = Vector3(mx.call(roof_x), vs * 3.0, 0.0)
+				gm.position = Vector3(model.roof_x, vs * 3.0, 0.0)
 			"nose":
-				gm.position = Vector3(mx.call(nose) + vs * 0.6, vs * 0.5, 0.0)
+				gm.position = Vector3(model.nose_x + vs * 0.3, vs * 0.5, 0.0)
 			"key":
-				gm.position = Vector3(mx.call(tail) - vs * 1.0, vs * 3.0, 0.0)
+				gm.position = Vector3(model.tail_x - vs * 0.6, vs * 3.0, 0.0)
 				out.key = gm
 		tilt.add_child(gm)
 	return out
