@@ -57,6 +57,13 @@ Extract it and run `VoxelRacing.exe`.
   in muted concrete, steel and slate. Screenshots: `docs/screenshots/p005/`.
 
 <p align="center">
+<img src="docs/screenshots/p005/01_main_menu_logo_cars.jpg" width="49%" alt="Main menu">
+<img src="docs/screenshots/p005/02_setup_voxel_preview_tooltip.jpg" width="49%" alt="Race setup with the voxel circuit preview">
+<img src="docs/screenshots/p005/10_race_preparation_card.jpg" width="49%" alt="Race preparation card">
+<img src="docs/screenshots/p005/13_grandstands_green_valley.jpg" width="49%" alt="New grandstands">
+</p>
+
+<p align="center">
 <img src="docs/screenshots/p004/05_intro_grid_dolly_drivers_and_crowd.jpg" width="49%" alt="Race intro over the grid">
 <img src="docs/screenshots/p004/14_podium_celebration.jpg" width="49%" alt="Podium">
 <img src="docs/screenshots/p004/18_garage_workshop_damaged_car.jpg" width="49%" alt="Garage workshop">
