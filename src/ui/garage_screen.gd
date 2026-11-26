@@ -369,7 +369,8 @@ func _car_row() -> Control:
 		refresh()
 		if ok:
 			_pulse(panel)
-			_float_money(garage.money - before))
+			_float_money(garage.money - before)
+			_workshop.fit_part())
 	box.add_child(_armour_button)
 	_view_button = _small_button("UPGRADES")
 	_view_button.tooltip_text = "Engine, brakes, chassis and steering upgrades (or back to the weapons)."
@@ -515,7 +516,8 @@ func _upgrade_card(kind: String) -> Control:
 		if ok:
 			_pulse(panel)
 			_pulse(_money)
-			_float_money(garage.money - before))
+			_float_money(garage.money - before)
+			_workshop.fit_part())
 	box.add_child(buy)
 	_upgrade_cards[kind] = {"panel": panel, "tier": tier, "now": now, "next": next, "buy": buy}
 	return panel

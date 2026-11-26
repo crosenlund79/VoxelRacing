@@ -1024,6 +1024,7 @@ func _client_stats() -> void:
 
 const PodiumScene := preload("res://src/ui/podium_scene.gd")
 var _podium_shown := false
+var _results_hold := 0
 var _podium: CanvasLayer = null
 
 
@@ -1057,7 +1058,7 @@ func _podium_tick() -> bool:
 			_podium.queue_free()
 		_podium = null
 		hud.visible = true
-		_grid_input_delay = 0)
+		_results_hold = 18)
 	var title := "PODIUM"
 	if championship_round >= 0:
 		title = "ROUND PODIUM"
@@ -1100,6 +1101,7 @@ func _highlights_allowed() -> bool:
 ## replay runs. The live race is only watched, never changed, by the replay.
 func _highlights_tick() -> bool:
 	if _replaying():
+		_results_hold = 18
 		return true
 	if not _highlights_allowed() or session.state != RaceSession.State.FINISHED or not session.all_finished():
 		return false
@@ -1253,6 +1255,8 @@ func _physics_process(_delta: float) -> void:
 		RaceSession.State.FINISHED:
 			if _highlights_tick() or _podium_tick():
 				pass  # the action replay and the podium first; the results wait for them
+			elif _results_hold > 0:
+				_results_hold -= 1  # (the key that skipped them does not also confirm the results)
 			elif _watch_active():
 				_watch_input()  # the rest of the race goes on below
 			elif not session.spectator:

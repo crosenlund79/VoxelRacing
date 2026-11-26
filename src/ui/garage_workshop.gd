@@ -82,6 +82,7 @@ var _damage: VoxelCarDamage
 var _want := 100.0   ## the condition asked for
 var _shown := -1.0   ## the condition shown (or being repaired towards)
 var _rep: Dictionary = {}
+var _fit_t := 0.0
 
 
 func _init() -> void:
@@ -107,6 +108,14 @@ func set_active(on: bool) -> void:
 		_fit_resolution()
 		if _car_pending:
 			_apply_car()
+	elif _built:  # put away: any show ends at once
+		_finish_repair()
+		_fit_t = 0.0
+		_shine = 0.0
+		_glint.visible = false
+		_body.set_instance_shader_parameter("head_glow", 0.25)
+		_body.set_instance_shader_parameter("tail_glow", 0.2)
+		_body.set_instance_shader_parameter("tint", Color.WHITE)
 	render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
 	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 
@@ -138,6 +147,15 @@ func set_condition(c: float, animate: bool) -> void:
 
 func is_repairing() -> bool:
 	return not _rep.is_empty()
+
+
+## A part fitted (armour, an upgrade): the mechanic hurries over and hammers
+## it on, the car twinkles. Nothing about the car's model changes.
+func fit_part() -> void:
+	if not _built or not _active or is_repairing():
+		return
+	_mech.rush_to(REPAIR_SPOT, CAR_MIDDLE, 0.9)
+	_fit_t = 1.25  # the twinkle once he is done
 
 
 # ------------------------------------------------------------ building
@@ -267,22 +285,22 @@ func _build_turntable() -> void:
 
 func _build_furniture() -> void:
 	var wall := BACK_Z
-	# left: the red tool chest, the workbench and its pegboard under a swinging lamp
+	# left: the red tool chest and a poster (behind the title), the workbench
+	# with its pegboard under a swinging lamp, the wall fan
 	_mi(Props.tool_cabinet_mesh(), Vector3(-9.3, 0, wall))
-	_mi(Props.workbench_mesh(), Vector3(-7.6, 0, wall))
-	_mi(Props.pegboard_mesh(), Vector3(-7.6, 1.2, wall))
-	_swing = Node3D.new()
-	_swing.position = Vector3(-6.1, 5.0, wall + 0.75)
-	add_child(_swing)
-	_lamp(_swing, 2.75)
-	_mi(Props.poster_mesh(0), Vector3(-4.0, 0.3, wall + 0.01))
+	_mi(Props.poster_mesh(0), Vector3(-6.95, 0.3, wall + 0.01))
 	_mi(Props.poster_mesh(1), Vector3(-ROOM_X + 0.01, 0.35, -2.2), self, PI * 0.5)
 	_mi(Props.drum_mesh(VrStyle.RED), Vector3(-8.9, 0, -1.0))
 	_mi(Props.drum_mesh(Color("2b6f8c")), Vector3(-8.75, 0, 0.0), self, 1.0)
-	# the wall fan, high up beside the neon
-	_mi(Props.fan_housing_mesh(), Vector3(-2.45, 1.4, wall + 0.01))
+	_mi(Props.workbench_mesh(), Vector3(-6.05, 0, wall))
+	_mi(Props.pegboard_mesh(), Vector3(-6.05, 1.2, wall))
+	_swing = Node3D.new()
+	_swing.position = Vector3(-4.55, 5.0, wall + 0.8)
+	add_child(_swing)
+	_lamp(_swing, 2.75)
+	_mi(Props.fan_housing_mesh(), Vector3(-2.15, 1.45, wall + 0.01))
 	_fan = Node3D.new()
-	_fan.position = Vector3(-2.45, 1.4, wall + 0.16)
+	_fan.position = Vector3(-2.15, 1.45, wall + 0.16)
 	add_child(_fan)
 	_mi(Props.fan_blades_mesh(), Vector3.ZERO, _fan)
 	# the neon sign over the car: "STOP" is an old tube that stutters now and then
@@ -320,7 +338,7 @@ func _build_furniture() -> void:
 	_mi(Props.shelves_mesh(), Vector3(ROOM_X, 0, wall + 0.1), self, -PI * 0.5)
 	_mi(Props.poster_mesh(2), Vector3(ROOM_X - 0.01, 0.35, 1.4), self, -PI * 0.5)
 	var lamp_r := Node3D.new()
-	lamp_r.position = Vector3(6.6, 5.0, wall + 0.8)
+	lamp_r.position = Vector3(7.0, 5.0, wall + 2.1)
 	add_child(lamp_r)
 	_lamp(lamp_r, 2.75)
 	var tyre := VoxelCars.wheel_mesh()
@@ -353,11 +371,11 @@ func _build_mechanic() -> void:
 	_mech = Mechanic.new()
 	add_child(_mech)
 	_mech.spots = [
-		{"pos": Vector3(-6.1, 0, BACK_Z + 1.25), "face": Vector3(-6.1, 1, BACK_Z), "act": "tinker", "time": 6.0},
+		{"pos": Vector3(-4.55, 0, BACK_Z + 1.25), "face": Vector3(-4.55, 1, BACK_Z), "act": "tinker", "time": 6.0},
 		{"pos": Vector3(-2.95, 0, 0.75), "face": CAR_MIDDLE, "act": "polish", "time": 5.0},
 		{"pos": Vector3(-8.55, 0, BACK_Z + 1.3), "face": Vector3(-8.55, 1, BACK_Z), "act": "rummage", "time": 3.5},
 		{"pos": Vector3(-3.8, 0, 1.9), "face": CAR_MIDDLE, "act": "look", "time": 4.0},
-		{"pos": Vector3(-4.6, 0, -1.6), "face": CAR_MIDDLE, "act": "look", "time": 3.0},
+		{"pos": Vector3(-5.6, 0, -1.4), "face": CAR_MIDDLE, "act": "look", "time": 3.0},
 	]
 	_mech.camera_hint = Vector3(0, 2, 14)
 	_mech.place(Vector3(-2.95, 0, 0.75), CAR_MIDDLE)
@@ -382,7 +400,7 @@ func _build_camera() -> void:
 
 func _place_camera() -> void:
 	var yaw := 0.08 + sin(_time * 0.071) * 0.24
-	var dist := 11.2 + sin(_time * 0.047 + 1.3) * 0.45 - _zoom * 1.4
+	var dist := 11.2 + sin(_time * 0.047 + 1.3) * 0.45 - _zoom * 0.9
 	var height := 1.3 + sin(_time * 0.061) * 0.12 + _zoom * 0.1
 	_cam.position = CAR_MIDDLE + Vector3(sin(yaw) * dist, height, cos(yaw) * dist)
 	_cam.look_at(CAR_MIDDLE, Vector3.UP)
@@ -561,6 +579,10 @@ func _process(delta: float) -> void:
 	delta = minf(delta, 0.1)
 	_time += delta
 	_step_repair(delta)
+	if _fit_t > 0.0:
+		_fit_t -= delta
+		if _fit_t <= 0.0:
+			_shine_now()
 	var busy := is_repairing() or _mech.is_busy_repairing()
 	# the turntable stops while the mechanic works, the camera leans in
 	_spin_speed = move_toward(_spin_speed, 0.0 if busy else SPIN, delta * (0.8 if busy else 0.12))
