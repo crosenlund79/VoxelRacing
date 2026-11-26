@@ -29,7 +29,6 @@ const ACTIONS := [
 	[PlayerControls.HISTORY_VIEW, "Skip / laps / history"],
 	[PlayerControls.SIM_SPEED, "Spectator speed"],
 	[PlayerControls.TOGGLE_PANEL, "Hide / show panel"],
-	[PlayerControls.TOGGLE_STYLE, "Combat style (grid)"],
 	[PlayerControls.TOGGLE_LIGHTING, "Lights on / off"],
 ]
 const KEYBOARD := "key"

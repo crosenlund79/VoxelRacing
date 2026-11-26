@@ -14,9 +14,14 @@ extends Resource
 ## decision 2026-11-14: wrecked on the spot, then continues).
 
 enum Weapon { NONE, FRONT_MISSILE, REAR_MISSILE, HOMING_MISSILE, SUPER_MISSILE, MINE }
-## Combat style (M3.5). CLASSIC = the M3 rules (one shared cooldown per car).
-## TACTICAL = separate front / rear slot cooldowns plus a brief shared firing lock.
+## Combat style (M3.5). Prototype 005 has ONE combat system for every race:
+## the TACTICAL rules (separate front / rear slot cooldowns, a brief shared
+## firing lock, the rivals' personal loadouts) with the unified timings below.
+## CLASSIC (one shared cooldown per car) is kept only so old saved settings,
+## career stages and network messages still read; races never use it.
 enum Style { CLASSIC, TACTICAL }
+## The one combat style every race uses (Prototype 005).
+const UNIFIED := Style.TACTICAL
 
 ## The five weapons in shop / display order.
 const ALL_WEAPONS: Array[Weapon] = [Weapon.FRONT_MISSILE, Weapon.REAR_MISSILE, Weapon.HOMING_MISSILE,
@@ -28,13 +33,16 @@ const ALL_WEAPONS: Array[Weapon] = [Weapon.FRONT_MISSILE, Weapon.REAR_MISSILE, W
 @export var rear_weapon: Weapon = Weapon.MINE
 @export var rear_ammo := 5
 
-## Time between shots from the same car (s), Classic style. PROVISIONAL.
+## Time between shots from the same car (s), the retired Classic style. PROVISIONAL.
 @export var fire_cooldown := 0.6
-## Tactical style: per-slot cooldowns (s) and the brief shared lock after any
-## shot that stops firing both slots at once (s). PROVISIONAL (user-specified 1.5 / 3).
-@export var tactical_front_cooldown := 1.5
-@export var tactical_rear_cooldown := 3.0
-@export var tactical_shared_lock := 0.35
+## The unified combat (Prototype 005): per-slot cooldowns (s) and the brief
+## shared lock after any shot that stops firing both slots at once (s).
+## Between the old Classic (0.6 s for anything) and Tactical (1.5 / 3.0 s):
+## missiles come readily, mines a little more deliberately, and a missile and
+## a mine can still go almost together. PROVISIONAL (to playtest).
+@export var tactical_front_cooldown := 1.1
+@export var tactical_rear_cooldown := 2.4
+@export var tactical_shared_lock := 0.4
 ## Missile speed (px/s; cars top out at 420). PROVISIONAL.
 @export var missile_speed := 820.0
 ## Missile flight time before it fizzles (s). PROVISIONAL.

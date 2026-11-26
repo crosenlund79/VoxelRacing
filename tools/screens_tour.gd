@@ -36,50 +36,60 @@ func _physics_process(_d: float) -> bool:
 	match _step:
 		0:
 			if _f > 60:
-				t._open_modes()
-				_wait(30)
+				_shot("00_device")
+				PlayerControls.set_device(PlayerControls.DEVICE_KEYBOARD)
+				t._show_main()
+				_wait(40)
 		1:
-			_shot("01_modes")
+			_shot("01_main")
 			t._open_setup("quick")
-			_wait(30)
+			_wait(90)
 		2:
 			_shot("02_setup")
+			t._open_setup("championship")
+			_wait(90)
+		3:
+			_shot("02b_setup_champ")
+			t._open_setup("battle")
+			_wait(90)
+		4:
+			_shot("02c_setup_battle")
 			t._open_settings()
 			_wait(30)
-		3:
+		5:
 			_shot("03_settings")
 			t._open_controls()
 			_wait(30)
-		4:
+		6:
 			_shot("04_controls")
 			t._open_achievements()
 			_wait(30)
-		5:
+		7:
 			_shot("05_achievements")
 			t._show_main()
 			_game.title.night = true
 			_game.start_race(2)  # spectate: results come by themselves
 			_wait(60)
-		6:
+		8:
 			var race = _game.race
 			if race != null and race.voxel != null and race.voxel.ready_3d and not _game._starting:
 				race.set_sim_speed(8)
 				_wait(200)
-		7:
+		9:
 			_shot("06_spectate_hud")
 			_game.race.open_race_menu()
 			_wait(20)
-		8:
+		10:
 			_shot("07_pause")
 			_game.race.resume_race()
 			_wait(10)
-		9:
+		11:
 			var race = _game.race
 			if race.session.state == RaceSession.State.FINISHED:
 				_wait(30)
 			elif _f > 20000:
 				return true
-		10:
+		12:
 			_shot("08_results")
 			return true
 	return false

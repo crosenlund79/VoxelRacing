@@ -1543,8 +1543,13 @@ static func _crowd_mesh() -> ArrayMesh:
 	return mesh
 
 
-## The grandstand behind the podium: four tiers of seats, a chequered front
-## wall, a striped canopy roof on columns, a back wall (voxels of 0.5).
+## The grandstand behind the podium (P005: the circuits' grandstand look -
+## concrete, muted blue seats, dark steel, a neutral roof - so the red and
+## white stay with the kerbs and the celebration): four tiers of seats split
+## by two stair aisles, a concrete front wall, hospitality windows at the
+## back, a corrugated roof with steel ribs and a dark fascia carrying two
+## muted banners, on steel columns (voxels of 0.5; the crowd stands on the
+## tiers at y = 1, 2, 3, 4).
 static func _stand_mesh() -> ArrayMesh:
 	if _meshes.has("stand"):
 		return _meshes["stand"]
@@ -1553,7 +1558,13 @@ static func _stand_mesh() -> ArrayMesh:
 	var nz := 18
 	var ny := 15
 	var g := VoxelGrid.new(Vector3i(nx, ny, nz), vs, Vector3.ZERO)
-	var night := VrStyle.NIGHT
+	var concrete := Color(0.6, 0.59, 0.56)
+	var walk := Color(0.7, 0.69, 0.65)
+	var stair := Color(0.76, 0.75, 0.71)
+	var seat := Color(0.33, 0.43, 0.55)
+	var steel := Color(0.2, 0.22, 0.25)
+	var roof := Color(0.58, 0.6, 0.62)
+	var fascia := Color(0.22, 0.25, 0.29)
 	for z in nz:
 		var wz := -17.5 + (z + 0.5) * vs
 		var d := -8.5 - wz  # depth behind the front wall
@@ -1561,37 +1572,57 @@ static func _stand_mesh() -> ArrayMesh:
 			var wx := -16.5 + (x + 0.5) * vs
 			var h := Vox.hash3(x, 5, z)
 			var side := absf(wx) > 15.75
+			var aisle := absf(absf(wx) - 5.25) < 0.3
 			var top := 0
+			var k := int(d / 1.5)
 			if d < 6.0:
-				var k := int(d / 1.5)
 				top = (k + 1) * 2
 			else:
 				top = 12
 			if side:
 				top = 12
 			for y in top:
-				var c := night.lightened(0.05 * h)
+				var c := concrete.darkened(0.04 * h)
 				if side:
-					c = Color("2e2952").lightened(0.04 * h)
+					c = concrete.darkened(0.08 + 0.04 * h)
+					if y == top - 1:
+						c = walk
 				elif d < 0.5 and y < 2:
-					c = VrStyle.PAPER.darkened(0.06) if posmod(x + y, 2) == 0 else VrStyle.INK
+					c = concrete.darkened(0.12 if x % 6 == 0 else 0.03)  # the front wall, its joints
 				elif y == top - 1 and d < 6.0:
-					c = VrStyle.RED.darkened(0.15) if posmod(x / 2 + int(d / 1.5), 2) == 0 else VrStyle.TEAL.darkened(0.3)
+					var j := d - k * 1.5  # 0 .. 1.5 within the tier
+					if aisle:
+						c = stair.darkened(0.05 * (k % 2))
+					elif j < 0.5:
+						c = walk  # the walkway in front of the row
+					else:
+						var tone := seat.lightened(0.06) if k % 2 == 0 else seat.darkened(0.04)
+						c = tone if posmod(x, 3) != 2 else tone.darkened(0.22)
 				elif d >= 6.0:
-					c = Color("2e2952").lightened(0.04 * h)
+					c = concrete.darkened(0.02 * h)
+					if y >= 9 and y <= 10 and posmod(x, 4) != 0 and d < 6.5:
+						g.set_v(x, y, z, Vox.GLASS, Color(0.16, 0.2, 0.26))  # hospitality windows
+						continue
 				g.set_v(x, y, z, Vox.SOLID, c)
-			# the canopy roof over the upper tiers
+			# the roof over the upper tiers: corrugated sheeting, a dark fascia
+			# with two muted banners at the front
 			if d >= 2.5:
-				var stripe := VrStyle.RED if posmod(x / 2, 2) == 0 else VrStyle.PAPER
-				g.set_v(x, 12, z, Vox.SOLID, stripe)
-				g.set_v(x, 13, z, Vox.SOLID, stripe.darkened(0.1))
-				if d < 3.0 and posmod(x, 2) == 0:
-					g.set_v(x, 11, z, Vox.SOLID, stripe)  # scalloped valance
+				var rc := roof.darkened(0.06) if posmod(x, 2) == 0 else roof
+				if d < 3.0:
+					rc = fascia
+				g.set_v(x, 13, z, Vox.SOLID, rc)
+				var low := rc.darkened(0.08)
+				if d < 3.0 and absf(absf(wx) - 10.25) < 4.0:
+					low = Color(0.7, 0.56, 0.3) if wx < 0.0 else Color(0.24, 0.48, 0.48)
+				g.set_v(x, 12, z, Vox.SOLID, low)
+				# steel ribs on top over the columns
+				if (absf(absf(wx) - 5.25) < 0.3 or absf(absf(wx) - 15.25) < 0.3) and d >= 3.0:
+					g.set_v(x, 14, z, Vox.METAL, steel)
 			# columns holding the roof
 			if d >= 2.5 and d < 3.0 and (absf(absf(wx) - 5.25) < 0.3 or absf(absf(wx) - 15.25) < 0.3):
 				for y in range(top, 12):
-					g.set_v(x, y, z, Vox.METAL, Color(0.4, 0.41, 0.46))
-	var mesh := _mesh(g, Vector3(16.5, 0.0, 17.5), 0.05)
+					g.set_v(x, y, z, Vox.METAL, steel)
+	var mesh := _mesh(g, Vector3(16.5, 0.0, 17.5), 0.04)
 	_meshes["stand"] = mesh
 	return mesh
 

@@ -156,9 +156,57 @@ static func ensure_actions() -> void:
 		InputMap.action_add_event("ui_cancel", _joy_button(JOY_BUTTON_B))
 
 
-## The player's current binding for an action, for on-screen hints: the first
-## keyboard key and the first controller input, e.g. "Enter / Start".
-## Couch players' own actions show their own device's half.
+# ------------------------------------------- input device (Prototype 005)
+# The player chooses their input device (keyboard or a gamepad) once; it is
+# remembered in user://settings.cfg [input]. On-screen prompts then show only
+# that device's bindings. Input itself stays open to every device (a menu can
+# always be driven with whatever is at hand); the choice is about what the
+# game shows.
+
+const DEVICE_KEYBOARD := "keyboard"
+const DEVICE_GAMEPAD := "gamepad"
+const DEVICE_PATH := "user://settings.cfg"
+## "" = not chosen yet (prompts show both), DEVICE_KEYBOARD or DEVICE_GAMEPAD.
+static var device_kind := ""
+## The chosen gamepad's name (Input.get_joy_name), to recognise it next time.
+static var device_pad_name := ""
+
+
+static func load_device(path: String = DEVICE_PATH) -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(path) != OK:
+		return
+	var kind := str(cfg.get_value("input", "device", ""))
+	device_kind = kind if kind in [DEVICE_KEYBOARD, DEVICE_GAMEPAD] else ""
+	device_pad_name = str(cfg.get_value("input", "pad_name", ""))
+
+
+static func set_device(kind: String, pad_name: String = "", path: String = DEVICE_PATH) -> void:
+	device_kind = kind
+	device_pad_name = pad_name if kind == DEVICE_GAMEPAD else ""
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	cfg.set_value("input", "device", device_kind)
+	cfg.set_value("input", "pad_name", device_pad_name)
+	cfg.save(path)
+
+
+## True when the player still has to choose (never chose, or chose a gamepad
+## and no gamepad is connected now).
+static func device_needs_choice() -> bool:
+	if device_kind == "":
+		return true
+	return device_kind == DEVICE_GAMEPAD and Input.get_connected_joypads().is_empty()
+
+
+static func uses_gamepad() -> bool:
+	return device_kind == DEVICE_GAMEPAD
+
+
+## The player's current binding for an action, for on-screen hints: on the
+## chosen device only ("Enter" on the keyboard, "Start" on a gamepad); before a
+## device is chosen, both ("Enter / Start"). Couch players' own actions show
+## their own device's half.
 static func key_text(action: String) -> String:
 	var key := ""
 	var pad := ""
@@ -167,6 +215,10 @@ static func key_text(action: String) -> String:
 			key = OS.get_keycode_string(e.physical_keycode if e.physical_keycode != KEY_NONE else e.keycode)
 		elif (e is InputEventJoypadButton or e is InputEventJoypadMotion) and pad == "":
 			pad = pad_short(e)
+	if device_kind == DEVICE_KEYBOARD and key != "":
+		return key
+	if device_kind == DEVICE_GAMEPAD and pad != "":
+		return pad
 	if key != "" and pad != "":
 		return "%s / %s" % [key, pad]
 	return key if key != "" else (pad if pad != "" else "?")

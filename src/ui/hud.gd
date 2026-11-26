@@ -6,6 +6,9 @@ extends CanvasLayer
 
 const PLAYER_ID := 0
 const UiJuice := preload("res://src/ui/ui_juice.gd")
+const VrWidgets := preload("res://src/ui/vr_widgets.gd")
+const VrIcons := preload("res://src/ui/vr_icons.gd")
+const VrTips := preload("res://src/ui/vr_tips.gd")
 ## GO! / FINISH! banner: top of the screen, clear of the starting grid and the
 ## cars around the camera centre; low between the views in split-screen.
 const BANNER_Y := 56.0
@@ -27,6 +30,10 @@ var _field_label: Label
 var _lap_label: Label
 var _time_label: Label
 var _mode_label: Label
+## Prototype 005: the control mode as an icon beside the position (Fire to
+## accelerate / Fire to brake), instead of the words.
+var _mode_icon: TextureRect
+var _lock_icon: TextureRect
 var _combat_box: HBoxContainer
 var _front_icon: TextureRect
 var _front_label: Label
@@ -115,7 +122,8 @@ func setup(resolver: AssetResolver) -> void:
 	_info = info
 	info.theme = _theme
 	info.position = Vector2(20, 16)
-	info.custom_minimum_size = Vector2(250, 0)
+	info.custom_minimum_size = Vector2(220, 0)
+	info.add_theme_stylebox_override("panel", VrWidgets.panel(0.8))
 	add_child(info)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", -2)
@@ -127,10 +135,17 @@ func setup(resolver: AssetResolver) -> void:
 	_field_label.size_flags_vertical = Control.SIZE_SHRINK_END
 	pos_row.add_child(_pos_label)
 	pos_row.add_child(_field_label)
+	var push := Control.new()
+	push.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pos_row.add_child(push)
+	_mode_icon = VrWidgets.icon("accel_fire", 24)
+	_mode_icon.mouse_filter = Control.MOUSE_FILTER_PASS
+	_mode_icon.visible = false
+	pos_row.add_child(_mode_icon)
 	box.add_child(pos_row)
 	_lap_label = HyperTheme.label("LAP 1 / 3", 24, HyperTheme.CREAM, 600)
 	_time_label = HyperTheme.label("00:00.00", 22, HyperTheme.CREAM, 500)
-	_mode_label = HyperTheme.label("", 15, HyperTheme.CREAM_DIM, 500)
+	_mode_label = HyperTheme.label("", 13, HyperTheme.CREAM_DIM, 500)
 	for l in [_lap_label, _time_label, _mode_label]:
 		box.add_child(l)
 
@@ -147,13 +162,20 @@ func setup(resolver: AssetResolver) -> void:
 	_rear_more = HyperTheme.label("", 12, HyperTheme.CREAM_DIM, 600)
 	_combat_box.add_child(_weapon_slot("F", _front_icon, _front_label, _front_bar, _front_more))
 	_combat_box.add_child(_weapon_slot("R", _rear_icon, _rear_label, _rear_bar, _rear_more))
+	_lock_icon = VrWidgets.icon("lock", 18)
+	_lock_icon.visible = false
+	_lock_icon.mouse_filter = Control.MOUSE_FILTER_PASS
+	VrTips.tip(_lock_icon, "Weapons locked")
+	_combat_box.add_child(_lock_icon)
 	_combat_box.visible = false
-	_lock_label = HyperTheme.label("WEAPONS LOCKED", 15, Color("e0704f"), 700)
+	_lock_label = HyperTheme.label("", 13, Color("e0704f"), 700)  # (replaced by the padlock icon)
 	_lock_label.visible = false
-	box.add_child(_lock_label)
 	_cond_row = HBoxContainer.new()
 	_cond_row.add_theme_constant_override("separation", 6)
-	_cond_row.add_child(HyperTheme.label("CAR", 13, HyperTheme.CREAM_DIM, 700))
+	var car_icon := VrWidgets.icon("car", 18)
+	car_icon.mouse_filter = Control.MOUSE_FILTER_PASS
+	VrTips.tip(car_icon, "Car condition")
+	_cond_row.add_child(car_icon)
 	_cond_track = ColorRect.new()
 	_cond_track.color = Color(0, 0, 0, 0.35)
 	_cond_track.custom_minimum_size = Vector2(120, 9)
@@ -210,7 +232,7 @@ func setup(resolver: AssetResolver) -> void:
 	_tower_panel = PanelContainer.new()
 	_tower_panel.theme = _theme
 	_tower_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var backing: StyleBox = _theme.get_stylebox("panel", "PanelContainer").duplicate()
+	var backing: StyleBox = VrWidgets.panel(0.8)
 	backing.content_margin_left = 8
 	backing.content_margin_right = 12
 	backing.content_margin_top = 7
@@ -242,6 +264,7 @@ func setup(resolver: AssetResolver) -> void:
 
 	_message = PanelContainer.new()
 	_message.theme = _theme
+	_message.add_theme_stylebox_override("panel", VrWidgets.panel(0.9))
 	_message.visible = false
 	add_child(_message)
 	_message_box = VBoxContainer.new()
@@ -292,7 +315,20 @@ func _build_intro() -> void:
 
 
 ## lines: [what, where, standings] ("" lines are left out).
+## Prototype 005: the grid popup already says what and where (and carries the
+## championship standings line), so this card is no longer shown; the lines
+## are kept for intro_text().
+var _intro_text := ""
+
+
 func show_intro(lines: PackedStringArray) -> void:
+	var parts := PackedStringArray()
+	for t in lines:
+		if t != "":
+			parts.append(t)
+	_intro_text = "\n".join(parts)
+	if true:
+		return
 	if _intro == null or _split_view:
 		return
 	for k in _intro_lines.size():
@@ -324,11 +360,7 @@ func fade_intro(after: float = 2.5) -> void:
 
 
 func intro_text() -> String:
-	var parts := PackedStringArray()
-	for l in _intro_lines:
-		if l.visible:
-			parts.append(l.text)
-	return "\n".join(parts) if _intro != null and _intro.visible else ""
+	return _intro_text
 
 
 ## Car icons and full names for the tower and results (keyed by racer id).
@@ -341,27 +373,86 @@ func show_mode_select(mode: CarModel.ControlMode) -> void:
 	show_menu(mode_name(mode))
 
 
-## Mode menu shown on the grid before the start, with the Weapons ON / No Guns option.
-## laps_fixed: Knockout / championship rounds (the laps are shown, not offered).
-func show_menu(choice: String, weapons: bool = false, laps: int = 3, style: int = WeaponRules.Style.CLASSIC, note: String = "",
+## Mode menu shown on the grid before the start (kept for callers; see show_grid).
+func show_menu(choice: String, weapons: bool = false, laps: int = 3, _style: int = WeaponRules.UNIFIED, note: String = "",
 		laps_fixed := false) -> void:
-	_mode_label.text = choice
-	var key := choice + str(weapons) + str(laps) + str(style) + note + str(laps_fixed)
+	show_grid({"choice": choice, "weapons": weapons, "laps": laps, "note": note, "laps_fixed": laps_fixed,
+		"title": track_name})
+
+
+## The race preparation popup (Prototype 005): a compact card low on the
+## screen, clear of the grid: the mode's icon and the circuit's name, the
+## championship round, then icons for the environment, day / night, laps,
+## weapons and the control mode, the standings line in a championship, and
+## one start prompt for the player's chosen input device. No permanent control
+## instructions (they are on the Controls screen); the grid keys still work.
+## info: mode_icon, title, round, environment, night, laps, laps_fixed,
+## weapons, choice ("accel_fire" / "accel_brake" / "spectate" icon), note,
+## standings.
+func show_grid(info: Dictionary) -> void:
+	var choice: String = str(info.get("choice", "accel_fire"))
+	if not _split_view:
+		_mode_label.visible = false
+	if VrIcons.has(choice):
+		_mode_icon.texture = VrIcons.tex(choice, 24)
+		_mode_icon.visible = true
+	var key := str(info)
 	if _menu_key == key and _message.visible:
 		return
 	_menu_key = key
 	_results_key = ""
 	set_results_up(false)
 	_clear_message()
-	var header := "GET READY" if track_name.is_empty() else "GET READY  -  %s" % track_name.to_upper()
-	_message_box.add_child(_centered(HyperTheme.label(header, 22, HyperTheme.CREAM_DIM, 600)))
-	_message_box.add_child(_centered(HyperTheme.label("<   %s   >" % choice, 34, HyperTheme.GOLD, 700)))
-	_message_box.add_child(_centered(HyperTheme.label("%s     %s COMBAT     %s" % [weapons_text(weapons),
-		WeaponRules.style_name(style), Hud.laps_text(laps) + (" (FIXED)" if laps_fixed else "")], 26, HyperTheme.RED if weapons else HyperTheme.CREAM, 700)))
-	if not note.is_empty():
-		_message_box.add_child(_centered(HyperTheme.label(note, 22, HyperTheme.GOLD, 700)))
-	_message_box.add_child(_centered(HyperTheme.label(PlayerControls.fmt("{steer_left} / {steer_right}: mode    {fire_front} / {fire_rear}: weapons    {toggle_style}: combat style\n%s{fire}: start    {back}: menu" % ("" if laps_fixed else "{history_view}: laps    ")), 17, HyperTheme.CREAM_DIM, 500)))
+	_grid_card = true
+	var head := HBoxContainer.new()
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_theme_constant_override("separation", 10)
+	head.add_child(VrWidgets.icon(str(info.get("mode_icon", "quick_race")), 30))
+	var titles := VBoxContainer.new()
+	titles.add_theme_constant_override("separation", -2)
+	titles.add_child(VrWidgets.text(str(info.get("title", "")), 22, HyperTheme.GOLD))
+	var round_text := str(info.get("round", ""))
+	if round_text != "":
+		titles.add_child(VrWidgets.text(round_text, 13, HyperTheme.CREAM_DIM))
+	head.add_child(titles)
+	_message_box.add_child(head)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	var env := str(info.get("environment", ""))
+	if env != "":
+		var e := VrWidgets.icon_value("environment", env, 22, HyperTheme.CREAM, "Environment")
+		row.add_child(e)
+	var night: bool = info.get("night", false)
+	row.add_child(VrWidgets.icon_value("time_night" if night else "time_day", "", 24, HyperTheme.CREAM,
+		"Night race" if night else "Day race"))
+	var laps: int = int(info.get("laps", 3))
+	row.add_child(VrWidgets.icon_value("laps", str(laps), 24, HyperTheme.CREAM, "%d laps" % laps))
+	var weapons: bool = info.get("weapons", false)
+	row.add_child(VrWidgets.icon_value("weapons_on" if weapons else "weapons_off", "", 24, HyperTheme.CREAM,
+		"Weapons on" if weapons else "Weapons off"))
+	var tips := {"accel_fire": "Fire to accelerate", "accel_brake": "Fire to brake", "spectate": "Spectating"}
+	var choice_icon := choice if VrIcons.has(choice) else "accel_fire"
+	row.add_child(VrWidgets.icon_value(choice_icon, "", 24, HyperTheme.CREAM, tips.get(choice_icon, "")))
+	_message_box.add_child(row)
+	var standings := str(info.get("standings", ""))
+	if standings != "":
+		var s := VrWidgets.text(standings, 13, HyperTheme.CREAM_DIM)
+		s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_message_box.add_child(s)
+	var note := str(info.get("note", ""))
+	if note != "":
+		var n := VrWidgets.text(note, 14, HyperTheme.GOLD)
+		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_message_box.add_child(n)
+	var go := VrWidgets.prompt(PlayerControls.FIRE, "Race", 14)
+	go.alignment = BoxContainer.ALIGNMENT_CENTER
+	_message_box.add_child(go)
 	_present_message(Vector2(640, 0))
+
+
+## The grid popup is up (it sits low on the screen, not in the centre).
+var _grid_card := false
 
 
 ## Network races: small connection-quality line (bottom right); red when troubled.
@@ -409,13 +500,13 @@ func update_combat(enabled: bool, front: int, front_ammo: int, rear: int, rear_a
 
 ## Weapons Hot: show the lock while weapons are on but not yet live.
 func set_weapons_locked(on: bool) -> void:
-	_lock_label.visible = on and _combat_box.visible and not _results_up
-	if _lock_label.visible:
-		_lock_label.modulate.a = 0.7 + 0.3 * absf(sin(Time.get_ticks_msec() / 260.0))
+	_lock_icon.visible = on and _combat_box.visible and not _results_up
+	if _lock_icon.visible:
+		_lock_icon.modulate.a = 0.55 + 0.45 * absf(sin(Time.get_ticks_msec() / 260.0))
 
 
 func weapons_locked_shown() -> bool:
-	return _lock_label.visible
+	return _lock_icon.visible
 
 
 ## M6: the car's condition (0..1). since_hit: seconds since it last took
@@ -508,7 +599,7 @@ func _set_slot(icon: TextureRect, label: Label, bar: ColorRect, weapon: int, cou
 	icon.texture = null if none else _weapon_textures.get(weapon)
 	icon.flip_h = weapon == WeaponRules.Weapon.REAR_MISSILE
 	icon.modulate.a = 1.0 if count > 0 else 0.4
-	label.text = "-" if none else ("x INF" if count >= 999 else "x%d" % count)  # 999: unlimited (Battle Royale)
+	label.text = "-" if none else ("\u00d7\u221e" if count >= 999 else "\u00d7%d" % count)  # 999: unlimited (Battle Royale)
 	label.add_theme_color_override("font_color", HyperTheme.CREAM if count > 0 else Color("e0704f"))
 	var ready := wait <= 0.0 and count > 0
 	bar.size.x = 64.0 * (1.0 - clampf(wait, 0.0, 1.0)) if count > 0 else 0.0
@@ -570,12 +661,23 @@ func update_spectator(race_number: int, lap: int, lap_count: int, elapsed: float
 	_field_label.text = ""
 	_lap_label.text = "LAP %d / %d" % [lap, lap_count]
 	_time_label.text = format_time(elapsed)
-	_mode_label.text = "%s  %s   camera: %s" % [weapons_text(weapons), speed_label, following]
+	_mode_label.visible = true
+	_mode_icon.visible = false
+	_mode_label.text = "%s  %s   %s" % ["" if weapons else "No weapons ", speed_label, following]
 
 
 func show_racing(mode: CarModel.ControlMode) -> void:
 	hide_message()
-	_mode_label.text = mode_name(mode)
+	if not _split_view:  # (a split view's line is its player's name)
+		_mode_label.text = ""
+		_mode_label.visible = false
+	_mode_icon.texture = VrIcons.tex(mode_icon(mode), 24)
+	_mode_icon.visible = true
+	VrTips.tip(_mode_icon, "Fire to accelerate" if mode == CarModel.ControlMode.FIRE_TO_ACCELERATE else "Fire to brake")
+
+
+static func mode_icon(mode: CarModel.ControlMode) -> String:
+	return "accel_fire" if mode == CarModel.ControlMode.FIRE_TO_ACCELERATE else "accel_brake"
 
 
 func update_race(lap: int, lap_count: int, elapsed: float, position: int = 1, field: int = 1) -> void:
@@ -794,6 +896,7 @@ func set_info_visible(on: bool) -> void:
 
 ## Results card: podium stars, car icons, names with nicknames, time or gap.
 func show_results(standings: Array[RacerState], footer: String = "{confirm}: race again (reversed grid)") -> void:
+	var template := footer
 	footer = PlayerControls.fmt(footer)
 	var key := footer
 	for r in standings:
@@ -890,13 +993,37 @@ func show_results(standings: Array[RacerState], footer: String = "{confirm}: rac
 		name_width = maxf(name_width, l.get_combined_minimum_size().x)
 	for l in names:
 		l.custom_minimum_size.x = name_width
-	var foot := _centered(HyperTheme.label(footer, 17, HyperTheme.CREAM_DIM, 500))
+	var foot := prompt_row(template)
 	_message_box.add_child(foot)
 	if animate:
 		_reveal_rows.append(foot)
 		for c in _reveal_rows:
 			c.modulate.a = 0.0  # (until the card fades in)
 	_present_message(Vector2(640, 0), true, update)
+
+
+## "{confirm}: next race   {replay}: watch replay" -> small key caps for the
+## player's input device with a word or two each; any plain text before the
+## first prompt (e.g. "Prize money: $850") stays as a short line above them.
+static func prompt_row(template: String) -> Control:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	var cut := template.find("{")
+	var plain := (template if cut < 0 else template.substr(0, cut)).strip_edges()
+	if plain != "":
+		var l := VrWidgets.text(PlayerControls.fmt(plain), 14, HyperTheme.CREAM_DIM)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(l)
+	if cut >= 0:
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 18)
+		var re := RegEx.create_from_string("\\{([a-z_]+)\\}(?:\\s*/\\s*\\{[a-z_]+\\})?\\s*:?\\s*([^{]*)")
+		for m in re.search_all(template.substr(cut)):
+			row.add_child(VrWidgets.prompt(m.get_string(1), m.get_string(2).strip_edges().trim_suffix("-").strip_edges(), 13))
+		col.add_child(row)
+	return col
 
 
 ## Plain-text results (kept for logs and tests).
@@ -979,6 +1106,7 @@ func _centered(l: Label) -> Label:
 
 
 func _clear_message() -> void:
+	_grid_card = false
 	if _reveal_tween != null and _reveal_tween.is_valid():
 		_reveal_tween.kill()
 	_reveal_rows.clear()
@@ -1012,6 +1140,8 @@ func _present_message(_anchor: Vector2, after_banner: bool = false, update: bool
 func _message_position(size: Vector2) -> Vector2:
 	var screen := Vector2(1280, 720)
 	var pos := (screen - size) * 0.5
+	if _grid_card and not _split_view and _message_min_top <= 0.0:
+		return Vector2(pos.x, screen.y - size.y - 28.0)  # low: the grid stays in view
 	pos.y = maxf(pos.y, _message_min_top)
 	if history_panel != null and history_panel.visible:
 		var room := history_panel.position.x - 16.0

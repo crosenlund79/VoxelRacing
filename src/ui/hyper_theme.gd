@@ -31,13 +31,13 @@ static func font(weight: int = 600) -> Font:
 static func build(_resolver: AssetResolver = null) -> Theme:
 	var t := Theme.new()
 	t.default_font = VrStyle.font("regular")
-	t.default_font_size = 16
+	t.default_font_size = 14
 	for type in ["Label", "Button", "CheckButton", "LinkButton", "LineEdit"]:
 		t.set_color("font_color", type, CREAM)
 		t.set_color("font_outline_color", type, OUTLINE)
-		t.set_constant("outline_size", type, 4)
+		t.set_constant("outline_size", type, 2)
 	t.set_font("font", "Button", VrStyle.font("bold"))
-	t.set_font_size("font_size", "Button", 24)
+	t.set_font_size("font_size", "Button", 18)
 	t.set_color("font_hover_color", "Button", OUTLINE)
 	t.set_color("font_focus_color", "Button", OUTLINE)
 	t.set_color("font_hover_pressed_color", "Button", OUTLINE)
@@ -55,7 +55,7 @@ static func build(_resolver: AssetResolver = null) -> Theme:
 	for state in ["normal", "hover", "pressed", "focus"]:
 		t.set_stylebox(state, "CheckButton", StyleBoxEmpty.new())
 	t.set_font("font", "CheckButton", VrStyle.font("bold"))
-	t.set_font_size("font_size", "CheckButton", 24)
+	t.set_font_size("font_size", "CheckButton", 18)
 	t.set_stylebox("panel", "PanelContainer", VrStyle.panel())
 	t.set_stylebox("panel", "Panel", VrStyle.panel())
 	# sliders: an ink groove with a yellow fill and a little voxel block knob
@@ -132,7 +132,7 @@ static func label(text: String, size: int = 20, color: Color = CREAM, weight: in
 	l.add_theme_font_size_override("font_size", px)
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_color_override("font_outline_color", OUTLINE)
-	l.add_theme_constant_override("outline_size", maxi(4, px / 5))
+	l.add_theme_constant_override("outline_size", 3 if px >= 28 else 2)
 	return l
 
 

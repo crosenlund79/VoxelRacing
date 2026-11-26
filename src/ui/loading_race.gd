@@ -14,12 +14,14 @@ const FINISH_X := 10.5
 const LANES := [-2.5, -1.25, 0.0, 1.25, 2.5]
 const CARS := ["cars/body_player", "cars/body_ai_2", "cars/body_ai_4", "cars/body_ai_9", "cars/body_ai_6"]
 const TIPS := [
-	"V cycles the camera: miniature, high, low and top-down.",
-	"L switches the night lights on and off.",
+	"{camera_view} cycles the camera: miniature, high, low and top-down.",
+	"{toggle_lighting} switches the night lights on and off.",
 	"Wrecks leave their bits on the road. Drive through them!",
 	"Every car breaks apart voxel by voxel. Mind the walls.",
 	"Brake lights glow when a rival slows down. Watch them at night.",
-	"Esc pauses the race.",
+	"{back} pauses the race.",
+	"{photo_mode} freezes the race for a photo.",
+	"Hover or highlight an icon to see what it means.",
 ]
 
 var progress_source: Callable
@@ -82,11 +84,11 @@ func _ready() -> void:
 	_logo.position = Vector2(340, 6)
 	_logo.size = Vector2(600, 230)
 	_root.add_child(_logo)
-	_title = _label("", 40, VrStyle.PAPER, "bold")
+	_title = _label("", 30, VrStyle.PAPER, "bold")
 	_title.position = Vector2(0, 560)
 	_title.size = Vector2(1280, 48)
 	_root.add_child(_title)
-	_sub = _label("", 24, VrStyle.YELLOW, "regular")
+	_sub = _label("", 18, VrStyle.YELLOW, "regular")
 	_sub.position = Vector2(0, 604)
 	_sub.size = Vector2(1280, 32)
 	_root.add_child(_sub)
@@ -106,12 +108,12 @@ func _ready() -> void:
 	_bar.add_theme_stylebox_override("background", under)
 	_bar.add_theme_stylebox_override("fill", fill)
 	_root.add_child(_bar)
-	_pct = _label("0%", 24, VrStyle.PAPER, "bold")
+	_pct = _label("0%", 18, VrStyle.PAPER, "bold")
 	_pct.position = Vector2(900, 638)
 	_pct.size = Vector2(120, 32)
 	_pct.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_root.add_child(_pct)
-	_tip = _label("", 16, VrStyle.PAPER_DIM, "regular")
+	_tip = _label("", 14, VrStyle.PAPER_DIM, "regular")
 	_tip.position = Vector2(0, 684)
 	_tip.size = Vector2(1280, 24)
 	_root.add_child(_tip)
@@ -125,7 +127,7 @@ func _label(text: String, size: int, color: Color, kind: String) -> Label:
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_color_override("font_outline_color", VrStyle.INK)
-	l.add_theme_constant_override("outline_size", 6)
+	l.add_theme_constant_override("outline_size", 3)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
@@ -135,7 +137,7 @@ func _label(text: String, size: int, color: Color, kind: String) -> Label:
 func begin(title: String, sub: String, source: Callable = Callable()) -> void:
 	_title.text = title
 	_sub.text = sub
-	_tip.text = "TIP: " + TIPS[_rng.randi_range(0, TIPS.size() - 1)]
+	_tip.text = PlayerControls.fmt(TIPS[_rng.randi_range(0, TIPS.size() - 1)])
 	progress_source = source
 	_shown = 0.0
 	_done = false

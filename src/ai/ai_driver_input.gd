@@ -98,13 +98,32 @@ func weapons(race: Node, step: float, _states: Array) -> Dictionary:
 		"lap_count": r.tracker.lap_count, "progress": progress[id].distance / maxf(1.0, race.track.path.length * r.tracker.lap_count),
 		"missile_speed": rules.missile_speed, "hit_radius": rules.hit_radius,
 		"mine_fuse": rules.mine_fuse, "rear_ammo": combat.ammo[id][CombatWorld.REAR], "rear_start": combat.start_ammo[id][CombatWorld.REAR],
-		"pressure": d.params.pressure_attack_drop > 0.0 and d.under_pressure(me, targets)}
+		"pressure": d.params.pressure_attack_drop > 0.0 and d.under_pressure(me, targets),
+		"hot_time": _hot_time(race), "pack": _pack(cars, id, targets)}
 	if race.combat_style == WeaponRules.Style.TACTICAL:
 		ctx.merge({"front_weapon": combat.weapon_of(id, CombatWorld.FRONT), "rear_weapon": combat.weapon_of(id, CombatWorld.REAR),
 			"rear_ammo": combat.ammo[id][CombatWorld.REAR], "rear_start": combat.start_ammo[id][CombatWorld.REAR],
 			"homing_range": rules.homing_range, "super_orbit_radius": rules.super_orbit_radius})
 		return d.decide_weapons_tactical(me, targets, ctx, step)
 	return d.decide_weapons(me, targets, ctx, step)
+
+
+## Seconds since weapons went hot this race (a long time when unknown, e.g.
+## Battle Royale, which is armed from the start).
+static func _hot_time(race: Node) -> float:
+	var at = race.get("weapons_hot_at")
+	if at == null or float(at) < 0.0:
+		return 999.0
+	return float(race.session.elapsed) - float(at)
+
+
+## Cars close around this one (within 260 px): how packed the field is here.
+static func _pack(cars: Array[Car], id: int, targets: Array) -> int:
+	var n := 0
+	for t in targets:
+		if not t.wrecked and cars[id].global_position.distance_to(t.position) < 260.0:
+			n += 1
+	return n
 
 
 ## Not on the road for anyone: retired (a DNF car is off the road, without

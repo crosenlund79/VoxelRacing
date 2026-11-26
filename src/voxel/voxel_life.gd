@@ -14,9 +14,13 @@ signal cheered(strength: float)
 const SoundKit := preload("res://src/audio/sound_kit.gd")
 const CROWD_SHADER := preload("res://src/voxel/shaders/voxel_crowd.gdshader")
 const CRITTER_SHADER := preload("res://src/voxel/shaders/voxel_critters.gdshader")
+const Grandstand := preload("res://src/voxel/voxel_grandstand.gd")
 const C := VoxelKit.C
 const MAX_CROWD := 460
 const MAX_FLAGS := 90
+## P005: spectators in the grandstands' seats (and how full the stands are).
+const MAX_SEATED := 340
+const SEATED_FILL := 0.72
 const TICK := 0.1
 
 ## Set dressing per theme variant: [kind, how many, near the road].
@@ -51,6 +55,8 @@ var vtrack: VoxelTrack
 var theme_variant := 1
 var _rng := RandomNumberGenerator.new()
 var _occupied: Array = []
+## Grandstands: [centre px, right (unit), front (unit), half width px, half depth px, MeshInstance3D].
+var _stands: Array = []
 var _people: Array = []
 var _mms: Dictionary = {}
 var _spinners: Array = []
@@ -72,7 +78,8 @@ func setup(p_stage: VoxelStage) -> void:
 	vtrack = stage.vtrack
 	name = "Life"
 	theme_variant = main.track_theme.variant if main.get("track_theme") != null and main.track_theme != null else 1
-	var layout_name := String(main.track.layout.resource_path) if main.track.get("layout") != null and main.track.layout != null else "x"
+	var lay = main.track.get("layout")
+	var layout_name := String((lay as Resource).resource_path) if lay is Resource else "x"  # (the arena's layout is no Resource)
 	_rng.seed = hash(layout_name) + theme_variant * 31
 	_gather_occupied()
 	var cl = main.track.get("centerline")
@@ -101,6 +108,13 @@ func _gather_occupied() -> void:
 			if n is Node3D:
 				var p: Vector3 = (n as Node3D).position
 				_occupied.append([Vector2(p.x, p.z) / Vox.PX, 34.0])
+				var mi := n as MeshInstance3D
+				if mi != null and mi.mesh != null and mi.mesh.has_meta("grandstand"):
+					var cells: Vector2i = mi.mesh.get_meta("cells")
+					var b := mi.transform.basis
+					var half := Vector2(cells) * Vox.CELL_PX * 0.5 * mi.scale.x
+					_stands.append([Vector2(p.x, p.z) / Vox.PX, Vector2(b.x.x, b.x.z).normalized(),
+						Vector2(b.z.x, b.z.z).normalized(), half.x, half.y, mi])
 	for l in stage.lamps3d:
 		var q := (l as Node3D).global_position
 		_occupied.append([Vector2(q.x, q.z) / Vox.PX, 16.0])
@@ -130,7 +144,16 @@ func _free(p: Vector2, r: float, level := true) -> bool:
 	for o in _occupied:
 		if p.distance_to(o[0]) < r + float(o[1]):
 			return false
-	return true
+	return not _in_stand(p, r)
+
+
+## Whether a circle (px) overlaps a grandstand's footprint.
+func _in_stand(p: Vector2, r: float) -> bool:
+	for sb in _stands:
+		var q: Vector2 = p - (sb[0] as Vector2)
+		if absf(q.dot(sb[1])) < float(sb[3]) + r and absf(q.dot(sb[2])) < float(sb[4]) + r:
+			return true
+	return false
 
 
 ## A spot beside the road: the centre-line sample, its tangent, the outward
@@ -351,9 +374,54 @@ func _spawn_crowd() -> void:
 		add_child(l)
 		stage.lamps3d.append(l)
 		lit += 1
+	var seated: Array = []
+	var seated_flags: Array = []
+	_seat_stands(seated, seated_flags)
 	_make_people("crowd", crowd_rows, false, false)
 	_make_people("flags", flag_rows, true, false)
 	_make_people("marshals", marshals, true, true)
+	_make_people("stand_crowd", seated, false, false)
+	_make_people("stand_flags", seated_flags, true, false)
+
+
+## P005: the grandstands take this theme's finish (seat colour, snow on the
+## roof) and fill up: animated spectators sit in their seats, facing the
+## track, their legs out of sight in the seat row (the hop of a cheer lifts
+## them out of their seats). Their roof lamps glow at night.
+func _seat_stands(seated: Array, seated_flags: Array) -> void:
+	for n in _stands.size():
+		var sb: Array = _stands[n]
+		var mi: MeshInstance3D = sb[5]
+		var cells: Vector2i = mi.mesh.get_meta("cells")
+		mi.mesh = Grandstand.mesh(cells.x, cells.y, theme_variant, false, n)
+		stage._glowing.append(mi)
+		var xf := mi.transform
+		var face: Vector2 = sb[2]
+		var fav := _rng.randi_range(0, 9)
+		if _rng.randf() < 0.3:
+			fav = 0
+		var seats: PackedVector3Array = mi.mesh.get_meta("seats")
+		for s: Vector3 in seats:
+			if _rng.randf() > SEATED_FILL or seated.size() + seated_flags.size() >= MAX_SEATED:
+				continue
+			var w: Vector3 = xf * s
+			var shirt: int = fav if _rng.randf() < 0.4 else (_rng.randi_range(0, 9) if _rng.randf() < 0.45 else _rng.randi_range(12, 15))
+			var person := {"p": Vector2(w.x, w.z) / Vox.PX, "face": face, "phase": _rng.randf(), "ex": 0.0,
+				"shirt": shirt, "cloth": fav, "calm": false, "seat": w.y / Vox.PX}
+			if _rng.randf() < 0.08:
+				seated_flags.append(person)
+			else:
+				seated.append(person)
+		# warm light under the roof at night
+		for side in [-1.0, 1.0]:
+			var l := OmniLight3D.new()
+			l.light_color = Color(1.0, 0.86, 0.64)
+			l.omni_range = 6.5
+			l.light_energy = 1.0
+			l.visible = false
+			l.position = xf * Vector3(4.6 * side, 4.4, 0.2)
+			add_child(l)
+			stage.lamps3d.append(l)
 
 
 func _make_people(key: String, list: Array, flag: bool, calm: bool) -> void:
@@ -383,7 +451,9 @@ func _make_people(key: String, list: Array, flag: bool, calm: bool) -> void:
 		var person: Dictionary = list[i]
 		var p: Vector2 = person.p
 		var s := _rng.randf_range(0.92, 1.08) * PERSON_SCALE
-		var xf := Transform3D(Basis(Vector3.UP, _yaw_facing(person.face)).scaled(Vector3.ONE * s), Vox.to3(p, vtrack.height_px_at(p)))
+		# (seated: the hips on the seat, the legs hidden in the seat row)
+		var h: float = float(person.seat) - 0.42 * s / Vox.PX if person.has("seat") else vtrack.height_px_at(p)
+		var xf := Transform3D(Basis(Vector3.UP, _yaw_facing(person.face)).scaled(Vector3.ONE * s), Vox.to3(p, h))
 		mm.set_instance_transform(i, xf)
 		person["mm"] = mm
 		person["i"] = i

@@ -13,6 +13,7 @@ signal done
 
 const ROW_H := 30
 const UiJuice := preload("res://src/ui/ui_juice.gd")
+const VrWidgets := preload("res://src/ui/vr_widgets.gd")
 
 var _resolver: AssetResolver
 var _root: Control
@@ -55,11 +56,14 @@ func setup(resolver: AssetResolver) -> void:
 	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	bg.size = Vector2(1280, 720)
 	_root.add_child(bg)
-	_title = HyperTheme.label("", 46, HyperTheme.GOLD, 700)
-	_title.position = Vector2(40, 30)
+	var trophy := VrWidgets.icon("championship", 36)
+	trophy.position = Vector2(36, 34)
+	_root.add_child(trophy)
+	_title = VrWidgets.text("", 30, HyperTheme.GOLD, "regular", 2)
+	_title.position = Vector2(84, 34)
 	_root.add_child(_title)
-	_sub = HyperTheme.label("", 20, HyperTheme.CREAM, 600)
-	_sub.position = Vector2(42, 92)
+	_sub = VrWidgets.text("", 15, HyperTheme.CREAM, "regular", 2)
+	_sub.position = Vector2(86, 92)
 	_root.add_child(_sub)
 	_accent_rule = ColorRect.new()  # (the stage's accent in the career; gold otherwise)
 	_accent_rule.position = Vector2(42, 86)
@@ -68,6 +72,7 @@ func setup(resolver: AssetResolver) -> void:
 	_root.add_child(_accent_rule)
 
 	var table := PanelContainer.new()
+	table.add_theme_stylebox_override("panel", VrWidgets.panel(0.88))
 	table.position = Vector2(30, 126)
 	table.custom_minimum_size = Vector2(640, 470)
 	_root.add_child(table)
@@ -99,6 +104,7 @@ func setup(resolver: AssetResolver) -> void:
 	rbox.add_child(_reaction_text)
 
 	var side := PanelContainer.new()
+	side.add_theme_stylebox_override("panel", VrWidgets.panel(0.88))
 	side.position = Vector2(690, 126)
 	side.custom_minimum_size = Vector2(560, 470)
 	_root.add_child(side)
@@ -129,28 +135,25 @@ func setup(resolver: AssetResolver) -> void:
 	buttons.position = Vector2(690, 612)
 	buttons.add_theme_constant_override("separation", 16)
 	_root.add_child(buttons)
-	_continue = _button("CONTINUE", func() -> void: _on_continue())
-	_abandon = _button("ABANDON", _on_abandon)
+	_continue = _button("start", "CONTINUE", func() -> void: _on_continue())
+	VrWidgets.style_button(_continue, Color("2f7d4a"))
+	_continue.add_theme_font_size_override("font_size", 17)
+	_abandon = _button("quit", "ABANDON", _on_abandon)
 	buttons.add_child(_continue)
 	buttons.add_child(_abandon)
 	_hint = HyperTheme.label("", 16, HyperTheme.CREAM, 600)
 	_hint.add_theme_constant_override("outline_size", 6)  # readable over the backdrop
 	_hint.add_theme_color_override("font_outline_color", HyperTheme.OUTLINE)
 	_hint.position = Vector2(34, 640)
+	_hint.visible = false  # (Prototype 005: no permanent control instructions)
 	_root.add_child(_hint)
 	visible = false
 
 
-func _button(text: String, action: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.theme = _root.theme
-	HyperTheme.style_button(b, false, 260)  # (the main menu's buttons)
-	b.custom_minimum_size.y = 52
-	b.add_theme_font_size_override("font_size", 22)
+func _button(icon: String, text: String, action: Callable) -> Button:
+	var b := VrWidgets.icon_button(icon, "", 46, text, 17)
+	b.custom_minimum_size = Vector2(200, 46)
 	b.pressed.connect(action)
-	b.mouse_entered.connect(b.grab_focus)
-	UiJuice.button(b)  # (style_button juices it too; once is enough)
 	return b
 
 
@@ -169,7 +172,7 @@ func _row_box(cells: Array, header: bool, icon: Texture2D = null, color: Color =
 			t.custom_minimum_size = Vector2(widths[k], ROW_H)
 			row.add_child(t)
 			continue
-		var l := HyperTheme.label(str(cells[k]), 17 if header else 20, HyperTheme.GOLD if header else color, 700 if header else 600)
+		var l := VrWidgets.text(str(cells[k]), 13 if header else 16, HyperTheme.GOLD if header else color)
 		l.custom_minimum_size = Vector2(widths[k], ROW_H)
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		if k >= 3:
@@ -238,6 +241,7 @@ func show_standings(champ: Championship, reward: String = "", reward_car: Textur
 		_reward_car.texture = reward_car
 		_reward_car.visible = reward_car != null
 		_continue.text = "MAIN MENU"
+		VrWidgets.set_icon(_continue, "menu")
 		_abandon.visible = false
 	else:
 		var r := champ.next_round()
@@ -248,8 +252,10 @@ func show_standings(champ: Championship, reward: String = "", reward_car: Textur
 		_reward.visible = false
 		_reward_car.visible = false
 		_continue.text = "START THE FINAL" if r.get("final", false) else "START ROUND %d" % (done_rounds + 1)
+		VrWidgets.set_icon(_continue, "start")
 		if not career:  # P003: the garage comes first, then the round
 			_continue.text = "GARAGE  >  " + ("THE FINAL" if r.get("final", false) else "ROUND %d" % (done_rounds + 1))
+			VrWidgets.set_icon(_continue, "garage")
 		_abandon.visible = true
 	_hint.text = PlayerControls.fmt("{confirm} / {back}: main menu" if _final else "{confirm}: next round      {back}: abandon the championship")
 	_confirming = false
@@ -262,6 +268,7 @@ func show_standings(champ: Championship, reward: String = "", reward_car: Textur
 			_hint.text = PlayerControls.fmt("{confirm} / {back}: continue")
 		else:
 			_continue.text = "TO THE GARAGE"
+			VrWidgets.set_icon(_continue, "garage")
 			_abandon.text = "SAVE & EXIT"
 			_hint.text = PlayerControls.fmt("{confirm}: garage, round %d    {back}: save & exit" % (done_rounds + 1))
 	if not _final and warning != "":

@@ -254,11 +254,10 @@ func card_text(i: int) -> String:
 	var long_races := 0
 	for l in s.laps:
 		long_races += int(l > 3)
-	var style := "Classic" if s.career_style == WeaponRules.Style.CLASSIC else "Tactical"
-	return "%d.  %s  -  %s      %s\n%s\n%d rounds%s%s  -  %s combat  -  title bonus $%d + a rival's car" % [i + 1, s.title.to_upper(),
-		s.career_tagline.to_upper(), state,
+	return "%d.  %s  -  %s      %s\n%s\n%d rounds%s%s  -  title bonus $%d + a rival's car" % [i + 1, s.title,
+		s.career_tagline, state,
 		s.blurb, s.round_count(), ("  -  %d at night" % night) if night > 0 else "",
-		("  -  %d of 7 laps" % long_races) if long_races > 0 else "", style, s.career_bonus]
+		("  -  %d of 7 laps" % long_races) if long_races > 0 else "", s.career_bonus]
 
 
 ## Opens the Hall of Fame (after the ending).
@@ -329,7 +328,7 @@ func _on_new() -> void:
 		_confirm_new = true
 		_new_button.text = "CONFIRM: START OVER"
 		_notice.text = "NEW CAREER resets the career's progress, records and garage (money, weapons, armour) to the start. " \
-			+ "Kept: achievements, won rival cars, the Garage Race career and the Hall of Fame's career titles."
+			+ "Kept: achievements, won rival cars, the championship garage and the Hall of Fame's career titles."
 		_new_button.grab_focus()
 		return
 	_confirm_new = false

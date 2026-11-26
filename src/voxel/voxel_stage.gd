@@ -129,10 +129,11 @@ func setup(p_main: Node2D) -> void:
 	_tilt.position = Vector3(0, 0, -2.0)
 	_setup_decals()
 	_hint = Label.new()
-	_hint.add_theme_font_size_override("font_size", 18)
+	_hint.add_theme_font_override("font", VrStyle.font("regular"))
+	_hint.add_theme_font_size_override("font_size", 14)
 	_hint.add_theme_color_override("font_color", Color(1, 0.95, 0.8))
 	_hint.add_theme_color_override("font_outline_color", Color(0.1, 0.08, 0.06))
-	_hint.add_theme_constant_override("outline_size", 6)
+	_hint.add_theme_constant_override("outline_size", 3)
 	_hint.position = Vector2(1280 - 420, 690)
 	_hint.size = Vector2(400, 24)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -252,7 +253,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed(PlayerControls.CAMERA_VIEW, false, true):
 		return
 	view_index = (view_index + 1) % VIEWS.size()
-	_show_hint(PlayerControls.fmt("CAMERA: %s   ({camera_view})") % VIEWS[view_index][2])
+	_show_hint(PlayerControls.fmt("Camera: %s   {camera_view}") % VIEWS[view_index][2])
 	get_viewport().set_input_as_handled()
 
 
@@ -1026,6 +1027,24 @@ func _build_lamps() -> void:
 
 
 ## P003: more voxel lamp posts round the circuit (presentation only): every
+## Whether a circle (px) overlaps a grandstand's footprint (lamp posts keep out).
+func _in_grandstand(p: Vector2, r: float) -> bool:
+	var props := get_node_or_null("Props")
+	if props == null:
+		return false
+	for n in props.get_children():
+		var mi := n as MeshInstance3D
+		if mi == null or mi.mesh == null or not mi.mesh.has_meta("grandstand"):
+			continue
+		var cells: Vector2i = mi.mesh.get_meta("cells")
+		var b := mi.transform.basis
+		var half := Vector2(cells) * Vox.CELL_PX * 0.5 * mi.scale.x
+		var q := p - Vector2(mi.position.x, mi.position.z) / Vox.PX
+		if absf(q.dot(Vector2(b.x.x, b.x.z).normalized())) < half.x + r and absf(q.dot(Vector2(b.z.x, b.z.z).normalized())) < half.y + r:
+			return true
+	return false
+
+
 ## POST_SPACING px along the centre line, alternating sides, on open ground
 ## beside the road; each casts a pool of light on the asphalt at night.
 func _build_posts(holder: Node3D) -> void:
@@ -1056,7 +1075,8 @@ func _build_posts(holder: Node3D) -> void:
 		var ok := false
 		for extra in [0.0, 24.0, 48.0, -12.0]:
 			spot = a + n * (POST_OFFSET + extra)
-			if vtrack.class_at(spot) == VoxelTrack.C_GRASS and not _on_drivable(spot, Vector2(28, 28)):
+			if vtrack.class_at(spot) == VoxelTrack.C_GRASS and not _on_drivable(spot, Vector2(28, 28)) \
+					and not _in_grandstand(spot, 30.0):
 				ok = true
 				break
 		if not ok:

@@ -5,13 +5,16 @@ extends RefCounted
 ## Each prop drawing is sampled into voxel columns (Vox.CELL_PX) and extruded
 ## with a profile that fits what it is: trees get a trunk and a rounded
 ## canopy, pines a cone, bushes and rocks low domes, flowers a petal layer,
-## tyre stacks rings, grandstands stepped tiers, advertising boards and the
-## pit building stand up with the drawing on their face, Tabletop Mayhem's
-## giant pencils, cups and dice get their real shapes. Colours always come
-## from the drawing, so every biome (and the user's own custom/ art) keeps
-## its look. One mesh per logical asset, shared by every placement.
+## tyre stacks rings, advertising boards and the pit building stand up with
+## the drawing on their face, Tabletop Mayhem's giant pencils, cups and dice
+## get their real shapes. Colours come from the drawing, so every biome (and
+## the user's own custom/ art) keeps its look - except the grandstands (P005):
+## they are built procedurally (voxel_grandstand.gd) in muted structural
+## colours, leaving strong red / white to the kerbs and barriers. One mesh
+## per logical asset, shared by every placement.
 
 const VS := Vox.CELL_PX
+const Grandstand := preload("res://src/voxel/voxel_grandstand.gd")
 
 enum Kind { DOME, TREE, PINE, BUSH, ROCK, FLOWERS, TYRES, FLAG, STAND, LAMP, FLOOD, BOARD, CRATE, PIT, FLAT, PENCIL, CUP, DICE, SLAB }
 
@@ -97,6 +100,8 @@ static func _build(kind: Kind, tex: Texture2D, display: Vector2, hframes: int) -
 			return _flag(img, region)
 		Kind.LAMP, Kind.FLOOD:
 			return lamp_mesh(kind == Kind.FLOOD)
+		Kind.STAND:  # the same footprint and facing (crowd side +Z, towards the track)
+			return Grandstand.mesh(nxc, nzc)
 	var s := _sample(img, region, nxc, nzc)
 	var occ: PackedByteArray = s[0]
 	var cols: Array = s[1]
@@ -137,9 +142,6 @@ static func _build(kind: Kind, tex: Texture2D, display: Vector2, hframes: int) -
 					if r < 0.42:  # the hollow middle of the stack
 						y1 = 1
 						c = Color(0.1, 0.09, 0.09)
-				Kind.STAND:
-					var back := 1.0 - (z + 0.5) / nzc  # image top = back of the stand
-					y1 = 2 + int(floor(back * 5.0)) * 3
 				Kind.CRATE:
 					y1 = int(round(diam * 0.7))
 				Kind.FLAT:
@@ -166,8 +168,6 @@ static func _build(kind: Kind, tex: Texture2D, display: Vector2, hframes: int) -
 					vc = Color(0.13, 0.12, 0.13).lerp(c, 0.35) if y % 2 == 0 else Color(0.06, 0.06, 0.07)
 					if y == y1 - 1 and r >= 0.42:
 						vc = vc.lightened(0.18)
-				if kind == Kind.STAND and y < y1 - 1:
-					vc = Color(0.55, 0.54, 0.56).darkened(0.1 * (y % 3))
 				g.set_v(x, y, z, Vox.METAL if kind == Kind.FLAT and c.s < 0.1 and c.v > 0.6 else Vox.SOLID, vc)
 	if kind == Kind.TREE or kind == Kind.PINE:  # the trunk
 		var cx := nxc / 2
@@ -177,11 +177,6 @@ static func _build(kind: Kind, tex: Texture2D, display: Vector2, hframes: int) -
 			for dz in [-1, 0]:
 				for dx in [-1, 0]:
 					g.set_v(cx + dx, y, cz + dz, Vox.SOLID, Color(0.36, 0.25, 0.16).darkened(0.1 * ((y + dx) % 2)))
-	if kind == Kind.STAND:  # back wall and roof posts
-		for x in nxc:
-			for y in range(0, 20):
-				if y >= 17 or x % 12 == 0:
-					g.set_v(x, y, 0, Vox.SOLID, Color(0.86, 0.84, 0.8) if y < 17 else Color(0.78, 0.2, 0.16))
 	var pivot := Vector3(nxc * 0.5, 0.0, nzc * 0.5) * VS * Vox.PX
 	return VoxelMesher.build_mesh(g, VoxelCars.material(), pivot, 0.07)
 

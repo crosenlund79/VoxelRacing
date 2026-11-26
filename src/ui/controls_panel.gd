@@ -8,6 +8,8 @@ extends PanelContainer
 ## the slot. Clashes are refused with a message.
 ## Tabs: click them, move along the tab row (left / right), or Q / E and the
 ## controller's shoulder buttons from anywhere on the screen.
+## Prototype 005: compact, with icon tabs; only the chosen input device's
+## bindings are shown (a small switch shows the other device's).
 
 signal closed
 
@@ -16,14 +18,16 @@ signal closed
 ## A remappable action missing here lands on the "menus" tab, so every action
 ## in ControlBindings.ACTIONS always has its slots somewhere.
 const TABS := [
-	["DRIVING", [PlayerControls.STEER_LEFT, PlayerControls.STEER_RIGHT, PlayerControls.FIRE]],
-	["WEAPONS & COMBAT", [PlayerControls.FIRE_FRONT, PlayerControls.FIRE_REAR, PlayerControls.CYCLE_FRONT,
-		PlayerControls.CYCLE_REAR, PlayerControls.TOGGLE_STYLE]],
-	["CAMERA & REPLAYS", ["camera_view", "replay", "photo_mode", PlayerControls.TOGGLE_LIGHTING]],
-	["MENUS & RACE", [PlayerControls.CONFIRM, PlayerControls.BACK, PlayerControls.HISTORY_VIEW]],
-	["MULTIPLAYER", []],
-	["SPECTATOR", [PlayerControls.SIM_SPEED, PlayerControls.TOGGLE_PANEL]],
+	["Driving", [PlayerControls.STEER_LEFT, PlayerControls.STEER_RIGHT, PlayerControls.FIRE]],
+	["Weapons", [PlayerControls.FIRE_FRONT, PlayerControls.FIRE_REAR, PlayerControls.CYCLE_FRONT,
+		PlayerControls.CYCLE_REAR]],
+	["Camera", ["camera_view", "replay", "photo_mode", PlayerControls.TOGGLE_LIGHTING]],
+	["Menus", [PlayerControls.CONFIRM, PlayerControls.BACK, PlayerControls.HISTORY_VIEW]],
+	["Multiplayer", []],
+	["Spectator", [PlayerControls.SIM_SPEED, PlayerControls.TOGGLE_PANEL]],
 ]
+const TAB_ICONS := ["car", "weapons_on", "camera", "menu", "multiplayer", "spectate"]
+const VrWidgets := preload("res://src/ui/vr_widgets.gd")
 const MENUS_TAB := 3
 const UiJuice := preload("res://src/ui/ui_juice.gd")
 ## Names for the fixed (not remappable) actions.
@@ -39,8 +43,8 @@ const ROWS := [
 	[0, "Laps", "Count only when every checkpoint is passed in order"],
 	[0, "Grid", "The next race starts from the reversed result: the winner starts last"],
 	[1, "Weapons", "{fire_front} fires the front weapon, {fire_rear} the rear one"],
-	[1, "Weapon types", "{cycle_front} / {cycle_rear} switch to the next owned type you carry (garage races)"],
-	[1, "Combat style", "{toggle_style} on the grid panel: Classic or Tactical"],
+	[1, "Weapon types", "{cycle_front} / {cycle_rear} switch to the next type you carry (championship and career)"],
+	[1, "Weapons hot", "Weapons unlock once the whole field has crossed the start line"],
 	[2, "Camera view", "{camera_view} cycles the voxel camera preset during a race"],
 	[2, "Lights", "{toggle_lighting} switches the lights on or off"],
 	[2, "ACTION REPLAY", ""],
@@ -53,7 +57,7 @@ const ROWS := [
 	[2, "Pictures", "Enter / F12 saves a screenshot (user data folder, screenshots); H hides the hints"],
 	[3, "Race menu", "{back} pauses (resume or leave)"],
 	[3, "Results / standings", "{confirm} continues; Fire never does"],
-	[3, "Grid panel", "{steer_left} / {steer_right} control mode, {fire_front} / {fire_rear} weapons, {toggle_style} combat style, {history_view} laps, {fire} start"],
+	[3, "Grid", "{steer_left} / {steer_right} control mode, {fire_front} / {fire_rear} weapons, {history_view} laps, {fire} start"],
 	[3, "Championship", "Results: {confirm} = standings, then the garage before the next round"],
 	[3, "Always", "Enter always confirms, Esc always goes back"],
 	[4, "TWO PLAYERS", ""],
@@ -68,8 +72,8 @@ const ROWS := [
 ]
 
 ## The page area's fixed height: every tab gives the panel the same size.
-const PAGE_HEIGHT := 272
-const SLOT_SIZE := Vector2(116, 38)
+const PAGE_HEIGHT := 250
+const SLOT_SIZE := Vector2(104, 32)
 
 var _back: Button
 var _defaults: Button
@@ -84,20 +88,41 @@ var _pages: Array[Control] = []
 ## Each page's slot buttons, row by row (for focus wiring).
 var _page_rows: Array = []
 var tab := 0
+## Which device's bindings are shown: ControlBindings.KEYBOARD, PAD, or "" (both).
+var view_kind := ""
+var _view_button: Button
+var _device_button: Button
+var _grids: Array[GridContainer] = []
+var _headers: Array = []  # [label, kind]
+var _fixed_note: Array[Label] = []
 ## The slot waiting for a new input ([action, kind, slot]), empty when none.
 var waiting: Array = []
 
 
 func setup() -> void:
-	custom_minimum_size = Vector2(1200, 0)
+	custom_minimum_size = Vector2(1040, 0)
+	add_theme_stylebox_override("panel", VrWidgets.panel(0.92))
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", 8)
 	add_child(box)
 	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
 	box.add_child(head)
-	var heading := HyperTheme.heading("CONTROLS & HELP", "", 32)
+	_back = VrWidgets.icon_button("back", "Back", 34)
+	_back.pressed.connect(func() -> void: closed.emit())
+	head.add_child(_back)
+	head.add_child(VrWidgets.icon("controls", 24))
+	var heading := VrWidgets.text("Controls", 20, VrStyle.YELLOW)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(heading)
+	_view_button = VrWidgets.icon_button("keyboard", func() -> String:
+		return "Showing keyboard" if view_kind == ControlBindings.KEYBOARD else ("Showing gamepad" if view_kind == ControlBindings.PAD else "Showing both"), 34)
+	_view_button.pressed.connect(_toggle_view)
+	head.add_child(_view_button)
+	_defaults = VrWidgets.icon_button("restart", "Restore defaults", 34)
+	_defaults.pressed.connect(restore_defaults)
+	head.add_child(_defaults)
 	_help.resize(ROWS.size())
 	box.add_child(_build_tab_row())
 	var pages := Control.new()
@@ -117,45 +142,50 @@ func setup() -> void:
 		page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		pages.add_child(page)
 		_pages.append(page)
-	_status = HyperTheme.label("", 16, HyperTheme.CREAM_DIM, 500)
-	_status.custom_minimum_size = Vector2(1100, 40)
+	_status = VrWidgets.text("", 13, HyperTheme.CREAM_DIM)
+	_status.custom_minimum_size = Vector2(1000, 20)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_status)
-	var buttons := HBoxContainer.new()
-	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	buttons.add_theme_constant_override("separation", 16)
-	box.add_child(buttons)
-	_back = Button.new()
-	_back.text = "BACK"
-	_back.custom_minimum_size = Vector2(160, 0)
-	_back.pressed.connect(func() -> void: closed.emit())
-	buttons.add_child(_back)
-	_defaults = Button.new()
-	_defaults.text = "RESTORE DEFAULTS"
-	_defaults.pressed.connect(restore_defaults)
-	buttons.add_child(_defaults)
+	_set_view({PlayerControls.DEVICE_KEYBOARD: ControlBindings.KEYBOARD, PlayerControls.DEVICE_GAMEPAD: ControlBindings.PAD}.get(PlayerControls.device_kind, ""))
 	select_tab(0)
 	refresh()
 	UiJuice.tree(self)  # tabs, slots and buttons: the shared focus pop / press squash
 	_wire_focus.call_deferred()
 
 
-## The tab row: [Q / LB] tabs [E / RB].
+## The tab row: small icon tabs with their names.
 func _build_tab_row() -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
-	row.add_child(_key_chip("< Q / LB"))
 	for i in TABS.size():
-		var b := Button.new()
-		b.text = TABS[i][0]
-		b.add_theme_font_size_override("font_size", 16)
+		var b := VrWidgets.icon_button(TAB_ICONS[i], "", 34, " " + TABS[i][0], 14)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.pressed.connect(select_tab.bind(i))
 		b.focus_entered.connect(select_tab.bind(i))
 		row.add_child(b)
 		_tabs.append(b)
-	row.add_child(_key_chip("E / RB >"))
 	return row
+
+
+## Shows one device's bindings (or both): the grids drop the other columns.
+func _set_view(kind: String) -> void:
+	view_kind = kind
+	for g in _grids:
+		g.columns = 1 + ControlBindings.SLOTS * (1 if kind != "" else 2)
+	for h in _headers:
+		(h[0] as Control).visible = kind == "" or h[1] == kind
+	for key in _slots:
+		(_slots[key] as Control).visible = kind == "" or key[1] == kind
+	for key in _fixed:
+		((_fixed[key] as Label).get_parent() as Control).visible = kind == "" or key[1] == kind
+	if _view_button != null:
+		VrWidgets.set_icon(_view_button, "gamepad" if kind == ControlBindings.PAD else "keyboard")
+	if is_inside_tree():
+		_wire_focus()
+
+
+func _toggle_view() -> void:
+	_set_view(ControlBindings.PAD if view_kind == ControlBindings.KEYBOARD else ControlBindings.KEYBOARD)
 
 
 func _key_chip(text: String) -> PanelContainer:
@@ -190,18 +220,20 @@ func _build_page(index: int, actions: Array) -> Control:
 		page.add_child(left)
 		var map := GridContainer.new()
 		map.columns = 1 + 2 * ControlBindings.SLOTS
-		map.add_theme_constant_override("h_separation", 8)
+		map.add_theme_constant_override("h_separation", 6)
 		map.add_theme_constant_override("v_separation", 4)
 		left.add_child(map)
-		for h in ["ACTION", "KEY 1", "KEY 2", "PAD 1", "PAD 2"]:
-			var l := HyperTheme.label(h, 16, HyperTheme.GOLD, 700)
-			if h != "ACTION":
-				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			map.add_child(l)
+		_grids.append(map)
+		map.add_child(VrWidgets.text("", 13))
+		for h in [["keyboard", ControlBindings.KEYBOARD], ["keyboard", ControlBindings.KEYBOARD], ["gamepad", ControlBindings.PAD], ["gamepad", ControlBindings.PAD]]:
+			var ic := VrWidgets.icon(h[0], 18)
+			ic.custom_minimum_size = Vector2(SLOT_SIZE.x, 20)
+			map.add_child(ic)
+			_headers.append([ic, h[1]])
 		for a in remap + fixed:
 			var is_fixed: bool = a in fixed
-			var lbl := HyperTheme.label(FIXED_LABELS.get(a, a) if is_fixed else ControlBindings.label_of(a), 16, HyperTheme.CREAM, 700)
-			lbl.custom_minimum_size = Vector2(232, 0)
+			var lbl := VrWidgets.text(FIXED_LABELS.get(a, a) if is_fixed else ControlBindings.label_of(a), 14, HyperTheme.CREAM)
+			lbl.custom_minimum_size = Vector2(200, 0)
 			map.add_child(lbl)
 			var row: Array[Button] = []
 			for kind in [ControlBindings.KEYBOARD, ControlBindings.PAD]:
@@ -211,9 +243,9 @@ func _build_page(index: int, actions: Array) -> Control:
 						continue
 					var b := Button.new()
 					b.custom_minimum_size = SLOT_SIZE
-					b.add_theme_font_size_override("font_size", 16)
 					b.clip_text = true
 					_slot_style(b, kind)
+					b.add_theme_font_size_override("font_size", 13)
 					b.pressed.connect(_listen.bind(a, kind, slot))
 					map.add_child(b)
 					_slots[[a, kind, slot]] = b
@@ -221,7 +253,7 @@ func _build_page(index: int, actions: Array) -> Control:
 			if not row.is_empty():
 				rows.append(row)
 		if not fixed.is_empty():
-			left.add_child(HyperTheme.label("Camera view and replay have fixed inputs.", 16, HyperTheme.CREAM_DIM, 500))
+			left.add_child(VrWidgets.text("Fixed inputs", 12, HyperTheme.CREAM_DIM))
 	_page_rows.append(rows)
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", _card_style())
@@ -245,10 +277,10 @@ func _build_page(index: int, actions: Array) -> Control:
 			columns.add_child(list)
 		var item := VBoxContainer.new()
 		item.add_theme_constant_override("separation", 0)
-		item.add_child(HyperTheme.label(r[1], 16, HyperTheme.GOLD if heading else HyperTheme.CREAM, 700))
-		var t := HyperTheme.label("", 16, Color(HyperTheme.CREAM, 0.8), 500)
+		item.add_child(VrWidgets.text(r[1], 14, HyperTheme.GOLD if heading else HyperTheme.CREAM))
+		var t := VrWidgets.text("", 13, Color(HyperTheme.CREAM, 0.75))
 		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		t.custom_minimum_size = Vector2(480 if wide else 360, 0)
+		t.custom_minimum_size = Vector2(440 if wide else 330, 0)
 		t.visible = not heading
 		item.add_child(t)
 		_help[i] = t
@@ -259,7 +291,7 @@ func _build_page(index: int, actions: Array) -> Control:
 		for p in 2:
 			var chip := PanelContainer.new()
 			chip.add_theme_stylebox_override("panel", VrStyle.chip(HyperTheme.player_color(p)))
-			var l := HyperTheme.label("PLAYER %d" % (p + 1), 16, VrStyle.INK, 700)
+			var l := VrWidgets.text("Player %d" % (p + 1), 14, VrStyle.INK)
 			l.add_theme_constant_override("outline_size", 0)
 			chip.add_child(l)
 			players.add_child(chip)
@@ -287,20 +319,10 @@ func _fixed_chip(action: String, kind: String, slot: int) -> PanelContainer:
 	return chip
 
 
-## Compact voxel-block slots: keyboard slots night blue, controller slots a
-## touch of teal; yellow when focused, as everywhere.
+## Compact slots: keyboard slots night blue, controller slots a touch of teal;
+## yellow ring when focused, as everywhere.
 func _slot_style(b: Button, kind: String) -> void:
-	var face := VrStyle.NIGHT_LIGHT if kind == ControlBindings.KEYBOARD else Color("2f5468")
-	var states := {"normal": VrStyle.block(face, 4), "hover": VrStyle.block(VrStyle.YELLOW, 4),
-		"focus": VrStyle.block(VrStyle.YELLOW, 4), "pressed": VrStyle.block_pressed(VrStyle.RED, 4),
-		"hover_pressed": VrStyle.block_pressed(VrStyle.YELLOW, 4)}
-	for state in states:
-		var sb: StyleBoxTexture = states[state]
-		sb.content_margin_left = 6
-		sb.content_margin_right = 10
-		sb.content_margin_top = 4 if state.ends_with("pressed") else 2
-		sb.content_margin_bottom = 10
-		b.add_theme_stylebox_override(state, sb)
+	VrWidgets.style_button(b, VrWidgets.FACE if kind == ControlBindings.KEYBOARD else Color("2f5468"))
 
 
 func _card_style() -> StyleBoxFlat:
@@ -322,17 +344,7 @@ func select_tab(index: int) -> void:
 	for i in _pages.size():
 		_pages[i].visible = i == tab
 	for i in _tabs.size():
-		if i == tab:
-			_tabs[i].add_theme_stylebox_override("normal", VrStyle.block(VrStyle.RED))
-			_tabs[i].add_theme_color_override("font_color", HyperTheme.CREAM)
-		else:
-			_tabs[i].remove_theme_stylebox_override("normal")
-			_tabs[i].remove_theme_color_override("font_color")
-	if _back != null and _back.is_inside_tree():
-		var rows: Array = _page_rows[tab]
-		var above: Control = (rows[-1] as Array)[0] if not rows.is_empty() else _tabs[tab]
-		for b in [_back, _defaults]:
-			b.focus_neighbor_top = b.get_path_to(above)
+		_tabs[i].add_theme_stylebox_override("normal", VrWidgets.chip(VrStyle.RED if i == tab else VrWidgets.FACE))
 
 
 ## Controller paths the layout cannot guess: up from a page's first row goes
@@ -343,7 +355,12 @@ func _wire_focus() -> void:
 		return
 	for i in _tabs.size():
 		var rows: Array = _page_rows[i]
-		var first: Control = (rows[0] as Array)[0] if not rows.is_empty() else _back
+		var first: Control = _back
+		if not rows.is_empty():
+			for b in rows[0]:
+				if (b as Control).visible:
+					first = b
+					break
 		_tabs[i].focus_neighbor_bottom = _tabs[i].get_path_to(first)
 		if not rows.is_empty():
 			for b in rows[0]:
@@ -355,6 +372,7 @@ func _wire_focus() -> void:
 
 func focus_first() -> void:
 	refresh()
+	_set_view({PlayerControls.DEVICE_KEYBOARD: ControlBindings.KEYBOARD, PlayerControls.DEVICE_GAMEPAD: ControlBindings.PAD}.get(PlayerControls.device_kind, ""))
 	_tabs[tab].grab_focus()
 
 
@@ -366,7 +384,7 @@ func refresh() -> void:
 	for i in ROWS.size():
 		_help[i].text = PlayerControls.fmt(ROWS[i][2])
 	if waiting.is_empty():
-		_status.text = "Choose a slot and press the new key or controller input (Delete empties a slot). Enter always confirms, Esc always goes back."
+		_status.text = "Choose a slot, then press the new input (Delete empties it)"
 		_status.add_theme_color_override("font_color", HyperTheme.CREAM_DIM)
 
 

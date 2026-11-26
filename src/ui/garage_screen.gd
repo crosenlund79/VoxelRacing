@@ -56,6 +56,10 @@ var _car_rect: TextureRect
 var _car_name: Label
 
 
+const VrWidgets := preload("res://src/ui/vr_widgets.gd")
+const VrTips := preload("res://src/ui/vr_tips.gd")
+
+
 func setup(p_garage: PlayerGarage, resolver: AssetResolver) -> void:
 	garage = p_garage
 	_resolver = resolver
@@ -80,21 +84,27 @@ func setup(p_garage: PlayerGarage, resolver: AssetResolver) -> void:
 	_root.add_child(_shade())
 	visibility_changed.connect(func() -> void: _workshop.set_active(visible))
 
-	var title := HyperTheme.label("GARAGE", 60, HyperTheme.GOLD, 700)
-	title.position = Vector2(40, 90)
-	_root.add_child(title)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	head.position = Vector2(36, 96)
+	head.add_child(VrWidgets.icon("garage", 36))
+	head.add_child(VrWidgets.text("Garage", 30, HyperTheme.GOLD, "regular", 2))
+	_root.add_child(head)
 	_car_rect = TextureRect.new()
 	_car_rect.visible = false
 	_root.add_child(_car_rect)
-	_car_name = HyperTheme.label("", 18, HyperTheme.CREAM, 700)
-	_car_name.position = Vector2(42, 156)
+	_car_name = VrWidgets.text("", 14, HyperTheme.CREAM, "regular", 2)
+	_car_name.position = Vector2(42, 150)
 	_root.add_child(_car_name)
-	_money = HyperTheme.label("", 44, HyperTheme.CREAM, 700)
+	_money = VrWidgets.text("", 30, HyperTheme.CREAM, "regular", 2)
 	_money.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_money.size = Vector2(500, 60)
-	_money.position = Vector2(740, 92)
+	_money.size = Vector2(500, 44)
+	_money.position = Vector2(700, 96)
 	_root.add_child(_money)
-	_last = HyperTheme.label("", 20, HyperTheme.CREAM, 500)
+	var coin := VrWidgets.icon("money", 36)
+	coin.position = Vector2(1208, 98)
+	_root.add_child(coin)
+	_last = VrWidgets.text("", 13, HyperTheme.CREAM, "regular", 2)
 	_last.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_last.size = Vector2(700, 30)
 	_last.position = Vector2(540, 150)
@@ -117,7 +127,8 @@ func setup(p_garage: PlayerGarage, resolver: AssetResolver) -> void:
 	_root.add_child(_car_row())  # (the footer below holds its hint line)
 
 	var footer := PanelContainer.new()
-	footer.position = Vector2(26, 576)
+	footer.add_theme_stylebox_override("panel", VrWidgets.panel(0.86))
+	footer.position = Vector2(26, 590)
 	footer.custom_minimum_size = Vector2(1228, 0)
 	_root.add_child(footer)
 	var fbox := HBoxContainer.new()
@@ -128,23 +139,24 @@ func setup(p_garage: PlayerGarage, resolver: AssetResolver) -> void:
 	texts.alignment = BoxContainer.ALIGNMENT_CENTER
 	texts.add_theme_constant_override("separation", 0)
 	fbox.add_child(texts)
-	_summary = HyperTheme.label("", 21, HyperTheme.CREAM, 600)
+	_summary = VrWidgets.text("", 15, HyperTheme.CREAM)
 	_summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	texts.add_child(_summary)
-	_car_note = HyperTheme.label("", 16, Color("f0b48a"), 600)
+	_car_note = VrWidgets.text("", 13, Color("f0b48a"))
 	_car_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_car_note.custom_minimum_size = Vector2(680, 0)
 	texts.add_child(_car_note)
 	_carry_button = _small_button("")
 	_carry_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_carry_button.tooltip_text = "Carry every owned weapon type and switch between them in the race, or only the equipped ones."
+	VrTips.tip(_carry_button, "Weapons carried")
 	_carry_button.pressed.connect(func() -> void:
 		_play("ui/ui_select" if garage.set_carry_all(not garage.carry_all) else "ui/ui_back")
 		refresh())
 	fbox.add_child(_carry_button)
-	_race_button = Button.new()
-	_race_button.text = "RACE!"
-	_race_button.custom_minimum_size = Vector2(220, 56)
+	_race_button = VrWidgets.icon_button("start", "Start race", 48, " Race", 20)
+	VrWidgets.style_button(_race_button, Color("2f7d4a"))
+	_race_button.add_theme_font_size_override("font_size", 20)
+	_race_button.custom_minimum_size = Vector2(150, 48)
 	_race_button.pressed.connect(func() -> void:
 		_play("ui/ui_select")
 		race_requested.emit())
@@ -155,8 +167,10 @@ func setup(p_garage: PlayerGarage, resolver: AssetResolver) -> void:
 	strip.size = Vector2(1280, 34)
 	strip.position = Vector2(0, 680)
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strip.visible = false  # (Prototype 005: no permanent control instructions)
 	_root.add_child(strip)
 	_hint = HyperTheme.label("", 17, Color(HyperTheme.CREAM, 0.88), 600)
+	_hint.visible = false
 	set_back_label("grid panel")
 	var hint := _hint
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -320,12 +334,16 @@ static func _extra_text(d: Dictionary) -> String:
 ## M6 car row: condition bar, repair buttons, armour grade and upgrade.
 func _car_row() -> Control:
 	var panel := PanelContainer.new()
-	panel.position = Vector2(26, 510)
+	panel.add_theme_stylebox_override("panel", VrWidgets.panel(0.86))
+	panel.position = Vector2(26, 520)
 	panel.custom_minimum_size = Vector2(1228, 0)
 	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", 14)
+	box.add_theme_constant_override("separation", 12)
 	panel.add_child(box)
-	box.add_child(HyperTheme.label("CAR", 22, HyperTheme.GOLD, 700))
+	var car := VrWidgets.icon("car", 24)
+	car.mouse_filter = Control.MOUSE_FILTER_PASS
+	VrTips.tip(car, "Car condition")
+	box.add_child(car)
 	var track := ColorRect.new()
 	track.color = Color(0, 0, 0, 0.4)
 	track.custom_minimum_size = Vector2(170, 16)
@@ -334,10 +352,12 @@ func _car_row() -> Control:
 	_cond_bar.size = Vector2(170, 16)
 	track.add_child(_cond_bar)
 	box.add_child(track)
-	_cond_label = HyperTheme.label("", 20, HyperTheme.CREAM, 700)
+	_cond_label = VrWidgets.text("", 16, HyperTheme.CREAM)
 	_cond_label.custom_minimum_size = Vector2(62, 0)
 	box.add_child(_cond_label)
 	_repair_all = _small_button("REPAIR ALL")
+	_repair_all.icon = VrWidgets.VrIcons.tex("repair", 18)
+	VrTips.tip(_repair_all, func() -> String: return "Repair car  ($%d per 1%%)" % garage.rules.repair_price_per_point)
 	_repair_all.pressed.connect(func() -> void:
 		var before := garage.money
 		var ok := garage.repair_affordable() > 0.0
@@ -348,6 +368,7 @@ func _car_row() -> Control:
 			_float_money(garage.money - before))
 	box.add_child(_repair_all)
 	_repair_some = _small_button("+10 %")
+	VrTips.tip(_repair_some, "Repair 10%")
 	_repair_some.pressed.connect(func() -> void:
 		var before := garage.money
 		var ok := garage.repair(10.0)
@@ -357,11 +378,13 @@ func _car_row() -> Control:
 			_pulse(panel)
 			_float_money(garage.money - before))
 	box.add_child(_repair_some)
-	_armour_label = HyperTheme.label("", 19, HyperTheme.CREAM, 600)
+	_armour_label = VrWidgets.text("", 14, HyperTheme.CREAM)
 	_armour_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_armour_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	box.add_child(_armour_label)
 	_armour_button = _small_button("UPGRADE")
+	_armour_button.icon = VrWidgets.VrIcons.tex("armour", 18)
+	VrTips.tip(_armour_button, "Armour upgrade")
 	_armour_button.pressed.connect(func() -> void:
 		var before := garage.money
 		var ok := garage.buy_armour()
@@ -373,7 +396,8 @@ func _car_row() -> Control:
 			_workshop.fit_part())
 	box.add_child(_armour_button)
 	_view_button = _small_button("UPGRADES")
-	_view_button.tooltip_text = "Engine, brakes, chassis and steering upgrades (or back to the weapons)."
+	_view_button.icon = VrWidgets.VrIcons.tex("upgrade", 18)
+	VrTips.tip(_view_button, "Car upgrades")
 	_view_button.pressed.connect(func() -> void:
 		_play("ui/ui_select")
 		show_upgrades(not showing_upgrades()))
@@ -413,9 +437,10 @@ func _refresh_car() -> void:
 
 func _card(w: int) -> Control:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(232, 280)
+	panel.add_theme_stylebox_override("panel", VrWidgets.panel(0.86))
+	panel.custom_minimum_size = Vector2(232, 0)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", 4)
 	panel.add_child(box)
 	var icon := TextureRect.new()
 	icon.texture = _icons.get(w)
@@ -424,16 +449,18 @@ func _card(w: int) -> Control:
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.custom_minimum_size = Vector2(180, 64)
 	box.add_child(icon)
-	var name := HyperTheme.label(WeaponRules.weapon_name(w).to_upper(), 21, HyperTheme.GOLD, 700)
+	var name := VrWidgets.text(WeaponRules.weapon_name(w), 15, HyperTheme.GOLD)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(name)
-	var slot := HyperTheme.label("%s SLOT" % ("FRONT" if WeaponRules.slot_of(w) == 0 else "REAR"), 15, HyperTheme.CREAM_DIM, 600)
+	var slot := VrWidgets.text("%s slot" % ("Front" if WeaponRules.slot_of(w) == 0 else "Rear"), 12, HyperTheme.CREAM_DIM)
 	slot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(slot)
-	var price := HyperTheme.label("Buy $%d    Sell $%d" % [garage.rules.price(w), garage.rules.sell_price(w)], 18, HyperTheme.CREAM, 600)
+	var price := VrWidgets.text("$%d  /  $%d" % [garage.rules.price(w), garage.rules.sell_price(w)], 13, HyperTheme.CREAM)
 	price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	price.mouse_filter = Control.MOUSE_FILTER_PASS
+	VrTips.tip(price, "Buy / sell one round")
 	box.add_child(price)
-	var owned := HyperTheme.label("", 20, HyperTheme.CREAM, 600)
+	var owned := VrWidgets.text("", 15, HyperTheme.CREAM)
 	owned.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(owned)
 	var trade := HBoxContainer.new()
@@ -441,13 +468,17 @@ func _card(w: int) -> Control:
 	trade.add_theme_constant_override("separation", 6)
 	box.add_child(trade)
 	var buy := _small_button("BUY")
+	buy.icon = VrWidgets.VrIcons.tex("money", 18)
+	VrTips.tip(buy, "Buy one round")
 	buy.pressed.connect(func() -> void: _trade(w, true))
 	var sell := _small_button("SELL")
+	sell.icon = VrWidgets.VrIcons.tex("sell", 18)
+	VrTips.tip(sell, "Sell (half price)")
 	sell.pressed.connect(func() -> void: _trade(w, false))
 	trade.add_child(buy)
 	trade.add_child(sell)
 	var equip := _small_button("EQUIP")
-	equip.custom_minimum_size = Vector2(180, 44)
+	equip.custom_minimum_size = Vector2(180, 36)
 	equip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	equip.pressed.connect(func() -> void:
 		if garage.equip(WeaponRules.slot_of(w), w):
@@ -555,18 +586,13 @@ func _trade(w: int, buying: bool) -> void:
 func _small_button(text: String) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.add_theme_font_size_override("font_size", 19)
-	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
-		var box: StyleBox = _root.theme.get_stylebox(state, "Button").duplicate()
-		box.content_margin_left = 12  # both sides on the same box (each used to replace the other)
-		box.content_margin_right = 12
-		b.add_theme_stylebox_override(state, box)
-	# unavailable actions read clearly as inactive: darker, more transparent plate, faint text
-	var off: StyleBox = b.get_theme_stylebox("disabled")
-	if off is StyleBoxTexture:
-		off.modulate_color = DISABLED_PLATE
+	VrWidgets.style_button(b)
+	b.add_theme_font_size_override("font_size", 14)
 	b.add_theme_color_override("font_disabled_color", DISABLED_TEXT)
-	b.custom_minimum_size = Vector2(87, 44)
+	b.custom_minimum_size = Vector2(70, 36)
+	b.mouse_entered.connect(func() -> void:
+		if not b.disabled:
+			b.grab_focus())
 	return b
 
 

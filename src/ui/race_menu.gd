@@ -20,7 +20,8 @@ var _opened_frame := -1
 ## Racing for Keeps: leaving costs a car, so the first press only warns.
 var warning := ""
 var _confirming := false
-var _leave_text := "LEAVE RACE"
+var _leave_text := "Leave race"
+const VrWidgets := preload("res://src/ui/vr_widgets.gd")
 
 
 func setup(theme: Theme) -> void:
@@ -33,40 +34,36 @@ func setup(theme: Theme) -> void:
 	add_child(shade)
 	_panel = PanelContainer.new()
 	_panel.theme = theme
+	_panel.add_theme_stylebox_override("panel", VrWidgets.panel(0.92))
 	add_child(_panel)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", 8)
 	_panel.add_child(box)
-	_title = HyperTheme.label("RACE PAUSED", 40, HyperTheme.GOLD, 700)
-	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(_title)
-	var rule := ColorRect.new()
-	rule.color = Color(HyperTheme.GOLD, 0.7)
-	rule.custom_minimum_size = Vector2(220, 3)
-	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	box.add_child(rule)
-	_context = HyperTheme.label("", 18, HyperTheme.CREAM, 600)
+	var head := HBoxContainer.new()
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_theme_constant_override("separation", 10)
+	head.add_child(VrWidgets.icon("pause", 26))
+	_title = VrWidgets.text("Paused", 24, HyperTheme.GOLD)
+	head.add_child(_title)
+	box.add_child(head)
+	_context = VrWidgets.text("", 14, HyperTheme.CREAM)
 	_context.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_context.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_context.custom_minimum_size = Vector2(420, 0)
+	_context.custom_minimum_size = Vector2(340, 0)
 	box.add_child(_context)
-	_note = HyperTheme.label("", 17, HyperTheme.CREAM_DIM, 500)
+	_note = VrWidgets.text("", 13, HyperTheme.CREAM_DIM)
 	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_note.custom_minimum_size = Vector2(420, 0)
+	_note.custom_minimum_size = Vector2(340, 0)
 	box.add_child(_note)
-	_resume = _button("RESUME RACE", func() -> void: resume_requested.emit())
-	HyperTheme.style_button(_resume, true, 420)
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 6)
-	_leave = _button("LEAVE RACE", _on_leave)
-	HyperTheme.style_button(_leave, false, 420)
+	_resume = VrWidgets.icon_button("start", "", 46, "  Resume", 18)
+	VrWidgets.style_button(_resume, Color("2f7d4a"))
+	_resume.add_theme_font_size_override("font_size", 18)
+	_resume.pressed.connect(func() -> void: resume_requested.emit())
+	_leave = VrWidgets.icon_button("quit", "", 38, "  " + _leave_text, 15)
+	_leave.pressed.connect(_on_leave)
 	box.add_child(_resume)
-	box.add_child(gap)
 	box.add_child(_leave)
-	var hint := HyperTheme.label(PlayerControls.fmt("Up / Down: choose    {confirm}: select    {back}: resume"), 15, HyperTheme.CREAM_DIM, 500)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(hint)
 	visible = false
 
 
@@ -87,10 +84,10 @@ func _button(text: String, action: Callable) -> Button:
 ## network: the race goes on for the other player while the menu is open.
 func open(network: bool) -> void:
 	_confirming = false
-	_leave.text = _leave_text
+	_leave.text = "  " + _leave_text
 	_note.remove_theme_color_override("font_color")
-	_title.text = "RACE MENU" if network else "RACE PAUSED"
-	_note.text = "The race goes on for the other player: your car brakes." if network else "The race is paused."
+	_title.text = "Race menu" if network else "Paused"
+	_note.text = "The race goes on: your car brakes" if network else ""
 	visible = true
 	_panel.reset_size()
 	_panel.position = (Vector2(1280, 720) - _panel.get_combined_minimum_size()) * 0.5
@@ -111,7 +108,7 @@ func set_note(text: String, alert := false) -> void:
 ## The leave button's label (a championship round abandons the championship).
 func set_leave_text(text: String) -> void:
 	_leave_text = text
-	_leave.text = text
+	_leave.text = "  " + text
 
 
 func _on_leave() -> void:
@@ -119,7 +116,7 @@ func _on_leave() -> void:
 		_confirming = true
 		_note.text = warning
 		_note.add_theme_color_override("font_color", Color("ff8a6a"))
-		_leave.text = "CONFIRM: FORFEIT"
+		_leave.text = "  Confirm: forfeit"
 		_panel.reset_size()
 		_panel.position = (Vector2(1280, 720) - _panel.get_combined_minimum_size()) * 0.5
 		return

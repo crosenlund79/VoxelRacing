@@ -108,6 +108,10 @@ func begin_race(seed_value: int) -> void:
 	in_corner = false
 	fluster_time = 0.0
 	overcommits = 0
+	# opening composure (Prototype 005): how long after weapons go hot this
+	# driver waits for the pack to string out before its first ordinary shot
+	# (seconds; the calmer the driver, the longer, varying a little per race)
+	_opening_hold = (1.5 + 6.0 * params.ammo_discipline) * weapon_rng.randf_range(0.8, 1.25)
 	flusters = 0
 	disrupted_time = 0.0
 	pass_side_choice = 0.0
@@ -417,6 +421,9 @@ func decide_weapons(me: Dictionary, targets: Array, ctx: Dictionary, delta: floa
 	var relief := 0.15 if retaliating > 0.0 else 0.0
 	var out := {"front": false, "rear": false}
 	relief += _impulse(delta)
+	if opening_hold_active(ctx):
+		return out
+	relief -= opening_penalty(ctx)
 	if ctx.front_ready:
 		var pacing := spend_penalty(ctx.front_ammo, ctx.front_start, ctx) + reserve_penalty(ctx.front_ammo, ctx)
 		var threshold := params.attack_min_confidence - relief + pacing
@@ -573,6 +580,39 @@ func on_destroyed_by(offender: int, self_id: int) -> void:
 	grudge_left = params.grudge_time
 
 
+## --- Opening composure (Prototype 005). Weapons go hot for everyone at the
+## same moment (once the whole field has crossed the start line), when the cars
+## are still nose to tail: every shot looks good, and the race used to explode
+## in the first seconds. These are DECISIONS only - the weapon rules, ammunition
+## and cooldowns are the same for every car, the player included:
+## - each driver waits _opening_hold s before its first ordinary shot (an
+##   aggressive driver two or three seconds, a calculating one six or seven; only a
+##   near-perfect chance taken by a "brilliant" driver breaks the wait);
+## - in the first OPENING_TIME s, a shot into a packed field must be better
+##   (the more cars around, the pickier - calm drivers more than reckless ones).
+const OPENING_TIME := 30.0
+var _opening_hold := 0.0
+
+
+func _hot_time(ctx: Dictionary) -> float:
+	return float(ctx.get("hot_time", 999.0))
+
+
+## Still waiting for the field to string out (longer races: a little longer).
+func opening_hold_active(ctx: Dictionary) -> bool:
+	var scale := 1.3 if int(ctx.get("lap_count", 3)) >= 7 else 1.0
+	return _hot_time(ctx) < _opening_hold * scale
+
+
+## Extra shot quality needed in a packed field early in the race.
+func opening_penalty(ctx: Dictionary) -> float:
+	var hot := _hot_time(ctx)
+	if hot >= OPENING_TIME:
+		return 0.0
+	var crowd := maxi(0, int(ctx.get("pack", 0)) - 1)
+	return minf(0.4, 0.1 * crowd) * (1.0 - hot / OPENING_TIME) * (0.6 + 0.4 * params.ammo_discipline)
+
+
 ## --- M3.5 Tactical decisions. The same weapons, ammunition and cooldowns as
 ## everyone (CombatWorld enforces them); personality traits only shape when a
 ## driver judges a shot worth taking. Uses weapon_rng only, so driving decisions
@@ -598,7 +638,8 @@ func decide_weapons_tactical(me: Dictionary, targets: Array, ctx: Dictionary, de
 		var ammo: int = ctx.front_ammo if slot == 0 else ctx.rear_ammo
 		var pacing := spend_penalty(ammo, ctx.front_start if slot == 0 else ctx.rear_start, ctx, weapon) \
 			+ (reserve_penalty(ammo, ctx) if slot == 0 else 0.0)
-		var threshold := (params.mine_min_quality if is_mine else params.attack_min_confidence) - relief + pacing
+		var threshold := (params.mine_min_quality if is_mine else params.attack_min_confidence) - relief + pacing \
+			+ opening_penalty(ctx)
 		if params.confidence_variation > 0.0:
 			threshold += weapon_rng.randf_range(-params.confidence_variation, params.confidence_variation)
 		if pressure:
@@ -608,12 +649,15 @@ func decide_weapons_tactical(me: Dictionary, targets: Array, ctx: Dictionary, de
 			rate *= params.rear_eagerness
 			threshold -= 0.1 * (params.rear_eagerness - 1.0)
 		var good := q > 0.0 and q >= threshold
-		_aim[slot] = _aim[slot] + delta if good else 0.0
+		var holding := opening_hold_active(ctx)
+		_aim[slot] = _aim[slot] + delta if good and not holding else 0.0
 		var aimed := pressure or _aim[slot] >= params.tactical_aim_time
 		var fire := false
-		if q >= 0.9 and params.brilliance_rate > 0.0 and weapon_rng.randf() < params.brilliance_rate * delta:
+		if q >= (0.95 if holding else 0.9) and params.brilliance_rate > 0.0 and weapon_rng.randf() < params.brilliance_rate * delta:
 			fire = true
 			brilliant_shots += 1
+		elif holding:
+			pass  # opening composure: no ordinary or wasted shots yet
 		elif good and aimed and weapon_rng.randf() < rate * delta:
 			fire = true
 		elif slot == 0 and params.waste_chance > 0.0 and weapon_rng.randf() < params.waste_chance * _waste_scale(ctx) * delta:

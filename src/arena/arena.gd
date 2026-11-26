@@ -59,7 +59,7 @@ func build(resolver: AssetResolver, p_theme: TrackTheme) -> void:
 				rng.seed = 7
 				for k in 7:  # junked cars piled up, at all angles
 					var s := Sprite2D.new()
-					s.name = "PropJunker"
+					s.name = "PropJunker%d" % k  # (unique: the voxel stage takes props by name)
 					s.texture = junker
 					s.scale = AssetCatalog.scale_for(junker, Vector2(64, 36)) * rng.randf_range(0.85, 1.05)
 					s.position = Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, 95.0)
@@ -97,15 +97,17 @@ func build(resolver: AssetResolver, p_theme: TrackTheme) -> void:
 		c.position = t.centre
 		body.add_child(c)
 		var s := Sprite2D.new()
-		s.name = "PropTyres"
+		s.name = "PropTyres%d" % s.get_instance_id()  # (unique: the voxel stage takes props by name)
 		s.texture = tyres
 		s.scale = AssetCatalog.scale_for(tyres, Vector2(t.radius * 2.2, t.radius * 2.2))
 		s.position = t.centre
 		add_child(s)
 	var stand := resolver.get_texture(AssetCatalog.GRANDSTAND)
+	var stand_n := 0
 	for at in layout.stands:  # (shared with the setup screen's preview)
 		var g := Sprite2D.new()
-		g.name = "PropStand"
+		g.name = "PropStand%d" % stand_n  # (unique: the voxel stage takes props by name)
+		stand_n += 1
 		g.texture = stand
 		g.scale = AssetCatalog.scale_for(stand, AssetCatalog.SPECS[AssetCatalog.GRANDSTAND].display_size)
 		g.position = at

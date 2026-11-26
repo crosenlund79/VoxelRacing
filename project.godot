@@ -21,6 +21,11 @@ window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"
 
+[gui]
+
+theme/custom_font="res://assets/fonts/kenney_future/KenneyFutureNarrow.ttf"
+theme/default_font_antialiasing=1
+
 [physics]
 
 common/physics_ticks_per_second=60

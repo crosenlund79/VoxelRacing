@@ -3,8 +3,18 @@ extends SubViewportContainer
 ## The VoxelRacing logo, a real voxel model rendered live: chunky pixel
 ## letters (VOXEL in race red over RACING in yellow) in stepped motorsport
 ## italics, on a dark ink backing plate, with a chequered strip between the
-## rows that one of the game's own voxel cars races along. It sways gently.
+## rows. It sways gently. Prototype 005: two of the game's voxel cars, picked
+## at random from the roster each time the menu opens, stand by its corners as
+## little display models, bobbing slowly (no more car looping past the logo).
 ## tools/make_branding.gd bakes it to PNG (window icon, README).
+
+## The roster the display cars come from (the rivals and the player's car).
+const DISPLAY_CARS := ["cars/body_player", "cars/body_ai_1", "cars/body_ai_2", "cars/body_ai_3", "cars/body_ai_4",
+	"cars/body_ai_5", "cars/body_ai_6", "cars/body_ai_7", "cars/body_ai_8", "cars/body_ai_9"]
+## Where they stand (beside VOXEL at the top left, beside RACING at the
+## bottom right), how they are turned (a three-quarter view towards the
+## logo), and their bob phase.
+const CORNERS := [[Vector3(-7.7, 1.35, 1.2), -0.55, 0.0], [Vector3(7.9, -1.6, 1.2), PI + 0.55, 2.1]]
 
 const GLYPHS := {
 	"V": ["11..11", "11..11", "11..11", "11..11", ".1111.", ".1111.", "..11.."],
@@ -23,8 +33,9 @@ const VS := 0.25
 
 var viewport: SubViewport
 var model: Node3D
-var _car: Node3D
+var _cars: Array[Node3D] = []
 var _time := 0.0
+var _rng := RandomNumberGenerator.new()
 var animate := true
 
 static var _logo_mesh: ArrayMesh
@@ -69,29 +80,56 @@ func _ready() -> void:
 	mi.mesh = logo_mesh()
 	mi.basis = Basis(Vector3(1, 0, 0), Vector3(0.2, 1, 0), Vector3(0, 0, 1))  # motorsport italics
 	model.add_child(mi)
-	_car = Node3D.new()
-	model.add_child(_car)
-	var resolver := AssetResolver.new()
-	var tex := resolver.get_texture("cars/body_player")
-	var layout: WheelLayout = load("res://src/presentation/default_wheel_layout.tres")
-	var body := MeshInstance3D.new()
-	body.mesh = VoxelCars.body_mesh(tex, layout, "cars/body_player")
-	body.set_instance_shader_parameter("head_glow", 0.4)
-	_car.add_child(body)
-	var at := layout.positions("cars/body_player")
-	for ax in [at.x, at.y]:
-		for az in [-at.z, at.z]:
-			var w := MeshInstance3D.new()
-			w.mesh = VoxelCars.wheel_mesh()
-			w.position = Vector3(ax, VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX, az) * Vox.PX
-			_car.add_child(w)
-	_car.scale = Vector3.ONE * 0.95
+	_rng.randomize()
+	pick_cars()
 	var cam := Camera3D.new()
 	cam.fov = 17.0
 	cam.position = Vector3(0, 1.2, 30.0)
 	cam.look_at_from_position(cam.position, Vector3(0, -0.2, 0), Vector3.UP)
 	viewport.add_child(cam)
 	cam.make_current()
+
+
+## Two different cars from the roster for the corners (a new pair each time
+## the menu opens; they stay put while it is open).
+func pick_cars() -> void:
+	if model == null:
+		return
+	for c in _cars:
+		c.queue_free()
+	_cars.clear()
+	var first := _rng.randi_range(0, DISPLAY_CARS.size() - 1)
+	var second := posmod(first + _rng.randi_range(1, DISPLAY_CARS.size() - 1), DISPLAY_CARS.size())
+	var resolver := AssetResolver.new()
+	var layout: WheelLayout = load("res://src/presentation/default_wheel_layout.tres")
+	for k in 2:
+		var logical: String = DISPLAY_CARS[first if k == 0 else second]
+		var car := Node3D.new()
+		var body := MeshInstance3D.new()
+		body.mesh = VoxelCars.body_mesh(resolver.get_texture(logical), layout, logical)
+		body.set_instance_shader_parameter("head_glow", 0.4)
+		car.add_child(body)
+		var at := layout.positions(logical)
+		for ax in [at.x, at.y]:
+			for az in [-at.z, at.z]:
+				var w := MeshInstance3D.new()
+				w.mesh = VoxelCars.wheel_mesh()
+				w.position = Vector3(ax, VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX, az) * Vox.PX
+				car.add_child(w)
+		car.scale = Vector3.ONE * 0.9
+		model.add_child(car)
+		_cars.append(car)
+	_place_cars()
+
+
+func _place_cars() -> void:
+	for k in _cars.size():
+		var spot: Array = CORNERS[k]
+		var base: Vector3 = spot[0]
+		var phase: float = spot[2]
+		var bob := sin(_time * 1.4 + phase)
+		_cars[k].position = base + Vector3(0, bob * 0.12, 0)
+		_cars[k].rotation = Vector3(0.18 + bob * 0.02, float(spot[1]) + sin(_time * 0.5 + phase) * 0.06, bob * 0.025)
 
 
 ## Holds the logo at a moment of its animation (baked pictures).
@@ -106,14 +144,8 @@ func _process(delta: float) -> void:
 	if not animate or model == null:
 		return
 	_time += delta
-	model.rotation = Vector3(sin(_time * 0.7) * 0.05, sin(_time * 0.45) * 0.16, 0.0)
-	# the little car laps along the chequered strip
-	var span := 11.0
-	var t := fposmod(_time * 0.22, 1.0)
-	var x := lerpf(-span, span, smoothstep(0.0, 1.0, t))
-	_car.position = Vector3(x, -0.2, 1.4)
-	_car.rotation = Vector3(0, 0, 0)
-	_car.visible = t < 0.97
+	model.rotation = Vector3(sin(_time * 0.7) * 0.05, sin(_time * 0.45) * 0.12, 0.0)
+	_place_cars()  # the display cars bob slowly in their corners
 
 
 ## The logo model (shared): letters, plate and strip, centred.

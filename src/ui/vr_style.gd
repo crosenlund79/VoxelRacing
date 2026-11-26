@@ -1,7 +1,7 @@
 class_name VrStyle
 extends RefCounted
 ## VoxelRacing's visual identity for 2D interface pieces: the palette, the
-## Pixel Operator typography (CC0, assets/fonts/pixel_operator/) and "voxel
+## Kenney Future typography (CC0, assets/fonts/kenney_future/) and "voxel
 ## block" panels and buttons: chunky rectangles with a dark ink outline, a lit
 ## top edge, a darker depth band underneath and a hard block shadow, as if
 ## each button were a little voxel brick. Everything is generated here (no
@@ -22,32 +22,38 @@ const SKY := Color("59c3f2")
 const PINK := Color("f45b9b")
 const SHADOW := Color(0.04, 0.03, 0.1, 0.55)
 
-const FONT_DIR := "res://assets/fonts/pixel_operator/"
+const FONT_DIR := "res://assets/fonts/kenney_future/"
 
 static var _fonts := {}
 static var _boxes := {}
 
 
-## Pixel Operator: "regular", "bold", "mono", "mono_bold", "small" (8 px grid),
-## "small_bold", "hb" (high-contrast bold).
+## Kenney Future (CC0, assets/fonts/kenney_future/; Prototype 005): a soft,
+## clean all-caps face. "regular" and "bold" (a slightly emboldened variation)
+## use Kenney Future Narrow, the rounder cut; "mono" / "small" (tables, timers,
+## dense rows) use Kenney Future Square, the more compact cut. "hb" is a
+## heavier bold for big numbers. The old names stay so every screen keeps working.
 static func font(kind: String = "regular") -> Font:
 	if _fonts.has(kind):
 		return _fonts[kind]
-	var file := {
-		"regular": "PixelOperator.ttf", "bold": "PixelOperator-Bold.ttf",
-		"mono": "PixelOperatorMono.ttf", "mono_bold": "PixelOperatorMono-Bold.ttf",
-		"small": "PixelOperator8.ttf", "small_bold": "PixelOperator8-Bold.ttf",
-		"hb": "PixelOperatorHB.ttf",
-	}.get(kind, "PixelOperator.ttf") as String
-	var f: Font = load(FONT_DIR + file)
+	var square := kind in ["mono", "mono_bold", "small", "small_bold"]
+	var base: FontFile = load(FONT_DIR + ("KenneyFutureSquare.ttf" if square else "KenneyFutureNarrow.ttf"))
+	var f: Font = base
+	var embolden := {"bold": 0.3, "mono_bold": 0.3, "small_bold": 0.3, "hb": 0.6}.get(kind, 0.0) as float
+	if embolden > 0.0:
+		var v := FontVariation.new()
+		v.base_font = base
+		v.variation_embolden = embolden
+		f = v
 	_fonts[kind] = f
 	return f
 
 
-## Pixel Operator is drawn on a 16 px grid: sizes snap to multiples of 8 so
-## its pixels stay square.
+## Interface text size for a requested size. Kenney Future is wider and taller
+## than the old pixel font at the same size, so sizes scale down a little
+## (and no longer snap to an 8 px grid: the font is smooth vector type).
 static func px(size: int) -> int:
-	return maxi(16, int(round(size / 8.0)) * 8)
+	return maxi(13, int(round(size * 0.82)))
 
 
 ## A voxel block: face colour, ink outline, lit top edge, darker depth band

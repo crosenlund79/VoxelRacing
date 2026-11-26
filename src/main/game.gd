@@ -93,6 +93,7 @@ func _ready() -> void:
 	settings.apply()
 	AssetResolver.templates_only = settings.original_artwork  # Artwork Mode (graphics; read at start)
 	ControlBindings.load_saved()  # the player's remapped controls (CONTROLS screen)
+	PlayerControls.load_device(settings.path)  # the chosen input device (prompts show only its bindings)
 	resolver = AssetResolver.new()
 	achievements = AchievementStore.new(achievements_path)
 	achievements.load_store()
@@ -256,11 +257,8 @@ func start_race(choice: int, with_garage: bool = false, devices: Array[int] = []
 	race.set_menu_choice(choice)
 	if net == null or net.is_host():  # a LAN client takes the host's settings
 		race.set_weapons_enabled(title.weapons_on)
-		race.set_combat_style(title.combat_style)
-		if _career_mode:  # career stages are raced armed, in the stage's combat style
+		if _career_mode:  # career stages are raced armed (one combat system for everything)
 			race.set_weapons_enabled(true)
-			if champ.schedule.career_style >= 0:
-				race.set_combat_style(champ.schedule.career_style)
 		race.set_lap_count(title.laps if round.is_empty() else int(round.laps))
 		if mode == "knockout":
 			race.set_lap_count(race.cars.size() - 1)  # one elimination per lap until one is left

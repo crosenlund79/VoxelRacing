@@ -123,7 +123,10 @@ var combat: CombatWorld
 ## Pre-race option: Weapons ON (true) / No Guns (false). Kept across races.
 var weapons_enabled := false
 ## Pre-race option: Classic / Tactical combat. Kept across races.
-var combat_style: WeaponRules.Style = WeaponRules.Style.CLASSIC
+var combat_style: WeaponRules.Style = WeaponRules.UNIFIED
+## Seconds of race time when weapons went hot this race (-1 = still locked):
+## the rivals' opening composure counts from here (AiDriver).
+var weapons_hot_at := -1.0
 var combat_view: CombatView
 ## Race kind: "race" (normal) or "knockout" (last place out at every lap
 ## the leader completes; the last car standing wins). Set before _ready.
@@ -726,10 +729,12 @@ func set_weapons_enabled(on: bool) -> void:
 
 
 ## Classic / Tactical combat; only changeable before the start.
-func set_combat_style(style: WeaponRules.Style) -> void:
-	if session.state != RaceSession.State.MODE_SELECT:
+## Prototype 005: one combat system. Kept for callers (and old settings):
+## every race uses WeaponRules.UNIFIED whatever is asked.
+func set_combat_style(_style: WeaponRules.Style) -> void:
+	if session.state != RaceSession.State.MODE_SELECT or combat_style == WeaponRules.UNIFIED:
 		return
-	combat_style = style
+	combat_style = WeaponRules.UNIFIED
 	reset_race()
 
 
@@ -737,11 +742,35 @@ func _show_menu() -> void:
 	if network_lost:
 		return
 	hud.track_name = hud_track_name
-	hud.show_menu(choice_name(menu_choice), weapons_enabled, session.lap_count(), combat_style,
-		net.status_text() if net != null and net.race != null else "", laps_fixed())
+	hud.show_grid(grid_info())
 	hud.show_intro(intro_lines())
 	if net != null and net.is_host():
 		net.send_setup()
+
+
+## The race preparation popup's contents (Prototype 005: icons, no instructions).
+func grid_info() -> Dictionary:
+	var mode_icon := "quick_race"
+	if championship_round >= 0:
+		mode_icon = "championship"
+	elif race_mode == "knockout":
+		mode_icon = "knockout"
+	elif session.spectator:
+		mode_icon = "spectate"
+	elif net != null:
+		mode_icon = "lan"
+	elif is_two_player():
+		mode_icon = "multiplayer"
+	var choice := "accel_fire"
+	match menu_choice:
+		Choice.FIRE_TO_BRAKE: choice = "accel_brake"
+		Choice.SPECTATE: choice = "spectate"
+	return {"mode_icon": mode_icon, "title": DevLayouts.display_name(DevLayouts.id_of(track.layout)),
+		"round": championship_label if championship_label != "" else ("Knockout" if race_mode == "knockout" else ""),
+		"environment": track_theme.display_name, "night": night, "laps": session.lap_count(), "laps_fixed": laps_fixed(),
+		"weapons": weapons_enabled, "choice": choice,
+		"standings": championship_line(championship_points, local_player_id),
+		"note": net.status_text() if net != null and net.race != null else ""}
 
 
 ## Knockout (one elimination per lap) and championship rounds (the schedule's
@@ -778,6 +807,7 @@ func reset_race() -> void:
 	combat.reset()
 	combat.enabled = weapons_enabled
 	combat.style = combat_style
+	weapons_hot_at = -1.0
 	_apply_loadouts()
 	_apply_upgrades()
 	_reset_damage()
@@ -923,7 +953,7 @@ func on_network_peer_ready(_is_ready: bool) -> void:
 func apply_network_setup(cfg: Dictionary) -> void:
 	session.state = RaceSession.State.MODE_SELECT
 	weapons_enabled = cfg.weapons
-	combat_style = cfg.style
+	combat_style = WeaponRules.UNIFIED  # (one combat system; an older host's style is ignored)
 	multiplayer_round = cfg.round
 	races_started = cfg.races
 	if session.lap_count() != cfg.laps:
@@ -1241,8 +1271,6 @@ func _physics_process(_delta: float) -> void:
 				set_menu_choice(posmod(menu_choice + 1, choices) as Choice)
 			elif _menu_pressed(PlayerControls.FIRE_FRONT) or _menu_pressed(PlayerControls.FIRE_REAR):
 				set_weapons_enabled(not weapons_enabled)
-			elif _menu_pressed(PlayerControls.TOGGLE_STYLE):
-				set_combat_style(WeaponRules.Style.TACTICAL if combat_style == WeaponRules.Style.CLASSIC else WeaponRules.Style.CLASSIC)
 			elif _menu_pressed(PlayerControls.HISTORY_VIEW) and not laps_fixed():
 				var i := LAP_OPTIONS.find(session.lap_count())
 				set_lap_count(LAP_OPTIONS[(i + 1) % LAP_OPTIONS.size()])
@@ -2139,7 +2167,7 @@ func intro_lines() -> PackedStringArray:
 		elif is_two_player():
 			what = "TWO-PLAYER RACE"
 		elif garage != null:
-			what = "GARAGE RACE"
+			what = "CHAMPIONSHIP"
 		else:
 			what = "QUICK RACE"
 	var where := "%s  -  %s  -  %s  -  %d laps%s" % [DevLayouts.display_name(DevLayouts.id_of(track.layout)).to_upper(),
@@ -2415,6 +2443,7 @@ func _update_weapons_lock() -> void:
 			all_through = false
 	if all_through or session.elapsed >= weapons_lock_timeout:
 		combat.unlock()
+		weapons_hot_at = session.elapsed
 		for id in grid_order:
 			inputs[id].discard_pending_shots()
 		weapons_unlocked.emit()
