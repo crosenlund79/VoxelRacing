@@ -880,21 +880,24 @@ func _celebrate(f: Dictionary, p: Dictionary, lt: float, dt: float) -> void:
 			p.hy = 0.0 if bow > 0.0 else 0.18 * signf(sin(q * PI * 2.0))
 		8:  # Finn "Wildcard": something different every time
 			_wildcard(f, p, lt, dt, at)
-		9:  # Nina "The Hunter": turns side-on and points at the camera. You're next.
+		9:  # Nina "The Hunter": "I'm watching you": hand to the visor, then points at the camera
 			var to_cam := _cam.global_position - at
 			var face := atan2(to_cam.x, to_cam.z) - float(f.base_yaw)
-			var turn := _ramp(lt, 0.0, 0.3)
-			p.yaw = clampf(face, -0.8, 0.8) - 0.55 * turn
-			p.hy = 0.45 * turn  # eyes on the camera
+			var u := fposmod(lt, 2.0)
+			var eyes := _ramp(u, 0.0, 0.2) * (1.0 - _ramp(u, 0.55, 0.7))
+			var aim := _ramp(u, 0.55, 0.7) * (1.0 - _ramp(u, 1.75, 1.98))
+			p.yaw = clampf(face, -0.8, 0.8) - 0.45 * aim
+			p.hy = 0.4 * aim
 			var elev := atan2(to_cam.y - 1.3, Vector2(to_cam.x, to_cam.z).length())
-			var bang := _bump(fposmod(lt, 1.7), 0.9, 1.15)
-			p.bx = lerpf(0.0, -PI * 0.5 - elev, turn) - 0.6 * bang
-			p.by = 0.3 * turn
-			p.bz = 0.05
+			var bang := _bump(u, 1.1, 1.35)
+			p.bx = -2.5 * eyes + (-PI * 0.5 - elev - 0.6 * bang) * aim
+			p.bz = 0.05 - 0.45 * eyes
+			p.by = 0.3 * aim
 			p.ax = 0.3
 			p.az = -0.6
-			p.hz = 0.12
-			p.lean = 0.08 + 0.06 * bang
+			p.hz = 0.12 * aim
+			p.hx = -0.12 * eyes
+			p.lean = 0.1 * aim + 0.06 * bang
 			p.y = 0.03 * absf(sin(lt * 3.0))
 		_:  # the player: pure joy, jumping with both arms up
 			var u := fposmod(lt, 0.95)
@@ -1059,8 +1062,7 @@ func _firework(at: Vector3) -> void:
 	for i in 64:
 		var dir := Vector3(_rng.randf_range(-1, 1), _rng.randf_range(-1, 1), _rng.randf_range(-1, 1)).normalized()
 		var col := a if i % 2 == 0 else b
-		_fx.spark(at, dir * _rng.randf_range(5.0, 7.0), col.lightened(0.2), 0.26, _rng.randf_range(1.0, 1.5), 1.4, 0.08)
-	_fx.spark(at, Vector3.ZERO, Color(1, 0.95, 0.8), 0.9, 0.25, 2.0, 0.0)
+		_fx.spark(at, dir * _rng.randf_range(5.0, 7.0), col.lightened(0.1), 0.26, _rng.randf_range(1.0, 1.5), 1.2, 0.08)
 
 
 func _play(logical: String) -> void:

@@ -260,10 +260,11 @@ func impact(pos: Vector3, normal: Vector3, severity: float) -> void:
 
 ## A car (centre, velocity in units/s, radius in units) kicks up the settled
 ## debris it drives through.
-func scatter_near(centre: Vector3, vel: Vector3, radius: float) -> void:
+func scatter_near(centre: Vector3, vel: Vector3, radius: float) -> int:
 	var v_speed := Vector2(vel.x, vel.z).length()
 	if v_speed < 1.5:
-		return
+		return 0
+	var kicked := 0
 	var c0 := Vector2i(floori((centre.x - radius) / HASH_CELL), floori((centre.z - radius) / HASH_CELL))
 	var c1 := Vector2i(floori((centre.x + radius) / HASH_CELL), floori((centre.z + radius) / HASH_CELL))
 	var r2 := radius * radius
@@ -290,8 +291,10 @@ func scatter_near(centre: Vector3, vel: Vector3, radius: float) -> void:
 				d_spin[i] = Vector3(_rng.randf_range(-8, 8), _rng.randf_range(-8, 8), _rng.randf_range(-8, 8))
 				d_state[i] = 1
 				_flying.append(i)
+				kicked += 1
 			if list.is_empty():
 				_hash.erase(key)
+	return kicked
 
 
 func _hash_key(p: Vector3) -> Vector2i:

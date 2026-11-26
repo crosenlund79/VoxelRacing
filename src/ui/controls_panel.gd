@@ -19,7 +19,7 @@ const TABS := [
 	["DRIVING", [PlayerControls.STEER_LEFT, PlayerControls.STEER_RIGHT, PlayerControls.FIRE]],
 	["WEAPONS & COMBAT", [PlayerControls.FIRE_FRONT, PlayerControls.FIRE_REAR, PlayerControls.CYCLE_FRONT,
 		PlayerControls.CYCLE_REAR, PlayerControls.TOGGLE_STYLE]],
-	["CAMERA & REPLAYS", ["camera_view", "replay", PlayerControls.TOGGLE_LIGHTING]],
+	["CAMERA & REPLAYS", ["camera_view", "replay", "photo_mode", PlayerControls.TOGGLE_LIGHTING]],
 	["MENUS & RACE", [PlayerControls.CONFIRM, PlayerControls.BACK, PlayerControls.HISTORY_VIEW]],
 	["MULTIPLAYER", []],
 	["SPECTATOR", [PlayerControls.SIM_SPEED, PlayerControls.TOGGLE_PANEL]],
@@ -27,7 +27,7 @@ const TABS := [
 const MENUS_TAB := 3
 const UiJuice := preload("res://src/ui/ui_juice.gd")
 ## Names for the fixed (not remappable) actions.
-const FIXED_LABELS := {"camera_view": "Camera view", "replay": "Watch the replay"}
+const FIXED_LABELS := {"camera_view": "Camera view", "replay": "Watch the replay", "photo_mode": "Photo mode"}
 
 ## Help rows: [tab, title, text]; an empty text makes a heading. {action}
 ## placeholders become the player's bindings.
@@ -47,10 +47,14 @@ const ROWS := [
 	[2, "Watch again", "{replay} on the results screen shows the race highlights again"],
 	[2, "Next highlight", "{confirm} or {fire} skips to the next highlight"],
 	[2, "Skip all", "{back} skips all the highlights"],
+	[2, "PHOTO MODE", ""],
+	[2, "Freeze and look", "{photo_mode} pauses the race (or replay) with a free camera; again or Esc to return"],
+	[2, "Camera", "Mouse drag / right stick orbit, WASD / left stick move, Q / E height, wheel zoom, Tab next car"],
+	[2, "Pictures", "Enter / F12 saves a screenshot (user data folder, screenshots); H hides the hints"],
 	[3, "Race menu", "{back} pauses (resume or leave)"],
 	[3, "Results / standings", "{confirm} continues; Fire never does"],
 	[3, "Grid panel", "{steer_left} / {steer_right} control mode, {fire_front} / {fire_rear} weapons, {toggle_style} combat style, {history_view} laps, {fire} start"],
-	[3, "Garage race", "Results: {confirm} = garage, {history_view} = skip shopping"],
+	[3, "Championship", "Results: {confirm} = standings, then the garage before the next round"],
 	[3, "Always", "Enter always confirms, Esc always goes back"],
 	[4, "TWO PLAYERS", ""],
 	[4, "Join", "Each player presses Fire on their own controller (or the keyboard)"],

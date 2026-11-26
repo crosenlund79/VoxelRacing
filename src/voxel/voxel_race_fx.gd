@@ -52,6 +52,19 @@ var cans: Array = []
 ## Backfire chance on a lift-off at speed, by racer id (show-offs pop more).
 const BACKFIRE := [0.3, 0.12, 0.55, 0.25, 0.2, 0.15, 0.6, 0.1, 0.4, 0.3]
 var _last_accel := PackedFloat32Array()
+const SoundKit := preload("res://src/audio/sound_kit.gd")
+var _last_rattle := -10.0
+
+
+## A procedural sound (SoundKit), quieter the further from the view's centre.
+func _sound(name: String, at: Vector3, db: float, jitter: float = 0.08) -> void:
+	if _main.get("race_audio") != null and _main.race_audio != null and _main.race_audio.fast:
+		return  # (fast-forward / replay: the live race is quiet)
+	var cam2: Camera2D = _main.camera
+	var d := (Vector2(at.x, at.z) / Vox.PX).distance_to(cam2.get_screen_center_position())
+	if d > 900.0:
+		return
+	SoundKit.play(self, name, db - d / 900.0 * 14.0, jitter)
 signal backfired(i: int)
 
 
@@ -218,6 +231,7 @@ func _sync_car(i: int, delta: float) -> void:
 						fx.spark(at, back * _rng.randf_range(2.0, 3.5) + Vector3(_rng.randf_range(-0.4, 0.4), _rng.randf_range(0.1, 0.5), _rng.randf_range(-0.4, 0.4)),
 							Color(1.0, _rng.randf_range(0.45, 0.7), 0.15), 0.1, 0.16, 1.6, 0.0)
 				backfired.emit(i)
+				_sound("pop", root.global_position, -10.0, 0.25)
 			_last_accel[i] = a_long
 		# tyre smoke and dust from RaceEffects' own rules
 		var eff: RaceEffects = _main.effects
@@ -239,10 +253,13 @@ func _sync_car(i: int, delta: float) -> void:
 				fx.puff(root.global_position + Vector3(cos(a), 0.1, sin(a)) * 0.8, Vector3(cos(a), 0.5, sin(a)) * _rng.randf_range(1.0, 3.0),
 					dust, _rng.randf_range(0.3, 0.5), 0.8, 0.6)
 		_was_air[i] = 1 if air else 0
-	# cars kick the debris they drive through
+	# cars kick the debris they drive through (and it rattles, P004)
 	if c.visible and not wrecked and c.model != null:
 		var v := c.model.velocity
-		fx.scatter_near(root.global_position, Vector3(v.x, 0.0, v.y) * Vox.PX, 1.9)
+		var kicked := fx.scatter_near(root.global_position, Vector3(v.x, 0.0, v.y) * Vox.PX, 1.9)
+		if kicked >= 5 and _time - _last_rattle > 0.35:
+			_last_rattle = _time
+			_sound("debris_rattle", root.global_position, -6.0)
 
 
 ## Voxels that broke off a car fly away from the hit (and keep some of the

@@ -11,6 +11,7 @@ extends Node3D
 
 signal cheered(strength: float)
 
+const SoundKit := preload("res://src/audio/sound_kit.gd")
 const CROWD_SHADER := preload("res://src/voxel/shaders/voxel_crowd.gdshader")
 const CRITTER_SHADER := preload("res://src/voxel/shaders/voxel_critters.gdshader")
 const C := VoxelKit.C
@@ -61,6 +62,8 @@ var _clock := 0.0
 var _time := 0.0
 var _was_racing := false
 var _cars := PackedVector2Array()
+var _murmur: AudioStreamPlayer
+var _last_shout := -10.0
 
 
 func setup(p_stage: VoxelStage) -> void:
@@ -80,6 +83,13 @@ func setup(p_stage: VoxelStage) -> void:
 	_spawn_critters()
 	if stage.recorder != null:
 		stage.recorder.moment.connect(_on_moment)
+	if not _people.is_empty():
+		_murmur = AudioStreamPlayer.new()
+		_murmur.stream = SoundKit.stream("crowd_loop")
+		_murmur.bus = "Effects"
+		_murmur.volume_db = -60.0
+		add_child(_murmur)
+		_murmur.play()
 
 
 # ------------------------------------------------------------ placement
@@ -488,20 +498,40 @@ func _on_moment(e: Dictionary) -> void:
 	match String(e.kind):
 		"overtake":
 			pulse(p, 420.0, 0.6 if not bool(e.get("final", false)) else 1.0)
+			_shout("cheer", p, -14.0)
 		"crash":
 			if float(e.get("speed", 0.0)) > 260.0:
 				pulse(p, 320.0, 0.55)
+				_shout("gasp", p, -12.0)
 		"destroyed", "wreck", "pileup":
 			pulse(p, 700.0, 1.0)
 			cheered.emit(1.0)
+			_shout("gasp", p, -8.0)
+			get_tree().create_timer(0.7).timeout.connect(func() -> void: _shout("cheer", p, -8.0, true))
 		"finish":
 			pulse(p, 900.0, 1.0)
+			_shout("applause", p, -6.0, true)
 		"taunt":
 			pulse(p, 320.0, 0.7)
 		"air":
 			pulse(p, 450.0, 0.8)
+			_shout("cheer", p, -12.0)
 		"hit", "mine_blast":
 			pulse(p, 450.0, 0.7)
+
+
+## A crowd reaction near p, if there are people near it and near the view.
+func _shout(name: String, p: Vector2, db: float, force := false) -> void:
+	if _people.is_empty() or (not force and _time - _last_shout < 1.2):
+		return
+	if main.get("race_audio") != null and main.race_audio != null and main.race_audio.fast:
+		return
+	var cam2: Camera2D = main.camera
+	var d := p.distance_to(cam2.get_screen_center_position())
+	if d > 1100.0:
+		return
+	_last_shout = _time
+	SoundKit.play(self, name, db - d / 1100.0 * 10.0, 0.06)
 
 
 func _process(delta: float) -> void:
@@ -528,9 +558,16 @@ func _process(delta: float) -> void:
 		for person in _people:
 			person.ex = 1.0
 		cheered.emit(0.8)
+		_shout("cheer", main.camera.get_screen_center_position(), -6.0, true)
 	_was_racing = racing
 	_update_people(dt)
 	_update_cows(dt)
+	if _murmur != null:
+		var cam2: Camera2D = main.camera
+		var ex := excitement_near(cam2.get_screen_center_position(), 750.0)
+		var quiet: bool = main.get("race_audio") != null and main.race_audio != null and main.race_audio.fast
+		var want := -60.0 if quiet else lerpf(-30.0, -11.0, clampf(ex * 1.4, 0.0, 1.0))
+		_murmur.volume_db = lerpf(_murmur.volume_db, want, 1.0 - exp(-dt * 3.0))
 
 
 func _update_people(dt: float) -> void:

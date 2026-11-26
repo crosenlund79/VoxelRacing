@@ -28,6 +28,8 @@ const TOGGLE_STYLE := "toggle_style"
 const CAMERA_VIEW := "camera_view"
 ## VoxelRacing: watch the race's highlights again (results screen).
 const REPLAY := "replay"
+## VoxelRacing (P004): photography mode (freeze, free camera, screenshot).
+const PHOTO := "photo_mode"
 const STICK_DEADZONE := 0.5
 ## Device id for a player on the keyboard (two-player assignment).
 const KEYBOARD := -1
@@ -144,6 +146,7 @@ static func ensure_actions() -> void:
 	_add(TOGGLE_STYLE, [_key(KEY_C), _joy_button(JOY_BUTTON_RIGHT_SHOULDER)])
 	_add(CAMERA_VIEW, [_key(KEY_V), _joy_button(JOY_BUTTON_RIGHT_STICK)])
 	_add(REPLAY, [_key(KEY_R), _joy_button(JOY_BUTTON_X)])
+	_add(PHOTO, [_key(KEY_P), _joy_button(JOY_BUTTON_LEFT_STICK)])
 	# Godot's menus accept / cancel only from the keyboard by default: a
 	# controller selects with A or Start and goes back with B.
 	for e in [_joy_button(JOY_BUTTON_A), _joy_button(JOY_BUTTON_START)]:
@@ -174,7 +177,7 @@ static func key_text(action: String) -> String:
 static func fmt(text: String) -> String:
 	var out := text
 	for a in [STEER_LEFT, STEER_RIGHT, FIRE, FIRE_FRONT, FIRE_REAR, CYCLE_FRONT, CYCLE_REAR, HISTORY_VIEW, SIM_SPEED, BACK, TOGGLE_PANEL,
-			TOGGLE_LIGHTING, TOGGLE_STYLE, CONFIRM, CAMERA_VIEW, REPLAY]:
+			TOGGLE_LIGHTING, TOGGLE_STYLE, CONFIRM, CAMERA_VIEW, REPLAY, PHOTO]:
 		out = out.replace("{%s}" % a, key_text(a))
 	return out
 

@@ -25,8 +25,8 @@ const Mechanic := preload("res://src/ui/garage_mechanic.gd")
 ## Design resolution of the screen it fills.
 const BASE := Vector2i(1280, 720)
 ## Where the car stands on screen (the band above the garage's panels).
-const CAR_SCREEN := Vector2(580, 118)
-const FOV := 42.0
+const CAR_SCREEN := Vector2(585, 130)
+const FOV := 38.0
 const TABLE_R := 2.5
 const TABLE_TOP := 0.25
 const BACK_Z := -4.6
@@ -203,13 +203,23 @@ func _build_environment() -> void:
 	var key := SpotLight3D.new()
 	key.position = Vector3(0.8, 6.2, 2.6)
 	key.light_color = Color(1.0, 0.92, 0.8)
-	key.light_energy = 7.0
+	key.light_energy = 10.0
 	key.spot_range = 14.0
 	key.spot_angle = 30.0
 	key.spot_angle_attenuation = 0.7
 	key.shadow_enabled = true
 	add_child(key)
 	key.look_at(Vector3(0, 0.4, 0), Vector3.UP)
+	# a narrow fill from the camera's side, on the car only
+	var front := SpotLight3D.new()
+	front.position = Vector3(2.5, 3.2, 8.0)
+	front.light_color = Color(0.85, 0.88, 1.0)
+	front.light_energy = 5.0
+	front.spot_range = 14.0
+	front.spot_angle = 13.0
+	front.spot_angle_attenuation = 1.4
+	add_child(front)
+	front.look_at(Vector3(0, 0.6, 0), Vector3.UP)
 	_glint = OmniLight3D.new()
 	_glint.position = Vector3(0.4, 1.9, 1.4)
 	_glint.light_color = Color(1.0, 0.97, 0.88)
@@ -250,6 +260,7 @@ func _build_turntable() -> void:
 	for k in 4:
 		var w := MeshInstance3D.new()
 		w.mesh = VoxelCars.wheel_mesh()
+		w.set_instance_shader_parameter("tint", Color(0.62, 0.62, 0.68))  # hubs less glaring side-on
 		_car.add_child(w)
 		_wheels.append(w)
 
@@ -263,20 +274,20 @@ func _build_furniture() -> void:
 	_swing = Node3D.new()
 	_swing.position = Vector3(-6.1, 5.0, wall + 0.75)
 	add_child(_swing)
-	_lamp(_swing, 2.55)
-	_mi(Props.poster_mesh(0), Vector3(-4.0, 0.75, wall + 0.01))
-	_mi(Props.poster_mesh(1), Vector3(-ROOM_X + 0.01, 0.8, -2.2), self, PI * 0.5)
+	_lamp(_swing, 2.75)
+	_mi(Props.poster_mesh(0), Vector3(-4.0, 0.3, wall + 0.01))
+	_mi(Props.poster_mesh(1), Vector3(-ROOM_X + 0.01, 0.35, -2.2), self, PI * 0.5)
 	_mi(Props.drum_mesh(VrStyle.RED), Vector3(-8.9, 0, -1.0))
 	_mi(Props.drum_mesh(Color("2b6f8c")), Vector3(-8.75, 0, 0.0), self, 1.0)
 	# the wall fan, high up beside the neon
-	_mi(Props.fan_housing_mesh(), Vector3(-2.45, 1.85, wall + 0.01))
+	_mi(Props.fan_housing_mesh(), Vector3(-2.45, 1.4, wall + 0.01))
 	_fan = Node3D.new()
-	_fan.position = Vector3(-2.45, 1.85, wall + 0.16)
+	_fan.position = Vector3(-2.45, 1.4, wall + 0.16)
 	add_child(_fan)
 	_mi(Props.fan_blades_mesh(), Vector3.ZERO, _fan)
 	# the neon sign over the car: "STOP" is an old tube that stutters now and then
 	var neon := Props.neon_meshes("PIT", "STOP", VrStyle.PINK, VrStyle.TEAL)
-	var at := Vector3(0.1, 1.55, wall + 0.01)
+	var at := Vector3(0.1, 1.3, wall + 0.01)
 	_mi(neon[0], at)
 	_neon_pit = _mi(neon[1], at + Vector3(0, 0, 0.01))
 	_neon_stop = _mi(neon[2], at + Vector3(0, 0, 0.01))
@@ -292,12 +303,11 @@ func _build_furniture() -> void:
 	add_child(_neon_light)
 	# right: the safety board over a stack of crates, the weapons rack, tyres,
 	# shelves along the right wall, an oil drum
-	_mi(Props.safety_sign_mesh(), Vector3(3.75, 1.2, wall + 0.01))
+	_mi(Props.safety_sign_mesh(), Vector3(3.8, 1.2, wall + 0.01))
 	var crate := Props.crate_mesh()
-	_mi(crate, Vector3(2.95, 0, wall + 0.5), self, 0.1)
-	_mi(crate, Vector3(3.0, 0.75, wall + 0.55), self, -0.25)
-	_mi(crate, Vector3(3.75, 0, wall + 0.6), self, 0.35)
-	var rack := _mi(Props.rack_mesh(), Vector3(5.75, 0.85, wall))
+	_mi(crate, Vector3(3.1, 0, wall + 0.5), self, 0.1)
+	_mi(crate, Vector3(4.6, 0, wall + 0.55), self, -0.25)
+	var rack := _mi(Props.rack_mesh(), Vector3(5.75, 0.45, wall))
 	var kinds := ["super", "homing", "missile"]
 	for k in kinds.size():
 		var m := _mi(VoxelWeapons.missile_mesh(kinds[k]), Vector3(1.25, 0.72 + k * 0.36, 0.28), rack)
@@ -305,13 +315,14 @@ func _build_furniture() -> void:
 	for k in 2:
 		var mine := _mi(VoxelWeapons.mine_mesh(), Vector3(0.68 + k * 1.15, 0.25, 0.32), rack, k * 0.6)
 		mine.set_instance_shader_parameter("lamp_glow", 0.5)
-	_mi(Props.crate_mesh(true), Vector3(7.0, 0, wall + 0.5), self, 0.05)
+	_mi(Props.crate_mesh(true), Vector3(8.0, 0, -0.2), self, 0.3)
+	_mi(Props.crate_mesh(true), Vector3(8.05, 0.75, -0.15), self, 0.1)
 	_mi(Props.shelves_mesh(), Vector3(ROOM_X, 0, wall + 0.1), self, -PI * 0.5)
-	_mi(Props.poster_mesh(2), Vector3(ROOM_X - 0.01, 0.8, 0.6), self, -PI * 0.5)
+	_mi(Props.poster_mesh(2), Vector3(ROOM_X - 0.01, 0.35, 1.4), self, -PI * 0.5)
 	var lamp_r := Node3D.new()
 	lamp_r.position = Vector3(6.6, 5.0, wall + 0.8)
 	add_child(lamp_r)
-	_lamp(lamp_r, 2.6)
+	_lamp(lamp_r, 2.75)
 	var tyre := VoxelCars.wheel_mesh()
 	var tyre_h := VoxelCars.WHEEL_W * VoxelCars.voxel_size()
 	for k in 4:
@@ -320,7 +331,7 @@ func _build_furniture() -> void:
 		_mi(tyre, Vector3(7.55, tyre_h * (k + 0.5), -1.7), self, k * 0.7).rotation.x = PI * 0.5
 	var leaning := _mi(tyre, Vector3(8.6, 0.36, -0.9), self, 0.2)
 	leaning.rotation = Vector3(0, PI * 0.5, 0.25)
-	_mi(Props.drum_mesh(Color("2b6f8c")), Vector3(8.7, 0, 0.6))
+	_mi(Props.drum_mesh(Color("2b6f8c")), Vector3(8.6, 0, 2.6))
 
 
 ## A hanging work lamp under `pivot` (the ceiling hook), its shade `cable`
@@ -371,8 +382,8 @@ func _build_camera() -> void:
 
 func _place_camera() -> void:
 	var yaw := 0.08 + sin(_time * 0.071) * 0.24
-	var dist := 11.5 + sin(_time * 0.047 + 1.3) * 0.45 - _zoom * 1.4
-	var height := 0.95 + sin(_time * 0.061) * 0.12 + _zoom * 0.1
+	var dist := 11.2 + sin(_time * 0.047 + 1.3) * 0.45 - _zoom * 1.4
+	var height := 1.3 + sin(_time * 0.061) * 0.12 + _zoom * 0.1
 	_cam.position = CAR_MIDDLE + Vector3(sin(yaw) * dist, height, cos(yaw) * dist)
 	_cam.look_at(CAR_MIDDLE, Vector3.UP)
 	if _mech != null:

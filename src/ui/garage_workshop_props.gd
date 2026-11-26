@@ -16,8 +16,8 @@ const STEEL_DARK := Color("4b5068")
 const RUBBER := Color(0.09, 0.09, 0.11)
 const CARDBOARD := Color("b48655")
 const SKIN := Color(0.96, 0.76, 0.6)
-const BRICK := Color("5e3d5c")
-const PANEL := Color("3a4072")
+const BRICK := Color("4c3350")
+const PANEL := Color("323762")
 const FLOOR_A := Color("3d3962")
 const FLOOR_B := Color("46406e")
 
@@ -437,7 +437,7 @@ static func rack_mesh() -> ArrayMesh:
 ## (GLOW), the frame tube (GLOW)]; the words are separate so one can flicker.
 ## Centred on x, bottom at y = 0, face towards +Z.
 static func neon_meshes(first: String, second: String, letters: Color, frame: Color) -> Array:
-	var vs := 0.08
+	var vs := 0.075
 	var w := text_width(first + " " + second) + 6
 	var h := 11
 	var board := VoxelGrid.new(Vector3i(w, h, 1), vs, Vector3.ZERO)

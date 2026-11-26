@@ -59,6 +59,8 @@ var race_fx: VoxelRaceFx
 var life: VoxelLife
 ## The pre-race cinematic and the start lights (P004).
 var intro: RaceIntro
+## Photography mode (P004).
+var photo: PhotoMode
 var _start_lamps: Array[MeshInstance3D] = []
 var _grid_time := 0.0
 var _go_time := -1.0
@@ -163,6 +165,7 @@ func _build() -> void:
 		recorder = ReplayRecorder.new()
 		add_child(recorder)
 		recorder.setup(self)
+		recorder.moment.connect(_on_player_moment)
 		replay = ReplayTheater.new()
 		add_child(replay)
 		replay.setup(self, recorder)
@@ -179,6 +182,9 @@ func _build() -> void:
 		intro = RaceIntro.new()
 		add_child(intro)
 		intro.setup(self)
+		photo = PhotoMode.new()
+		add_child(photo)
+		photo.setup(self)
 	vtrack.terrain_material.set_shader_parameter("decal_tex", decal_vp.get_texture())
 	vtrack.terrain_material.set_shader_parameter("decal_on", 1.0)
 	ready_3d = true
@@ -762,6 +768,75 @@ func _sync_start_lights(delta: float) -> void:
 				l.set_instance_shader_parameter("lamp_glow", 0.0)
 
 
+# ------------------------------------------------------------ little rewards (P004)
+
+const SoundKit := preload("res://src/audio/sound_kit.gd")
+var _laps_seen := PackedInt32Array()
+var _best_lap := INF
+var _fb_race := -1
+
+
+func _player_id() -> int:
+	var session: RaceSession = main.session
+	if session.spectator or session.human_ids.is_empty():
+		return -1
+	return session.human_ids[0]
+
+
+## Laps and the race's fastest lap, celebrated a little (stars, a banner).
+func _feedback() -> void:
+	if main.get("session") == null or race_fx == null or (replay != null and replay.playing):
+		return
+	var session: RaceSession = main.session
+	if main.races_started != _fb_race or session.state == RaceSession.State.MODE_SELECT:
+		_fb_race = main.races_started
+		_laps_seen.resize(cars3d.size())
+		_laps_seen.fill(0)
+		_best_lap = INF
+		return
+	var me := _player_id()
+	for i in mini(cars3d.size(), session.racers.size()):
+		var r: RacerState = session.racers[i]
+		var laps := r.tracker.laps_completed
+		if laps <= _laps_seen[i]:
+			continue
+		_laps_seen[i] = laps
+		var root: Node3D = cars3d[i].root
+		var fastest := false
+		if not r.lap_times.is_empty():
+			var t: float = r.lap_times[-1]
+			if t > 1.0 and t < _best_lap:
+				fastest = _best_lap < INF  # (the very first lap sets the mark quietly)
+				_best_lap = t
+		if fastest:
+			for k in 10:
+				var a := k * TAU / 10.0
+				race_fx.fx.star(root.global_position + Vector3(0, 1.6, 0), Vector3(cos(a) * 2.0, 3.0, sin(a) * 2.0), Color("a37ef0"), 0.32, 1.0)
+			if i == me:
+				main.hud.flash_banner("FASTEST LAP!", Color("b58cff"))
+				SoundKit.play(self, "stinger", -6.0, 0.0)
+		elif i == me and not r.is_finished():
+			for k in 14:  # a chequered pop of confetti
+				var a := k * TAU / 14.0
+				race_fx.fx.spark(root.global_position + Vector3(0, 1.0, 0), Vector3(cos(a) * 2.5, 3.5, sin(a) * 2.5),
+					Color.WHITE if k % 2 == 0 else Color(0.08, 0.08, 0.1), 0.14, 0.9, 0.0, 0.8)
+			SoundKit.play(self, "tick", -8.0, 0.0)
+
+
+## The player passed someone: a little burst of stars and a pop.
+func _on_player_moment(e: Dictionary) -> void:
+	if String(e.kind) != "overtake" or main.get("session") == null:
+		return
+	var me := _player_id()
+	if me < 0 or int(e.get("by", -1)) != me:
+		return
+	var root: Node3D = cars3d[me].root
+	for k in 6:
+		var a := k * TAU / 6.0
+		race_fx.fx.star(root.global_position + Vector3(0, 1.4, 0), Vector3(cos(a) * 1.6, 2.6, sin(a) * 1.6), VrStyle.YELLOW, 0.26, 0.8)
+	SoundKit.play(self, "pop", -9.0, 0.05)
+
+
 ## Helmet colours of the drivers (the player first, then the rivals).
 const HELMETS := [Color("f7b731"), Color("e8e8f0"), Color("e8432e"), Color("59c3f2"), Color("7bc950"),
 	Color("f45b9b"), Color("2ec4b6"), Color("a37ef0"), Color("ff8c2e"), Color("3d4a8a")]
@@ -1096,6 +1171,7 @@ func _sync(delta: float) -> void:
 	_sync_cars(delta)
 	race_fx.sync(delta)
 	_sync_start_lights(delta)
+	_feedback()
 	# an action replay hides the live race (which carries on underneath)
 	var replaying := replay != null and replay.playing
 	_cars_holder.visible = not replaying
