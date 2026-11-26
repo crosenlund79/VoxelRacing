@@ -33,6 +33,16 @@ Extract it and run `VoxelRacing.exe`.
   Championship with the garage between rounds (Garage Race retired), tabbed
   controls, voxel achievement icons and new credits.
   Screenshots: `docs/screenshots/p003/`.
+- **Prototype 004 - A Living Motorsport World** (previous state on branch
+  `checkpoint/prototype-003`): every circuit dressed for its theme (barns,
+  windmills and cows; sheds and containers; cabins and snowmen; pit garages,
+  TV towers and big screens; giant toys), animated voxel spectators who
+  follow the cars and cheer their favourite drivers, marshals, butterflies
+  and birds, cars with numbers, exhausts that puff and pop and a gadget per
+  driver, a start-light gantry and a short cinematic over the grid, a podium
+  after the race, a voxel workshop as the garage, a generated crowd and
+  workshop soundscape, livelier menus, and a photography mode.
+  Screenshots: `docs/screenshots/p004/`.
 
 <p align="center">
 <img src="docs/screenshots/p003/11_replay_missile_cam.jpg" width="49%" alt="Replay: missile cam">
@@ -57,6 +67,8 @@ Extract it and run `VoxelRacing.exe`.
 | **R** / pad X | On the results: watch the race's highlights again |
 | **Enter / Space** | During an action replay: next moment |
 | **Esc** / pad B | During an action replay: skip the replay |
+| **P** / pad L3 | Photography mode: freeze, free camera, Enter / F12 saves a picture |
+| **Enter / Space** | During the race intro or the podium: skip |
 
 All other controls are HyperCars' (CONTROLS in the menu; see below).
 
@@ -97,12 +109,20 @@ All other controls are HyperCars' (CONTROLS in the menu; see below).
   leave debris on a coarse grid that lowers `CarModel.grip_scale` for any
   car on it and is swept along by traffic; constants at the top for tuning.
 
+- **A living circuit** (`voxel_kit.gd`, `voxel_life.gd`, `voxel_flair.gd`):
+  set dressing per theme placed only on open, level grass off the drivable
+  surfaces; instanced spectators animated in a shader (`voxel_crowd.gdshader`)
+  and driven by nearby cars and the recorder's events; car flair built from
+  each car's own voxel grid. Presentation only.
+
 Developer tools (run under Xvfb): `tools/smoke_flow.gd` (end-to-end smoke
 test with simulated keys), `tools/capture_race.gd` (screenshots of any
 circuit, biome, time, camera; `--hurt` damages a car to show damage and
 explosions), `tools/fx_check.gd` (damage, explosion, debris, burn mark and
 fresh-race reset counts), `tools/replay_check.gd` (a short spectated race
-with a forced wreck and mine, then the highlights), `tools/screens_tour.gd`, `tools/car_showroom.gd`,
+with a forced wreck and mine, then the highlights and the podium),
+`tools/life_tour.gd` (a circuit's set dressing and crowd), `tools/intro_check.gd`
+(the race intro and start lights), `tools/photo_check.gd` (photography mode), `tools/screens_tour.gd`, `tools/car_showroom.gd`,
 `tools/logo_preview.gd`.
 
 ## Known limitations
