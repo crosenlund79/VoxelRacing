@@ -213,7 +213,7 @@ func setup(p_resolver: AssetResolver, p_settings: AudioSettings) -> void:
 	_achievements_panel.position = (Vector2(1280, 720) - _achievements_panel.size) * 0.5
 	for panel in [_settings_panel, _controls_panel]:
 		panel.reset_size()
-		panel.position = Vector2((1280 - panel.size.x) * 0.5, 250 if panel == _settings_panel else (720 - panel.size.y) * 0.5 - 10)
+		panel.position = Vector2((1280 - panel.size.x) * 0.5, maxf(16.0, (720 - panel.size.y) * 0.5 - 10))
 	for panel in [_settings_panel, _controls_panel, _achievements_panel, _join_panel, lan_panel]:
 		UiJuice.tree(panel)  # the same button feel on every page
 	footer = HyperTheme.label("", 15, HyperTheme.CREAM_DIM, 500)
@@ -707,7 +707,7 @@ func _show_only(node: Control) -> void:
 		footer.text = PlayerControls.fmt("{back}: back    Enter / Space / A: select")
 	for n in [_main_menu, _mode_menu, _setup, _race_menu, _settings_panel, _controls_panel, _achievements_panel, _join_panel, lan_panel]:
 		n.visible = n == node
-	_logo.visible = node != _controls_panel and node != _achievements_panel and node != _setup
+	_logo.visible = node != _controls_panel and node != _achievements_panel and node != _setup and node != _settings_panel
 	_page_in(node)
 
 
