@@ -757,6 +757,9 @@ func reset_race() -> void:
 	_reset_debris()
 	_highlights_shown = false
 	_replay_hint = ""
+	_podium_shown = false
+	if _podium != null:
+		_podium.skip()
 	_race_open = false
 	_human_stuck_time = 0.0
 	_human_best = -INF
@@ -1017,6 +1020,51 @@ func _client_stats() -> void:
 			stats.on_retired(id, session.elapsed, true)
 
 
+# ------------------------------------------------ P004: the podium
+
+const PodiumScene := preload("res://src/ui/podium_scene.gd")
+var _podium_shown := false
+var _podium: CanvasLayer = null
+
+
+## Once the highlights are over, the top three on a voxel podium (short,
+## skippable); the results follow. Single-screen races and spectating.
+func _podium_tick() -> bool:
+	if _podium != null:
+		return true
+	if _podium_shown or not _highlights_allowed() or session.state != RaceSession.State.FINISHED or not session.all_finished():
+		return false
+	_podium_shown = true
+	var entries: Array = []
+	for r in session.standings():
+		if entries.size() >= 3:
+			break
+		if r.dnf or not r.is_finished():
+			continue
+		var id: int = r.id
+		var look: Dictionary = _car_looks[id] if id < _car_looks.size() else {}
+		var human := session.human_ids.has(id) and not session.spectator
+		entries.append({"id": id, "name": "YOU" if human else RivalRoster.short_name(id).to_upper(),
+			"full_name": "YOU" if human else RivalRoster.full_name(id), "logical": String(look.get("body_logical", "cars/body_player")),
+			"tint": cars[id].sprite.modulate, "place": entries.size() + 1, "is_player": human})
+	if entries.is_empty():
+		return false
+	_podium = PodiumScene.new()
+	add_child(_podium)
+	hud.visible = false
+	_podium.finished.connect(func() -> void:
+		if _podium != null:
+			_podium.queue_free()
+		_podium = null
+		hud.visible = true
+		_grid_input_delay = 0)
+	var title := "PODIUM"
+	if championship_round >= 0:
+		title = "ROUND PODIUM"
+	_podium.present(entries, resolver, title)
+	return true
+
+
 # ------------------------------------------------ P004: the race intro
 
 var _intro_playing := false
@@ -1203,8 +1251,8 @@ func _physics_process(_delta: float) -> void:
 				exit_requested.emit()
 			return
 		RaceSession.State.FINISHED:
-			if _highlights_tick():
-				pass  # the action replay first; the results wait for it
+			if _highlights_tick() or _podium_tick():
+				pass  # the action replay and the podium first; the results wait for them
 			elif _watch_active():
 				_watch_input()  # the rest of the race goes on below
 			elif not session.spectator:
@@ -1340,8 +1388,8 @@ func _spectator_tick(step: float) -> void:
 		if _stuck_time > STUCK_RACE_TIMEOUT:
 			session.classify_remaining()
 	if session.state == RaceSession.State.FINISHED:
-		if _highlights_tick():
-			return  # the next race waits for the action replay
+		if _highlights_tick() or _podium_tick():
+			return  # the next race waits for the action replay and the podium
 		if _restart_timer >= 0.0 and _menu_pressed(PlayerControls.REPLAY) and _highlights_allowed() \
 				and voxel.replay.play_highlights(true):
 			_restart_timer = RESTART_DELAY + 2.0  # (results again afterwards)
@@ -1476,7 +1524,7 @@ func _present_levels() -> void:
 ## Esc (any player's Back) during a race opens the race menu.
 func _check_race_menu() -> void:
 	var racing := session.state == RaceSession.State.RACING or (session.spectator and session.state == RaceSession.State.FINISHED)
-	if menu_open or network_lost or not racing or _replaying():
+	if menu_open or network_lost or not racing or _replaying() or _podium != null:
 		return
 	if _menu_pressed(PlayerControls.BACK):
 		open_race_menu()
