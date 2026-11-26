@@ -1,0 +1,63 @@
+name: Performance diagnostic kit (NOT the playable release)
+
+# Performance Investigation 001: builds a DIAGNOSTIC Windows benchmark kit
+# from the claude/perf-investigation-001 branch only. It is the game plus the
+# PerfBench timing probes; run_benchmarks.bat runs the measured scenarios and
+# writes CSV / JSON results. Not a replacement for the playable build.
+on:
+  push:
+    branches:
+      - "claude/perf-**"
+  workflow_dispatch:
+
+concurrency:
+  group: perf-kit-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7.2"
+  GODOT_RELEASE: "4.7.2-stable"
+
+jobs:
+  export-kit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Godot and export templates
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_RELEASE }}-windows
+      - name: Download Godot and the Windows export template
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_RELEASE}"
+          mkdir -p ~/godot
+          curl -fsSL -o /tmp/godot.zip "${base}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip"
+          unzip -q -o /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_RELEASE}_linux.x86_64 ~/godot/godot
+          chmod +x ~/godot/godot
+          curl -fsSL -o /tmp/templates.tpz "${base}/Godot_v${GODOT_RELEASE}_export_templates.tpz"
+          dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$dest"
+          unzip -q -o -j /tmp/templates.tpz "templates/version.txt" "templates/windows_release_x86_64.exe" "templates/windows_debug_x86_64.exe" -d "$dest"
+      - name: Import the project
+        run: ~/godot/godot --headless --path . --import || true
+      - name: Export the diagnostic kit
+        run: |
+          set -euo pipefail
+          mkdir -p build/perfkit
+          ~/godot/godot --headless --path . --export-release "Windows Desktop" build/perfkit/VoxelRacingBench.exe
+          test -s build/perfkit/VoxelRacingBench.exe
+          cp tools/perf/windows/run_benchmarks.bat tools/perf/windows/README_BENCHMARK.txt build/perfkit/
+          ls -la build/perfkit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoxelRacing-PERF-DIAGNOSTIC-KIT-${{ github.sha }}
+          path: build/perfkit/
+          retention-days: 30

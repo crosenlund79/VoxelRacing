@@ -235,7 +235,7 @@ func _clear(p: Vector2, centerline: PackedVector2Array, min_distance: float) -> 
 	return true
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	_time += delta
 	for s in _sway:
 		s.rotation = s.get_meta("base_rot") + sin(_time * 0.9 + s.get_meta("phase")) * 0.035
@@ -297,3 +297,10 @@ func _flag(resolver: AssetResolver, pos: Vector2) -> Sprite2D:
 	spr.set_meta("offset", _flags.size() % 2)
 	add_child(spr)
 	return spr
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"legacy2d.track_scenery", __t)

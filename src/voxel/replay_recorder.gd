@@ -91,7 +91,7 @@ func reset() -> void:
 		names[i] = "YOU" if i == player_id else RivalRoster.short_name(i).to_upper()
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process__perf(_delta: float) -> void:
 	if stage == null or not stage.ready_3d:
 		return
 	var session: RaceSession = main.session
@@ -444,3 +444,10 @@ func highlights(count: int = 5, budget: float = 52.0, min_score: float = 6.0) ->
 		total += len_s
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.start) < float(b.start))
 	return out
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _physics_process(_delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_physics_process__perf(_delta)
+	PerfProbe.add(&"sim.replay_record", __t)

@@ -50,7 +50,7 @@ func place(at: Transform2D) -> void:
 		model.yaw_rate = 0.0
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process__perf(_delta: float) -> void:
 	if model == null or not active:
 		if model != null:
 			model.yaw_rate = 0.0  # a stopped (wrecked, parked) car does not keep a knock for later
@@ -80,3 +80,10 @@ func _physics_process(_delta: float) -> void:
 		if motion.length_squared() < 0.0001:
 			break
 	model.position = global_position
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _physics_process(_delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_physics_process__perf(_delta)
+	PerfProbe.add(&"sim.car_physics", __t)

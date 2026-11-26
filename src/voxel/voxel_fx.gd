@@ -260,7 +260,7 @@ func impact(pos: Vector3, normal: Vector3, severity: float) -> void:
 
 ## A car (centre, velocity in units/s, radius in units) kicks up the settled
 ## debris it drives through.
-func scatter_near(centre: Vector3, vel: Vector3, radius: float) -> int:
+func scatter_near__perf(centre: Vector3, vel: Vector3, radius: float) -> int:
 	var v_speed := Vector2(vel.x, vel.z).length()
 	if v_speed < 1.5:
 		return 0
@@ -343,7 +343,7 @@ func settled_count() -> int:
 
 # ------------------------------------------------------------ simulation
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	delta = minf(delta, 0.05) * speed
 	_step_debris(delta)
 	_step_pool(_f, _fx, delta)
@@ -364,7 +364,7 @@ func _floor_at(i: int, p: Vector3) -> float:
 	return f
 
 
-func _step_debris(dt: float) -> void:
+func _step_debris__perf(dt: float) -> void:
 	var still: Array[int] = []
 	for i in _flying:
 		var p := d_pos[i]
@@ -461,3 +461,25 @@ func _step_pool(pool: Dictionary, mm: MultiMesh, dt: float) -> void:
 		mm.set_instance_transform(i, Transform3D(Basis.from_euler(r).scaled(Vector3.ONE * maxf(s, 0.001)), p))
 		mm.set_instance_custom_data(i, custom)
 	pool.active = keep
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"pres.voxel_fx", __t)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func scatter_near(centre: Vector3, vel: Vector3, radius: float) -> int:
+	var __t := Time.get_ticks_usec()
+	var __r = scatter_near__perf(centre, vel, radius)
+	PerfProbe.add(&"pres.debris_scatter", __t)
+	return __r
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _step_debris(dt: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_step_debris__perf(dt)
+	PerfProbe.add(&"pres.debris_step", __t)

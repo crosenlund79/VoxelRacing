@@ -151,10 +151,18 @@ static func build_arrays(g: VoxelGrid, pivot: Vector3 = Vector3.ZERO, jitter: fl
 	return arrays
 
 
-static func build_mesh(g: VoxelGrid, material: Material, pivot: Vector3 = Vector3.ZERO, jitter: float = 0.06) -> ArrayMesh:
+static func build_mesh__perf(g: VoxelGrid, material: Material, pivot: Vector3 = Vector3.ZERO, jitter: float = 0.06) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var a := build_arrays(g, pivot, jitter)
 	if not a.is_empty():
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
 		mesh.surface_set_material(0, material)
 	return mesh
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+static func build_mesh(g: VoxelGrid, material: Material, pivot: Vector3 = Vector3.ZERO, jitter: float = 0.06) -> ArrayMesh:
+	var __t := Time.get_ticks_usec()
+	var __r = build_mesh__perf(g, material, pivot, jitter)
+	PerfProbe.add(&"mesh.build_mesh", __t)
+	return __r

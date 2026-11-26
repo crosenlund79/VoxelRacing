@@ -162,7 +162,7 @@ func complete() -> void:
 	_done = true
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if not _active:
 		return
 	delta = minf(delta, 0.1)
@@ -343,3 +343,10 @@ static func _strip_mesh() -> ArrayMesh:
 		for y in range(17, 21):
 			g.set_v(fx, y, z, Vox.SOLID, VrStyle.PAPER if (z + y) % 2 == 0 else VrStyle.INK)
 	return VoxelMesher.build_mesh(g, VoxelCars.material(), Vector3(nx * 0.5, 2.0, nz * 0.5) * vs, 0.05)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"ui.loading", __t)

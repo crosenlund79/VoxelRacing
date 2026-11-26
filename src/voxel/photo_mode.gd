@@ -60,7 +60,7 @@ func allowed() -> bool:
 	return true
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if not active:
 		if Input.is_action_just_pressed(PlayerControls.PHOTO) and allowed() and not get_tree().paused:
 			_enter()
@@ -288,3 +288,10 @@ func _build_ui() -> void:
 	_toast.position = Vector2(16, 680)
 	_toast.visible = false
 	_ui.add_child(_toast)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"pres.photo_mode", __t)

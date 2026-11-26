@@ -1,0 +1,689 @@
+{
+  "args": {
+    "bench": "race",
+    "iso": "no_legacy2d",
+    "out": "/tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2",
+    "secs": "25",
+    "tag": "cpu_race_no_legacy",
+    "warm": "4"
+  },
+  "log": [
+    "[1.69] bench race tag cpu_race_no_legacy res (320, 180) cap 0 vsync 0 iso no_legacy2d",
+    "[1.69] renderer vulkan / forward_plus / llvmpipe (LLVM 20.1.2, 256 bits)",
+    "[1.69] adapter vendor Unknown api 1.4.335 debug_build false",
+    "[3.61] removed the default main scene Game",
+    "[4.03] phase load",
+    "[14.12] race ready in 10502 ms (voxel build 9275 ms)",
+    "[14.13] phase warmup",
+    "[14.76] isolation applied: no_legacy2d",
+    "[18.39] phase measure:race",
+    "[43.54] phase idle"
+  ],
+  "marks": [
+    {
+      "ms": 10501.986,
+      "voxel_build_msec": 9275,
+      "what": "race_scene_ready_ms"
+    }
+  ],
+  "phases": {
+    "boot": {
+      "avg_fps": 2.08019245940634,
+      "draw_calls_max": 123.0,
+      "draw_calls_mean": 30.75,
+      "frames": 4,
+      "frames_over_33ms": 3,
+      "low1_fps": 0.726223268629261,
+      "max_ms": 1376.987,
+      "mean_ms": 480.72475,
+      "median_ms": 503.753,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1248.0,
+      "nodes_mean": 626.5,
+      "objects_max": 526.0,
+      "objects_mean": 131.5,
+      "p95_ms": 1376.987,
+      "p99_ms": 1376.987,
+      "phys2d_active_max": 0.0,
+      "phys2d_active_mean": 0.0,
+      "physics_ms_max": 20.211,
+      "physics_ms_mean": 5.06925,
+      "primitives_max": 722364.0,
+      "primitives_mean": 180591.0,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.012,
+          "ms_per_tick": null
+        },
+        "menu.diorama": {
+          "ms_per_frame": 0.11225,
+          "ms_per_tick": null
+        },
+        "menu.logo": {
+          "ms_per_frame": 0.00875,
+          "ms_per_tick": null
+        },
+        "menu.preview": {
+          "ms_per_frame": 0.0025,
+          "ms_per_tick": null
+        },
+        "menu.preview_show": {
+          "ms_per_frame": 0.00425,
+          "ms_per_tick": null
+        },
+        "menu.title": {
+          "ms_per_frame": 0.00075,
+          "ms_per_tick": null
+        },
+        "mesh.build_mesh": {
+          "ms_per_frame": 52.259,
+          "ms_per_tick": null
+        },
+        "pres.debris_step": {
+          "ms_per_frame": 0.00325,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.0295,
+          "ms_per_tick": null
+        },
+        "ui.loading": {
+          "ms_per_frame": 0.00125,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.013,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 1376.695,
+      "process_ms_mean": 363.46675,
+      "render_cpu_all_ms_max": 0.21,
+      "render_cpu_all_ms_mean": 0.0692499998435378,
+      "render_cpu_ms_max": 0.21,
+      "render_cpu_ms_mean": 0.0692499998435378,
+      "render_gpu_all_ms_max": 0.180000007152557,
+      "render_gpu_all_ms_mean": 0.0450000017881393,
+      "render_gpu_ms_max": 0.180000007152557,
+      "render_gpu_ms_mean": 0.0450000017881393,
+      "spikes_2x_median": 1,
+      "stdev_ms": 553.846331577801,
+      "ticks": 18,
+      "video_mem_mb_max": 139.911758422852,
+      "video_mem_mb_mean": 95.3612060546875,
+      "viewports_max": 8.0,
+      "viewports_mean": 8.0
+    },
+    "load": {
+      "avg_fps": 10.5335610097141,
+      "draw_calls_max": 147.0,
+      "draw_calls_mean": 98.9607843137255,
+      "frames": 102,
+      "frames_over_33ms": 102,
+      "low1_fps": 1.39073160826985,
+      "max_ms": 857.289,
+      "mean_ms": 94.9346568627451,
+      "median_ms": 66.795,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1629.0,
+      "nodes_mean": 741.303921568627,
+      "objects_max": 457.0,
+      "objects_mean": 330.166666666667,
+      "p95_ms": 201.054,
+      "p99_ms": 580.803,
+      "phys2d_active_max": 0.0,
+      "phys2d_active_mean": 0.0,
+      "physics_ms_max": 1.615,
+      "physics_ms_mean": 0.444970588235295,
+      "primitives_max": 386710.0,
+      "primitives_mean": 57151.3529411765,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.0170098039215686,
+          "ms_per_tick": null
+        },
+        "audio.race": {
+          "ms_per_frame": 0.0507450980392157,
+          "ms_per_tick": null
+        },
+        "audio.voice": {
+          "ms_per_frame": 0.013921568627451,
+          "ms_per_tick": null
+        },
+        "legacy2d.combat_view": {
+          "ms_per_frame": 0.00511764705882353,
+          "ms_per_tick": null
+        },
+        "legacy2d.damage_view": {
+          "ms_per_frame": 0.00592156862745098,
+          "ms_per_tick": null
+        },
+        "legacy2d.jump_view": {
+          "ms_per_frame": 0.0104313725490196,
+          "ms_per_tick": null
+        },
+        "legacy2d.race_effects": {
+          "ms_per_frame": 0.0733529411764706,
+          "ms_per_tick": null
+        },
+        "legacy2d.track_scenery": {
+          "ms_per_frame": 0.113303921568627,
+          "ms_per_tick": null
+        },
+        "mesh.build_mesh": {
+          "ms_per_frame": 1.71940196078431,
+          "ms_per_tick": null
+        },
+        "pres.debris_scatter": {
+          "ms_per_frame": 0.000137254901960784,
+          "ms_per_tick": null
+        },
+        "pres.debris_step": {
+          "ms_per_frame": 0.0000980392156862745,
+          "ms_per_tick": null
+        },
+        "pres.levels2d": {
+          "ms_per_frame": 0.0719019607843137,
+          "ms_per_tick": null
+        },
+        "pres.life": {
+          "ms_per_frame": 0.0117647058823529,
+          "ms_per_tick": null
+        },
+        "pres.life_people": {
+          "ms_per_frame": 0.0100294117647059,
+          "ms_per_tick": null
+        },
+        "pres.lighting": {
+          "ms_per_frame": 0.00317647058823529,
+          "ms_per_tick": null
+        },
+        "pres.lighting_set": {
+          "ms_per_frame": 0.000647058823529412,
+          "ms_per_tick": null
+        },
+        "pres.main_process": {
+          "ms_per_frame": 1.33282352941176,
+          "ms_per_tick": null
+        },
+        "pres.photo_mode": {
+          "ms_per_frame": 0.0000490196078431373,
+          "ms_per_tick": null
+        },
+        "pres.race_fx": {
+          "ms_per_frame": 0.00305882352941176,
+          "ms_per_tick": null
+        },
+        "pres.replay_theater": {
+          "ms_per_frame": 0.0000490196078431373,
+          "ms_per_tick": null
+        },
+        "pres.stage_cars": {
+          "ms_per_frame": 0.00874509803921569,
+          "ms_per_tick": null
+        },
+        "pres.stage_total": {
+          "ms_per_frame": 0.00752941176470588,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.000558823529411765,
+          "ms_per_tick": null
+        },
+        "sim.car_physics": {
+          "ms_per_frame": 0.0339901960784314,
+          "ms_per_tick": 0.00775615212527964
+        },
+        "sim.follow_camera2d": {
+          "ms_per_frame": 0.0175,
+          "ms_per_tick": 0.00399328859060403
+        },
+        "sim.main_tick": {
+          "ms_per_frame": 0.0607450980392157,
+          "ms_per_tick": 0.0138612975391499
+        },
+        "sim.replay_record": {
+          "ms_per_frame": 0.0000980392156862745,
+          "ms_per_tick": 0.0000223713646532438
+        },
+        "ui.hud": {
+          "ms_per_frame": 1.23946078431373,
+          "ms_per_tick": null
+        },
+        "ui.kill_feed": {
+          "ms_per_frame": 0.00987254901960784,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.0138333333333333,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 858.125,
+      "process_ms_mean": 267.526460784314,
+      "render_cpu_all_ms_max": 756.53800732398,
+      "render_cpu_all_ms_mean": 12.7407550042964,
+      "render_cpu_ms_max": 756.494007324219,
+      "render_cpu_ms_mean": 12.7005883378208,
+      "render_gpu_all_ms_max": 81.899002790451,
+      "render_gpu_all_ms_mean": 39.7346961715934,
+      "render_gpu_ms_max": 80.745002746582,
+      "render_gpu_ms_mean": 38.7885491107317,
+      "spikes_2x_median": 8,
+      "stdev_ms": 109.103553008184,
+      "ticks": 447,
+      "video_mem_mb_max": 148.215866088867,
+      "video_mem_mb_mean": 119.865402072084,
+      "viewports_max": 8.0,
+      "viewports_mean": 2.45098039215686
+    },
+    "measure:race": {
+      "avg_fps": 4.71307082268156,
+      "draw_calls_max": 290.0,
+      "draw_calls_mean": 243.680672268908,
+      "frames": 119,
+      "frames_over_33ms": 119,
+      "low1_fps": 3.54137118350854,
+      "max_ms": 283.754,
+      "mean_ms": 212.175890756302,
+      "median_ms": 206.4,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1685.0,
+      "nodes_mean": 1648.29411764706,
+      "objects_max": 636.0,
+      "objects_mean": 569.521008403361,
+      "p95_ms": 271.847,
+      "p99_ms": 280.999,
+      "phys2d_active_max": 10.0,
+      "phys2d_active_mean": 8.88235294117647,
+      "physics_ms_max": 57.103,
+      "physics_ms_mean": 7.05404201680671,
+      "primitives_max": 939270.0,
+      "primitives_mean": 831729.042016807,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.0137983193277311,
+          "ms_per_tick": null
+        },
+        "audio.race": {
+          "ms_per_frame": 0.21244537815126,
+          "ms_per_tick": null
+        },
+        "audio.voice": {
+          "ms_per_frame": 0.0876638655462185,
+          "ms_per_tick": null
+        },
+        "mesh.build_mesh": {
+          "ms_per_frame": 0.510571428571429,
+          "ms_per_tick": null
+        },
+        "pres.car_break": {
+          "ms_per_frame": 0.35853781512605,
+          "ms_per_tick": null
+        },
+        "pres.car_explode": {
+          "ms_per_frame": 0.477865546218487,
+          "ms_per_tick": null
+        },
+        "pres.car_remesh": {
+          "ms_per_frame": 0.632075630252101,
+          "ms_per_tick": null
+        },
+        "pres.car_spawn_bits": {
+          "ms_per_frame": 0.0118235294117647,
+          "ms_per_tick": null
+        },
+        "pres.debris_scatter": {
+          "ms_per_frame": 0.0877563025210084,
+          "ms_per_tick": null
+        },
+        "pres.debris_step": {
+          "ms_per_frame": 0.570789915966387,
+          "ms_per_tick": null
+        },
+        "pres.levels2d": {
+          "ms_per_frame": 0.0380672268907563,
+          "ms_per_tick": null
+        },
+        "pres.life": {
+          "ms_per_frame": 1.56458823529412,
+          "ms_per_tick": null
+        },
+        "pres.life_people": {
+          "ms_per_frame": 1.34549579831933,
+          "ms_per_tick": null
+        },
+        "pres.lighting": {
+          "ms_per_frame": 0.00284033613445378,
+          "ms_per_tick": null
+        },
+        "pres.main_process": {
+          "ms_per_frame": 1.32150420168067,
+          "ms_per_tick": null
+        },
+        "pres.photo_mode": {
+          "ms_per_frame": 0.00460504201680672,
+          "ms_per_tick": null
+        },
+        "pres.race_fx": {
+          "ms_per_frame": 1.86988235294118,
+          "ms_per_tick": null
+        },
+        "pres.replay_theater": {
+          "ms_per_frame": 0.00219327731092437,
+          "ms_per_tick": null
+        },
+        "pres.stage_cars": {
+          "ms_per_frame": 0.442941176470588,
+          "ms_per_tick": null
+        },
+        "pres.stage_total": {
+          "ms_per_frame": 2.43388235294118,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 1.22748739495798,
+          "ms_per_tick": null
+        },
+        "sim.ai_drive": {
+          "ms_per_frame": 8.92385714285714,
+          "ms_per_tick": 1.11548214285714
+        },
+        "sim.camera_target": {
+          "ms_per_frame": 0.0606218487394958,
+          "ms_per_tick": 0.00757773109243698
+        },
+        "sim.car_physics": {
+          "ms_per_frame": 0.639941176470588,
+          "ms_per_tick": 0.0799926470588235
+        },
+        "sim.combat": {
+          "ms_per_frame": 4.53478991596639,
+          "ms_per_tick": 0.566848739495798
+        },
+        "sim.debris_traction": {
+          "ms_per_frame": 0.253050420168067,
+          "ms_per_tick": 0.0316313025210084
+        },
+        "sim.follow_camera2d": {
+          "ms_per_frame": 0.0201764705882353,
+          "ms_per_tick": 0.00252205882352941
+        },
+        "sim.impacts": {
+          "ms_per_frame": 0.112840336134454,
+          "ms_per_tick": 0.0141050420168067
+        },
+        "sim.jumps": {
+          "ms_per_frame": 0.264605042016807,
+          "ms_per_tick": 0.0330756302521008
+        },
+        "sim.levels": {
+          "ms_per_frame": 0.170478991596639,
+          "ms_per_tick": 0.0213098739495798
+        },
+        "sim.main_tick": {
+          "ms_per_frame": 16.0055378151261,
+          "ms_per_tick": 2.00069222689076
+        },
+        "sim.pits": {
+          "ms_per_frame": 0.369697478991597,
+          "ms_per_tick": 0.0462121848739496
+        },
+        "sim.progress": {
+          "ms_per_frame": 1.03793277310924,
+          "ms_per_tick": 0.129741596638655
+        },
+        "sim.replay_record": {
+          "ms_per_frame": 3.00982352941176,
+          "ms_per_tick": 0.376227941176471
+        },
+        "sim.session": {
+          "ms_per_frame": 0.0633949579831933,
+          "ms_per_tick": 0.00792436974789916
+        },
+        "sim.wreck_passes": {
+          "ms_per_frame": 0.0618655462184874,
+          "ms_per_tick": 0.00773319327731092
+        },
+        "ui.hud": {
+          "ms_per_frame": 1.25813445378151,
+          "ms_per_tick": null
+        },
+        "ui.kill_feed": {
+          "ms_per_frame": 0.034218487394958,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.00839495798319328,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 274.704,
+      "process_ms_mean": 208.862109243697,
+      "render_cpu_all_ms_max": 1.4870000103116,
+      "render_cpu_all_ms_mean": 1.0271008409437,
+      "render_cpu_ms_max": 1.40300001144409,
+      "render_cpu_ms_mean": 0.966537815777194,
+      "render_gpu_all_ms_max": 251.755995035172,
+      "render_gpu_all_ms_mean": 179.039193277099,
+      "render_gpu_ms_max": 250.397994995117,
+      "render_gpu_ms_mean": 177.884924367696,
+      "spikes_2x_median": 0,
+      "stdev_ms": 29.3569333856858,
+      "ticks": 952,
+      "video_mem_mb_max": 159.756149291992,
+      "video_mem_mb_mean": 157.302521777754,
+      "viewports_max": 2.0,
+      "viewports_mean": 2.0
+    },
+    "warmup": {
+      "avg_fps": 3.51501043854718,
+      "draw_calls_max": 271.0,
+      "draw_calls_mean": 265.0,
+      "frames": 17,
+      "frames_over_33ms": 17,
+      "low1_fps": 1.0197380496898,
+      "max_ms": 980.644,
+      "mean_ms": 284.494176470588,
+      "median_ms": 244.762,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1630.0,
+      "nodes_mean": 1629.52941176471,
+      "objects_max": 671.0,
+      "objects_mean": 635.588235294118,
+      "p95_ms": 980.644,
+      "p99_ms": 980.644,
+      "phys2d_active_max": 10.0,
+      "phys2d_active_mean": 9.41176470588235,
+      "physics_ms_max": 3.546,
+      "physics_ms_mean": 2.37088235294118,
+      "primitives_max": 944972.0,
+      "primitives_mean": 940696.352941177,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.014,
+          "ms_per_tick": null
+        },
+        "audio.race": {
+          "ms_per_frame": 0.175411764705882,
+          "ms_per_tick": null
+        },
+        "audio.voice": {
+          "ms_per_frame": 0.077,
+          "ms_per_tick": null
+        },
+        "legacy2d.combat_view": {
+          "ms_per_frame": 0.000647058823529412,
+          "ms_per_tick": null
+        },
+        "legacy2d.damage_view": {
+          "ms_per_frame": 0.000705882352941177,
+          "ms_per_tick": null
+        },
+        "legacy2d.jump_view": {
+          "ms_per_frame": 0.00117647058823529,
+          "ms_per_tick": null
+        },
+        "legacy2d.race_effects": {
+          "ms_per_frame": 0.00852941176470588,
+          "ms_per_tick": null
+        },
+        "legacy2d.track_scenery": {
+          "ms_per_frame": 0.0135882352941176,
+          "ms_per_tick": null
+        },
+        "pres.debris_scatter": {
+          "ms_per_frame": 0.0194705882352941,
+          "ms_per_tick": null
+        },
+        "pres.debris_step": {
+          "ms_per_frame": 0.00529411764705882,
+          "ms_per_tick": null
+        },
+        "pres.levels2d": {
+          "ms_per_frame": 0.0358235294117647,
+          "ms_per_tick": null
+        },
+        "pres.life": {
+          "ms_per_frame": 9.30252941176471,
+          "ms_per_tick": null
+        },
+        "pres.life_people": {
+          "ms_per_frame": 1.06488235294118,
+          "ms_per_tick": null
+        },
+        "pres.lighting": {
+          "ms_per_frame": 0.00505882352941176,
+          "ms_per_tick": null
+        },
+        "pres.main_process": {
+          "ms_per_frame": 1.34729411764706,
+          "ms_per_tick": null
+        },
+        "pres.photo_mode": {
+          "ms_per_frame": 0.00476470588235294,
+          "ms_per_tick": null
+        },
+        "pres.race_fx": {
+          "ms_per_frame": 0.289294117647059,
+          "ms_per_tick": null
+        },
+        "pres.replay_theater": {
+          "ms_per_frame": 0.00229411764705882,
+          "ms_per_tick": null
+        },
+        "pres.stage_cars": {
+          "ms_per_frame": 0.465647058823529,
+          "ms_per_tick": null
+        },
+        "pres.stage_total": {
+          "ms_per_frame": 0.88,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.406882352941176,
+          "ms_per_tick": null
+        },
+        "sim.ai_drive": {
+          "ms_per_frame": 8.15647058823529,
+          "ms_per_tick": 1.01955882352941
+        },
+        "sim.camera_target": {
+          "ms_per_frame": 0.0494117647058823,
+          "ms_per_tick": 0.00617647058823529
+        },
+        "sim.car_physics": {
+          "ms_per_frame": 0.667058823529412,
+          "ms_per_tick": 0.0833823529411765
+        },
+        "sim.combat": {
+          "ms_per_frame": 0.346,
+          "ms_per_tick": 0.04325
+        },
+        "sim.debris_traction": {
+          "ms_per_frame": 0.213176470588235,
+          "ms_per_tick": 0.0266470588235294
+        },
+        "sim.follow_camera2d": {
+          "ms_per_frame": 0.019,
+          "ms_per_tick": 0.002375
+        },
+        "sim.impacts": {
+          "ms_per_frame": 0.119823529411765,
+          "ms_per_tick": 0.0149779411764706
+        },
+        "sim.jumps": {
+          "ms_per_frame": 0.248235294117647,
+          "ms_per_tick": 0.0310294117647059
+        },
+        "sim.levels": {
+          "ms_per_frame": 0.155352941176471,
+          "ms_per_tick": 0.0194191176470588
+        },
+        "sim.main_tick": {
+          "ms_per_frame": 10.8065294117647,
+          "ms_per_tick": 1.35081617647059
+        },
+        "sim.pits": {
+          "ms_per_frame": 0.321411764705882,
+          "ms_per_tick": 0.0401764705882353
+        },
+        "sim.progress": {
+          "ms_per_frame": 0.983235294117647,
+          "ms_per_tick": 0.122904411764706
+        },
+        "sim.replay_record": {
+          "ms_per_frame": 2.14876470588235,
+          "ms_per_tick": 0.268595588235294
+        },
+        "sim.session": {
+          "ms_per_frame": 0.0512352941176471,
+          "ms_per_tick": 0.00640441176470588
+        },
+        "sim.wreck_passes": {
+          "ms_per_frame": 0.0228235294117647,
+          "ms_per_tick": 0.00285294117647059
+        },
+        "ui.hud": {
+          "ms_per_frame": 1.28605882352941,
+          "ms_per_tick": null
+        },
+        "ui.kill_feed": {
+          "ms_per_frame": 0.00882352941176471,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.00970588235294118,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 1254.309,
+      "process_ms_mean": 477.261882352941,
+      "render_cpu_all_ms_max": 587.38198339951,
+      "render_cpu_all_ms_mean": 35.5932343143137,
+      "render_cpu_ms_max": 587.329983398438,
+      "render_cpu_ms_mean": 35.549351961192,
+      "render_gpu_all_ms_max": 259.785013437271,
+      "render_gpu_all_ms_mean": 206.270177274942,
+      "render_gpu_ms_max": 258.170013427734,
+      "render_gpu_ms_mean": 205.036941977108,
+      "spikes_2x_median": 1,
+      "stdev_ms": 176.48643666207,
+      "ticks": 136,
+      "video_mem_mb_max": 156.337448120117,
+      "video_mem_mb_mean": 156.278301463408,
+      "viewports_max": 2.0,
+      "viewports_mean": 2.0
+    }
+  },
+  "scenario": "race",
+  "tag": "cpu_race_no_legacy",
+  "window": [
+    320,
+    180
+  ]
+}

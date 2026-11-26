@@ -140,7 +140,7 @@ func freeze(t: float) -> void:
 	animate = false
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if not animate or model == null:
 		return
 	_time += delta
@@ -217,3 +217,10 @@ static func logo_mesh() -> ArrayMesh:
 	var size := g.size()
 	_logo_mesh = VoxelMesher.build_mesh(g, VoxelCars.material(), Vector3(size.x * 0.5, size.y * 0.5, 3.0) * VS, 0.03)
 	return _logo_mesh
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"menu.logo", __t)

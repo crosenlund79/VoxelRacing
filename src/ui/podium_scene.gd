@@ -199,7 +199,7 @@ func _finish() -> void:
 	finished.emit()
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if not _active:
 		return
 	delta = minf(delta, 0.1)
@@ -1694,3 +1694,10 @@ static func _flag_strip_mesh(pattern: String, col: Color, k: int) -> ArrayMesh:
 	var mesh := _mesh(g, Vector3(0.5, rows, 0.5) * vs, 0.06)
 	_meshes[key] = mesh
 	return mesh
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"pres.podium", __t)

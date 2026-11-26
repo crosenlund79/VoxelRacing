@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - "claude/**"
+      - "!claude/perf-**"  # (the performance investigation branch builds its own diagnostic kit)
       - "main"
   workflow_dispatch:
 

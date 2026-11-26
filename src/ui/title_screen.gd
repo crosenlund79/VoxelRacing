@@ -269,7 +269,7 @@ func stop_audio() -> void:
 	_sfx.stream = null
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	_time += delta
 
 
@@ -800,3 +800,10 @@ func _build_backdrop() -> void:
 	_backdrop = MenuDiorama.new()
 	_backdrop.name = "Diorama"
 	add_child(_backdrop)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"menu.title", __t)

@@ -71,7 +71,7 @@ static func target_loss(condition_share: float) -> float:
 ## Breaks voxels until `target` of the body is gone, nearest `toward` (a unit
 ## direction in the car's model space: +X nose, +Z right). Returns the voxels
 ## that broke away: [[model position, colour], ...].
-func break_to(target: float, toward: Vector3) -> Array:
+func break_to__perf(target: float, toward: Vector3) -> Array:
 	var out: Array = []
 	var want := int(target * total) - removed
 	if want <= 0 or solids.is_empty():
@@ -186,7 +186,7 @@ func hull_mesh() -> ArrayMesh:
 
 
 ## Rebuilds the mesh if the model changed (call at most a few times a frame).
-func rebuild() -> void:
+func rebuild__perf() -> void:
 	if not dirty:
 		return
 	dirty = false
@@ -245,3 +245,18 @@ func _count_lamps() -> void:
 					lamps[0 if z < sz.z / 2 else 1] += 1
 				elif m == Vox.TAIL:
 					lamps[2 if z < sz.z / 2 else 3] += 1
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func rebuild() -> void:
+	var __t := Time.get_ticks_usec()
+	rebuild__perf()
+	PerfProbe.add(&"pres.car_remesh", __t)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func break_to(target: float, toward: Vector3) -> Array:
+	var __t := Time.get_ticks_usec()
+	var __r = break_to__perf(target, toward)
+	PerfProbe.add(&"pres.car_break", __t)
+	return __r

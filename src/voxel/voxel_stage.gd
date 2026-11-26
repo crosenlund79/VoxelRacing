@@ -448,7 +448,7 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 	}
 
 
-func _sync_cars(delta: float) -> void:
+func _sync_cars__perf(delta: float) -> void:
 	var lp: LightingPilot = main.lighting
 	var night := lp != null and lp.enabled
 	var elevated: bool = main.track.layout.has_elevation()
@@ -1130,7 +1130,7 @@ func _setup_decals() -> void:
 
 # ------------------------------------------------------------ camera and frame
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if _hint_left > 0.0:
 		_hint_left -= delta
 		_hint.visible = _hint_left > 0.0
@@ -1323,3 +1323,17 @@ func _junker(holder: Node3D, spr: Sprite2D) -> void:
 	mi.rotation = Vector3(_rng.randf_range(-0.25, 0.25), Vox.yaw(spr.global_rotation), _rng.randf_range(-0.3, 0.3))
 	mi.set_instance_shader_parameter("tint", spr.modulate)
 	holder.add_child(mi)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"pres.stage_total", __t)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _sync_cars(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_sync_cars__perf(delta)
+	PerfProbe.add(&"pres.stage_cars", __t)

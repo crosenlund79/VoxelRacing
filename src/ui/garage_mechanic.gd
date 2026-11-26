@@ -182,7 +182,7 @@ func tool_tip() -> Vector3:
 	return _tool.global_transform * Vector3(0.45, 0, 0)
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	delta = minf(delta, 0.1)
 	_t += delta
 	if _task.is_empty():
@@ -335,3 +335,10 @@ func _yaw_to(look: Vector3) -> float:
 	if d.length() < 0.01:
 		return rotation.y
 	return atan2(-d.z, d.x)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"garage.mechanic", __t)

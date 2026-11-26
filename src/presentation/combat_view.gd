@@ -48,7 +48,7 @@ func set_enabled(on: bool) -> void:
 		_cursor = _combat.events.size()
 
 
-func _process(_delta: float) -> void:
+func _process__perf(_delta: float) -> void:
 	if not enabled or _combat == null:
 		return
 	if _cursor > _combat.events.size():
@@ -88,3 +88,10 @@ func _draw_halos() -> void:
 func _play(logical: String, pos: Vector2) -> void:
 	if _audio != null:
 		_audio.play_at(logical, pos)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(_delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(_delta)
+	PerfProbe.add(&"legacy2d.combat_view", __t)

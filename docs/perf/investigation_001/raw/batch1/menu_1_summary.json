@@ -1,0 +1,308 @@
+{
+  "args": {
+    "bench": "menu",
+    "out": "/tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw",
+    "secs": "15",
+    "tag": "menu_1",
+    "warm": "5"
+  },
+  "log": [
+    "[1.27] bench menu tag menu_1 res (1280, 720) cap 0 vsync 0 iso ",
+    "[1.27] renderer vulkan / forward_plus / llvmpipe (LLVM 20.1.2, 256 bits)",
+    "[1.27] adapter vendor Unknown api 1.4.335 debug_build false",
+    "[3.11] removed the default main scene Game",
+    "[4.08] phase warmup",
+    "[9.28] phase measure:menu_idle",
+    "[24.30] phase idle",
+    "[24.30] phase measure:menu_nav"
+  ],
+  "marks": [],
+  "phases": {
+    "boot": {
+      "avg_fps": 2.7630688221235,
+      "draw_calls_max": 116.0,
+      "draw_calls_mean": 48.0,
+      "frames": 7,
+      "frames_over_33ms": 6,
+      "low1_fps": 0.79222416141092,
+      "max_ms": 1262.269,
+      "mean_ms": 361.916428571429,
+      "median_ms": 267.704,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1248.0,
+      "nodes_mean": 886.0,
+      "objects_max": 296.0,
+      "objects_mean": 120.857142857143,
+      "p95_ms": 1262.269,
+      "p99_ms": 1262.269,
+      "phys2d_active_max": 0.0,
+      "phys2d_active_mean": 0.0,
+      "physics_ms_max": 12.043,
+      "physics_ms_mean": 1.75114285714286,
+      "primitives_max": 722840.0,
+      "primitives_mean": 309080.571428571,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.0151428571428571,
+          "ms_per_tick": null
+        },
+        "menu.diorama": {
+          "ms_per_frame": 0.123142857142857,
+          "ms_per_tick": null
+        },
+        "menu.logo": {
+          "ms_per_frame": 0.0118571428571429,
+          "ms_per_tick": null
+        },
+        "menu.preview": {
+          "ms_per_frame": 0.00357142857142857,
+          "ms_per_tick": null
+        },
+        "menu.title": {
+          "ms_per_frame": 0.00171428571428571,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.0352857142857143,
+          "ms_per_tick": null
+        },
+        "ui.loading": {
+          "ms_per_frame": 0.00171428571428571,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.0184285714285714,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 1259.117,
+      "process_ms_mean": 206.217428571429,
+      "render_cpu_ms_max": 0.145000001847744,
+      "render_cpu_ms_mean": 0.057285715090377,
+      "render_gpu_ms_max": 1.08599996566772,
+      "render_gpu_ms_mean": 0.562285704272134,
+      "spikes_2x_median": 1,
+      "stdev_ms": 400.081267061673,
+      "ticks": 36,
+      "video_mem_mb_max": 191.031280517578,
+      "video_mem_mb_mean": 144.137967790876
+    },
+    "measure:menu_idle": {
+      "avg_fps": 3.92624489080747,
+      "draw_calls_max": 138.0,
+      "draw_calls_mean": 133.576271186441,
+      "frames": 59,
+      "frames_over_33ms": 59,
+      "low1_fps": 3.54880493993648,
+      "max_ms": 281.785,
+      "mean_ms": 254.696288135593,
+      "median_ms": 255.18,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1236.0,
+      "nodes_mean": 1227.52542372881,
+      "objects_max": 356.0,
+      "objects_mean": 346.576271186441,
+      "p95_ms": 270.159,
+      "p99_ms": 281.785,
+      "phys2d_active_max": 0.0,
+      "phys2d_active_mean": 0.0,
+      "physics_ms_max": 0.481,
+      "physics_ms_mean": 0.0732033898305084,
+      "primitives_max": 733304.0,
+      "primitives_mean": 726634.305084746,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.019,
+          "ms_per_tick": null
+        },
+        "menu.diorama": {
+          "ms_per_frame": 0.256254237288136,
+          "ms_per_tick": null
+        },
+        "menu.logo": {
+          "ms_per_frame": 0.0177796610169492,
+          "ms_per_tick": null
+        },
+        "menu.preview": {
+          "ms_per_frame": 0.00572881355932203,
+          "ms_per_tick": null
+        },
+        "menu.title": {
+          "ms_per_frame": 0.00194915254237288,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.189389830508475,
+          "ms_per_tick": null
+        },
+        "ui.loading": {
+          "ms_per_frame": 0.00259322033898305,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.0269661016949153,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 279.356,
+      "process_ms_mean": 262.634033898305,
+      "render_cpu_ms_max": 0.65800000667572,
+      "render_cpu_ms_mean": 0.491254237037594,
+      "render_gpu_ms_max": 222.964996337891,
+      "render_gpu_ms_mean": 196.978134672521,
+      "spikes_2x_median": 0,
+      "stdev_ms": 11.1140161165535,
+      "ticks": 472,
+      "video_mem_mb_max": 180.980041503906,
+      "video_mem_mb_mean": 179.057433306161
+    },
+    "measure:menu_nav": {
+      "avg_fps": 4.0732435131415,
+      "draw_calls_max": 139.0,
+      "draw_calls_mean": 135.238095238095,
+      "frames": 42,
+      "frames_over_33ms": 42,
+      "low1_fps": 3.58721230557309,
+      "max_ms": 278.768,
+      "mean_ms": 245.504595238095,
+      "median_ms": 245.735,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1226.0,
+      "nodes_mean": 1226.0,
+      "objects_max": 362.0,
+      "objects_mean": 350.452380952381,
+      "p95_ms": 265.568,
+      "p99_ms": 278.768,
+      "phys2d_active_max": 0.0,
+      "phys2d_active_mean": 0.0,
+      "physics_ms_max": 0.265,
+      "physics_ms_mean": 0.102285714285714,
+      "primitives_max": 739086.0,
+      "primitives_mean": 734200.142857143,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.0166666666666667,
+          "ms_per_tick": null
+        },
+        "menu.diorama": {
+          "ms_per_frame": 0.228071428571429,
+          "ms_per_tick": null
+        },
+        "menu.logo": {
+          "ms_per_frame": 0.0165714285714286,
+          "ms_per_tick": null
+        },
+        "menu.preview": {
+          "ms_per_frame": 0.00419047619047619,
+          "ms_per_tick": null
+        },
+        "menu.title": {
+          "ms_per_frame": 0.00180952380952381,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.187333333333333,
+          "ms_per_tick": null
+        },
+        "ui.loading": {
+          "ms_per_frame": 0.00257142857142857,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.0243571428571429,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 276.194,
+      "process_ms_mean": 255.135119047619,
+      "render_cpu_ms_max": 0.658000028133392,
+      "render_cpu_ms_mean": 0.471166666013854,
+      "render_gpu_ms_max": 228.74299621582,
+      "render_gpu_ms_mean": 191.535475957961,
+      "spikes_2x_median": 0,
+      "stdev_ms": 12.5541634889624,
+      "ticks": 336,
+      "video_mem_mb_max": 178.811630249023,
+      "video_mem_mb_mean": 178.768439883278
+    },
+    "warmup": {
+      "avg_fps": 3.83122386147521,
+      "draw_calls_max": 141.0,
+      "draw_calls_mean": 137.3,
+      "frames": 20,
+      "frames_over_33ms": 20,
+      "low1_fps": 3.57190057257566,
+      "max_ms": 279.963,
+      "mean_ms": 261.0132,
+      "median_ms": 264.817,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1236.0,
+      "nodes_mean": 1236.0,
+      "objects_max": 357.0,
+      "objects_mean": 349.0,
+      "p95_ms": 279.963,
+      "p99_ms": 279.963,
+      "phys2d_active_max": 0.0,
+      "phys2d_active_mean": 0.0,
+      "physics_ms_max": 0.043,
+      "physics_ms_mean": 0.0401,
+      "primitives_max": 729648.0,
+      "primitives_mean": 726253.9,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.01825,
+          "ms_per_tick": null
+        },
+        "menu.diorama": {
+          "ms_per_frame": 0.1885,
+          "ms_per_tick": null
+        },
+        "menu.logo": {
+          "ms_per_frame": 0.0193,
+          "ms_per_tick": null
+        },
+        "menu.preview": {
+          "ms_per_frame": 0.0052,
+          "ms_per_tick": null
+        },
+        "menu.title": {
+          "ms_per_frame": 0.002,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.19025,
+          "ms_per_tick": null
+        },
+        "ui.loading": {
+          "ms_per_frame": 0.00295,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.02525,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 427.725,
+      "process_ms_mean": 290.29355,
+      "render_cpu_ms_max": 0.647999984264374,
+      "render_cpu_ms_mean": 0.520599998474121,
+      "render_gpu_ms_max": 217.438003540039,
+      "render_gpu_ms_mean": 200.573698425293,
+      "spikes_2x_median": 0,
+      "stdev_ms": 11.4559851588591,
+      "ticks": 160,
+      "video_mem_mb_max": 180.465744018555,
+      "video_mem_mb_mean": 179.835882568359
+    }
+  },
+  "scenario": "menu",
+  "tag": "menu_1",
+  "window": [
+    1280,
+    720
+  ]
+}

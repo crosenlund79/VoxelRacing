@@ -1,0 +1,360 @@
+{
+  "args": {
+    "bench": "garage",
+    "out": "/tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2",
+    "tag": "garage_720",
+    "warm": "5"
+  },
+  "log": [
+    "[1.28] bench garage tag garage_720 res (1280, 720) cap 0 vsync 0 iso ",
+    "[1.28] renderer vulkan / forward_plus / llvmpipe (LLVM 20.1.2, 256 bits)",
+    "[1.28] adapter vendor Unknown api 1.4.335 debug_build false",
+    "[3.05] removed the default main scene Game",
+    "[6.29] phase warmup",
+    "[11.43] phase measure:garage_idle",
+    "[21.51] phase idle",
+    "[21.51] phase measure:garage_repair",
+    "[30.79] phase idle"
+  ],
+  "marks": [],
+  "phases": {
+    "boot": {
+      "avg_fps": 3.44080767799029,
+      "draw_calls_max": 140.0,
+      "draw_calls_mean": 97.1875,
+      "frames": 16,
+      "frames_over_33ms": 15,
+      "low1_fps": 0.822670156981919,
+      "max_ms": 1215.554,
+      "mean_ms": 290.6294375,
+      "median_ms": 253.111,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1248.0,
+      "nodes_mean": 1082.875,
+      "objects_max": 355.0,
+      "objects_mean": 247.0625,
+      "p95_ms": 1215.554,
+      "p99_ms": 1215.554,
+      "phys2d_active_max": 0.0,
+      "phys2d_active_mean": 0.0,
+      "physics_ms_max": 11.774,
+      "physics_ms_mean": 0.768125,
+      "primitives_max": 728696.0,
+      "primitives_mean": 543794.125,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.015625,
+          "ms_per_tick": null
+        },
+        "menu.diorama": {
+          "ms_per_frame": 0.1620625,
+          "ms_per_tick": null
+        },
+        "menu.logo": {
+          "ms_per_frame": 0.014375,
+          "ms_per_tick": null
+        },
+        "menu.preview": {
+          "ms_per_frame": 0.0041875,
+          "ms_per_tick": null
+        },
+        "menu.preview_show": {
+          "ms_per_frame": 0.0015,
+          "ms_per_tick": null
+        },
+        "menu.title": {
+          "ms_per_frame": 0.0018125,
+          "ms_per_tick": null
+        },
+        "mesh.build_mesh": {
+          "ms_per_frame": 16.114125,
+          "ms_per_tick": null
+        },
+        "pres.debris_step": {
+          "ms_per_frame": 0.0054375,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.0663125,
+          "ms_per_tick": null
+        },
+        "ui.loading": {
+          "ms_per_frame": 0.002,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.0220625,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 1212.566,
+      "process_ms_mean": 234.2679375,
+      "render_cpu_all_ms_max": 0.831000005662441,
+      "render_cpu_all_ms_mean": 0.361125003581867,
+      "render_cpu_ms_max": 0.538000011920929,
+      "render_cpu_ms_mean": 0.302000004367903,
+      "render_gpu_all_ms_max": 229.002994537354,
+      "render_gpu_all_ms_mean": 117.818250212818,
+      "render_gpu_ms_max": 217.421997070312,
+      "render_gpu_ms_mean": 109.77031281963,
+      "spikes_2x_median": 2,
+      "stdev_ms": 262.518658848749,
+      "ticks": 106,
+      "video_mem_mb_max": 190.833450317383,
+      "video_mem_mb_mean": 163.854655265808,
+      "viewports_max": 8.0,
+      "viewports_mean": 8.0
+    },
+    "measure:garage_idle": {
+      "avg_fps": 7.4380130865394,
+      "draw_calls_max": 171.0,
+      "draw_calls_mean": 170.226666666667,
+      "frames": 75,
+      "frames_over_33ms": 75,
+      "low1_fps": 5.93813649400545,
+      "max_ms": 168.403,
+      "mean_ms": 134.444506666667,
+      "median_ms": 133.908,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1310.0,
+      "nodes_mean": 1310.0,
+      "objects_max": 664.0,
+      "objects_mean": 663.826666666667,
+      "p95_ms": 150.062,
+      "p99_ms": 168.403,
+      "phys2d_active_max": 0.0,
+      "phys2d_active_mean": 0.0,
+      "physics_ms_max": 0.048,
+      "physics_ms_mean": 0.0391866666666667,
+      "primitives_max": 156268.0,
+      "primitives_mean": 154100.16,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.0184933333333333,
+          "ms_per_tick": null
+        },
+        "garage.mechanic": {
+          "ms_per_frame": 0.0264133333333333,
+          "ms_per_tick": null
+        },
+        "garage.workshop": {
+          "ms_per_frame": 0.0422266666666667,
+          "ms_per_tick": null
+        },
+        "menu.logo": {
+          "ms_per_frame": 0.02436,
+          "ms_per_tick": null
+        },
+        "menu.preview": {
+          "ms_per_frame": 0.00461333333333333,
+          "ms_per_tick": null
+        },
+        "pres.debris_step": {
+          "ms_per_frame": 0.0127866666666667,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.0650666666666667,
+          "ms_per_tick": null
+        },
+        "ui.loading": {
+          "ms_per_frame": 0.00236,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.0222933333333333,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 165.565,
+      "process_ms_mean": 144.308706666666,
+      "render_cpu_all_ms_max": 1.20599999046326,
+      "render_cpu_all_ms_mean": 0.916986662583351,
+      "render_cpu_ms_max": 0.397999997973442,
+      "render_cpu_ms_mean": 0.291879998482068,
+      "render_gpu_all_ms_max": 182.974997520447,
+      "render_gpu_all_ms_mean": 149.066039759318,
+      "render_gpu_ms_max": 14.6540002822876,
+      "render_gpu_ms_mean": 11.6511866505941,
+      "spikes_2x_median": 0,
+      "stdev_ms": 7.89687488461663,
+      "ticks": 591,
+      "video_mem_mb_max": 258.850631713867,
+      "video_mem_mb_mean": 258.850631713867,
+      "viewports_max": 7.0,
+      "viewports_mean": 7.0
+    },
+    "measure:garage_repair": {
+      "avg_fps": 7.32207886740361,
+      "draw_calls_max": 177.0,
+      "draw_calls_mean": 175.102941176471,
+      "frames": 68,
+      "frames_over_33ms": 68,
+      "low1_fps": 6.02061458433677,
+      "max_ms": 166.096,
+      "mean_ms": 136.573235294118,
+      "median_ms": 136.282,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1311.0,
+      "nodes_mean": 1310.30882352941,
+      "objects_max": 663.0,
+      "objects_mean": 605.147058823529,
+      "p95_ms": 148.027,
+      "p99_ms": 166.096,
+      "phys2d_active_max": 0.0,
+      "phys2d_active_mean": 0.0,
+      "physics_ms_max": 0.059,
+      "physics_ms_mean": 0.0423529411764706,
+      "primitives_max": 152036.0,
+      "primitives_mean": 151245.294117647,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.0180588235294118,
+          "ms_per_tick": null
+        },
+        "garage.mechanic": {
+          "ms_per_frame": 0.0214558823529412,
+          "ms_per_tick": null
+        },
+        "garage.workshop": {
+          "ms_per_frame": 0.0423970588235294,
+          "ms_per_tick": null
+        },
+        "menu.logo": {
+          "ms_per_frame": 0.0238970588235294,
+          "ms_per_tick": null
+        },
+        "menu.preview": {
+          "ms_per_frame": 0.00476470588235294,
+          "ms_per_tick": null
+        },
+        "pres.debris_step": {
+          "ms_per_frame": 0.0112352941176471,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.0378235294117647,
+          "ms_per_tick": null
+        },
+        "ui.loading": {
+          "ms_per_frame": 0.0025,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.0218970588235294,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 162.438,
+      "process_ms_mean": 142.676073529412,
+      "render_cpu_all_ms_max": 1.54400000220537,
+      "render_cpu_all_ms_mean": 0.922397053374087,
+      "render_cpu_ms_max": 0.922000015735626,
+      "render_cpu_ms_mean": 0.296279411610435,
+      "render_gpu_all_ms_max": 179.273998260498,
+      "render_gpu_all_ms_mean": 151.025940951179,
+      "render_gpu_ms_max": 14.6049995422363,
+      "render_gpu_ms_mean": 11.7153235323289,
+      "spikes_2x_median": 0,
+      "stdev_ms": 7.7569570009911,
+      "ticks": 540,
+      "video_mem_mb_max": 259.218276977539,
+      "video_mem_mb_mean": 259.10261109296,
+      "viewports_max": 7.0,
+      "viewports_mean": 7.0
+    },
+    "warmup": {
+      "avg_fps": 7.10358579664191,
+      "draw_calls_max": 175.0,
+      "draw_calls_mean": 170.710526315789,
+      "frames": 38,
+      "frames_over_33ms": 38,
+      "low1_fps": 2.69711893755091,
+      "max_ms": 370.766,
+      "mean_ms": 140.773973684211,
+      "median_ms": 132.516,
+      "mem_static_mb_max": 0.0,
+      "mem_static_mb_mean": 0.0,
+      "nodes_max": 1320.0,
+      "nodes_mean": 1315.26315789474,
+      "objects_max": 680.0,
+      "objects_mean": 660.710526315789,
+      "p95_ms": 172.398,
+      "p99_ms": 370.766,
+      "phys2d_active_max": 0.0,
+      "phys2d_active_mean": 0.0,
+      "physics_ms_max": 0.366,
+      "physics_ms_mean": 0.110026315789474,
+      "primitives_max": 722184.0,
+      "primitives_mean": 173451.105263158,
+      "probes": {
+        "audio.music": {
+          "ms_per_frame": 0.0175789473684211,
+          "ms_per_tick": null
+        },
+        "garage.mechanic": {
+          "ms_per_frame": 0.0294736842105263,
+          "ms_per_tick": null
+        },
+        "garage.workshop": {
+          "ms_per_frame": 0.0387105263157895,
+          "ms_per_tick": null
+        },
+        "menu.logo": {
+          "ms_per_frame": 0.0238684210526316,
+          "ms_per_tick": null
+        },
+        "menu.preview": {
+          "ms_per_frame": 0.00455263157894737,
+          "ms_per_tick": null
+        },
+        "mesh.build_mesh": {
+          "ms_per_frame": 2.42121052631579,
+          "ms_per_tick": null
+        },
+        "pres.debris_step": {
+          "ms_per_frame": 0.0101315789473684,
+          "ms_per_tick": null
+        },
+        "pres.voxel_fx": {
+          "ms_per_frame": 0.0602105263157895,
+          "ms_per_tick": null
+        },
+        "ui.loading": {
+          "ms_per_frame": 0.00244736842105263,
+          "ms_per_tick": null
+        },
+        "ui.tooltips": {
+          "ms_per_frame": 0.0292368421052632,
+          "ms_per_tick": null
+        }
+      },
+      "process_ms_max": 294.7,
+      "process_ms_mean": 165.362605263158,
+      "render_cpu_all_ms_max": 1.34900000119209,
+      "render_cpu_all_ms_mean": 0.951789471276496,
+      "render_cpu_ms_max": 0.884999999761581,
+      "render_cpu_ms_mean": 0.344394737761272,
+      "render_gpu_all_ms_max": 239.743003845215,
+      "render_gpu_all_ms_mean": 155.117289191798,
+      "render_gpu_ms_max": 196.173004150391,
+      "render_gpu_ms_mean": 25.6723160492746,
+      "spikes_2x_median": 1,
+      "stdev_ms": 38.9070952895192,
+      "ticks": 300,
+      "video_mem_mb_max": 261.162124633789,
+      "video_mem_mb_mean": 257.755420885588,
+      "viewports_max": 8.0,
+      "viewports_mean": 7.63157894736842
+    }
+  },
+  "scenario": "garage",
+  "tag": "garage_720",
+  "window": [
+    1280,
+    720
+  ]
+}

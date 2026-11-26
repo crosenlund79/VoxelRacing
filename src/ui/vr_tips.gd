@@ -114,7 +114,7 @@ func _tipped(c: Control) -> Control:
 	return null
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	var vp := get_viewport()
 	if vp == null:
 		return
@@ -176,3 +176,10 @@ func _hide() -> void:
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 	_panel.visible = false
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"ui.tooltips", __t)

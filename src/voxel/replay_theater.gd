@@ -233,7 +233,7 @@ func stop() -> void:
 	finished.emit()
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if not playing:
 		return
 	_ui_time += delta
@@ -1013,3 +1013,10 @@ static func moment_titles(e: Dictionary, names: PackedStringArray) -> Array:
 		"crash":
 			return ["BIG HIT!", victim]
 	return ["REPLAY", ""]
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"pres.replay_theater", __t)

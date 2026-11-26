@@ -24,7 +24,7 @@ func setup(jumps: JumpWorld, cars: Array[Car], _resolver: AssetResolver, audio: 
 	_was_down.resize(cars.size())
 
 
-func _process(_delta: float) -> void:
+func _process__perf(_delta: float) -> void:
 	for i in _cars.size():
 		var c := _cars[i]
 		var air := _jumps.is_airborne(i)
@@ -36,3 +36,10 @@ func _process(_delta: float) -> void:
 				_audio.play_at("weapons/explosion", c.global_position)
 		_was_air[i] = 1 if air else 0
 		_was_down[i] = 1 if down else 0
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(_delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(_delta)
+	PerfProbe.add(&"legacy2d.jump_view", __t)

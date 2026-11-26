@@ -88,7 +88,7 @@ func speaking() -> bool:
 	return time < _speaking_until
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	time += delta
 	_update_duck(delta)
 	var session: RaceSession = race.session
@@ -200,3 +200,10 @@ static func _bus_effect(bus_name: String, type: String) -> AudioEffect:
 	effect.oversampling = 8
 	AudioServer.add_bus_effect(bus, effect)
 	return effect
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"audio.voice", __t)

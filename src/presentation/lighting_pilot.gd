@@ -236,7 +236,7 @@ func setup(track: Track, cars: Array[Car], combat: CombatWorld, resolver: AssetR
 	set_enabled(false)
 
 
-func set_enabled(on: bool) -> void:
+func set_enabled__perf(on: bool) -> void:
 	enabled = on
 	_ambient.visible = on
 	for l in _lamps + _car_lights + _tail_lights + _flashes:
@@ -254,7 +254,7 @@ func light_count() -> int:
 	return _lamps.size() + _car_lights.size() + _tail_lights.size() + _flashes.size()
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if not enabled:
 		return
 	_frame += 1
@@ -505,3 +505,17 @@ static func _tail_light_texture() -> ImageTexture:
 				a = maxf(a, clampf(1.0 - d / 26.0, 0.0, 1.0))
 			img.set_pixel(x, y, Color(1, 1, 1, a * a))
 	return ImageTexture.create_from_image(img)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"pres.lighting", __t)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func set_enabled(on: bool) -> void:
+	var __t := Time.get_ticks_usec()
+	set_enabled__perf(on)
+	PerfProbe.add(&"pres.lighting_set", __t)

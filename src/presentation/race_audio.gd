@@ -91,7 +91,7 @@ func play_cue(logical: String) -> void:
 	_cue.play()
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	_clock += delta
 	var voiced := _voiced_cars()
 	for i in _cars.size():
@@ -281,3 +281,10 @@ func _player(resolver: AssetResolver, logical: String, bus: String, volume: floa
 	p.volume_db = volume
 	add_child(p)
 	return p
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"audio.race", __t)

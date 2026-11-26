@@ -43,7 +43,7 @@ func setup(p_stats: CombatStats, resolver: AssetResolver, names: Dictionary, col
 	add_child(_box)
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if stats == null:
 		return
 	if stats.feed.size() < _index:  # a new race: start over
@@ -135,3 +135,10 @@ func _icon(tex: Texture2D, size: Vector2 = ICON) -> TextureRect:
 	t.custom_minimum_size = size
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return t
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"ui.kill_feed", __t)

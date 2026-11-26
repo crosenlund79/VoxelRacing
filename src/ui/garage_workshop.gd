@@ -575,7 +575,7 @@ func _play(player: AudioStreamPlayer, logical: String, pitch: float) -> void:
 
 # ------------------------------------------------------------ motion
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	delta = minf(delta, 0.1)
 	_time += delta
 	_step_repair(delta)
@@ -610,3 +610,10 @@ func _process(delta: float) -> void:
 		_body.set_instance_shader_parameter("head_glow", 0.25 + 2.2 * blink)
 		_body.set_instance_shader_parameter("tail_glow", 0.2 + 1.4 * blink)
 		_body.set_instance_shader_parameter("tint", Color(1, 1, 1).lerp(Color(1.3, 1.27, 1.17), s))
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"garage.workshop", __t)

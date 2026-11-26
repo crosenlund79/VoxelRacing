@@ -95,7 +95,7 @@ func position() -> float:
 	return _players[_active].get_playback_position() if _players[_active].playing else 0.0
 
 
-func _process(_delta: float) -> void:
+func _process__perf(_delta: float) -> void:
 	var p := _players[_active]
 	if current == "" or not p.playing or p.stream == null:
 		return
@@ -149,3 +149,10 @@ static func _unloop(stream: AudioStream) -> void:
 		stream.loop = false
 	elif stream is AudioStreamWAV:
 		stream.loop_mode = AudioStreamWAV.LOOP_DISABLED
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(_delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(_delta)
+	PerfProbe.add(&"audio.music", __t)

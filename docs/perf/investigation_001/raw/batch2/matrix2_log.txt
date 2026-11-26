@@ -1,0 +1,88 @@
+=== cpu_race_day_1 320x180 --bench=race --secs=25 --warm=4 --micro=1 (15:23:34)
+BENCH VoxelTrack diag: sliced CPU work 2126 ms in 92 slices (wall 8237 ms)
+BENCH [13.82] race ready in 10314 ms (voxel build 8997 ms)
+BENCH [43.20] micro { "what": "micro", "standings_us": 23.8785, "position_of_us": 23.825, "combat_states_us": 18.845, "car_remesh_ms": 4.0844, "car_hull_ms": 4.2246, "car_explode_ms": 6.05233333333333, "explode_pieces_avg": 275.666666666667, "people": 666, "point_spot_lights": 119, "point_spot_lights_visible": 2, "car_grid": "(32, 12, 18)" }
+BENCH [43.23] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_race_day_1_*.csv/json (248 frames)
+=== cpu_race_day_2 320x180 --bench=race --secs=25 --warm=4 (15:24:19)
+BENCH VoxelTrack diag: sliced CPU work 2321 ms in 97 slices (wall 8876 ms)
+BENCH [13.59] race ready in 10563 ms (voxel build 9436 ms)
+BENCH [43.01] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_race_day_2_*.csv/json (243 frames)
+=== cpu_race_night 320x180 --bench=race --night=1 --secs=25 --warm=4 (15:25:02)
+BENCH VoxelTrack diag: sliced CPU work 2189 ms in 91 slices (wall 8945 ms)
+BENCH [14.40] race ready in 10814 ms (voxel build 9535 ms)
+BENCH [43.74] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_race_night_*.csv/json (233 frames)
+=== cpu_race_night_no2d 320x180 --bench=race --night=1 --secs=25 --warm=4 --iso=no_2d_lights (15:25:47)
+BENCH VoxelTrack diag: sliced CPU work 2426 ms in 102 slices (wall 10020 ms)
+BENCH [15.13] race ready in 11763 ms (voxel build 10577 ms)
+BENCH [44.43] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_race_night_no2d_*.csv/json (253 frames)
+=== cpu_race_no_life 320x180 --bench=race --secs=25 --warm=4 --iso=no_life_process (15:26:32)
+BENCH VoxelTrack diag: sliced CPU work 2201 ms in 93 slices (wall 8407 ms)
+BENCH [13.52] race ready in 10102 ms (voxel build 8974 ms)
+BENCH [42.91] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_race_no_life_*.csv/json (253 frames)
+=== cpu_race_no_legacy 320x180 --bench=race --secs=25 --warm=4 --iso=no_legacy2d (15:27:16)
+BENCH VoxelTrack diag: sliced CPU work 2206 ms in 92 slices (wall 8524 ms)
+BENCH [14.12] race ready in 10502 ms (voxel build 9275 ms)
+BENCH [43.56] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_race_no_legacy_*.csv/json (242 frames)
+=== cpu_race_no_recorder 320x180 --bench=race --secs=25 --warm=4 --iso=no_recorder (15:28:00)
+BENCH VoxelTrack diag: sliced CPU work 2105 ms in 88 slices (wall 8249 ms)
+BENCH [13.67] race ready in 10096 ms (voxel build 8856 ms)
+BENCH [42.96] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_race_no_recorder_*.csv/json (253 frames)
+=== cpu_combat_1 320x180 --bench=combat --secs=25 (15:28:44)
+BENCH VoxelTrack diag: sliced CPU work 2181 ms in 93 slices (wall 8584 ms)
+BENCH [13.71] race ready in 10316 ms (voxel build 9152 ms)
+BENCH [46.58] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_combat_1_*.csv/json (256 frames)
+=== cpu_load 320x180 --bench=load (15:29:31)
+BENCH [7.22] global { "what": "global", "label": "before_load_0", "nodes": 1236.0, "orphans": 0.0, "objects": 5457.0, "resources": 188.0, "mem_static_mb": 0.0, "video_mem_mb": 125.07975769043, "tex_mem_mb": 68.974609375, "buf_mem_mb": 34.9173355102539, "rss_mb": -1.0 }
+BENCH VoxelTrack diag: sliced CPU work 1953 ms in 84 slices (wall 28086 ms)
+BENCH [59.41] global { "what": "global", "label": "race_0", "nodes": 2835.0, "orphans": 0.0, "objects": 8099.0, "resources": 260.0, "mem_static_mb": 0.0, "video_mem_mb": 227.284927368164, "tex_mem_mb": 118.201171875, "buf_mem_mb": 59.6447677612305, "rss_mb": -1.0 }
+BENCH [62.83] global { "what": "global", "label": "before_load_1", "nodes": 1226.0, "orphans": 0.0, "objects": 5637.0, "resources": 250.0, "mem_static_mb": 0.0, "video_mem_mb": 203.191955566406, "tex_mem_mb": 100.66796875, "buf_mem_mb": 51.0859832763672, "rss_mb": -1.0 }
+BENCH VoxelTrack diag: sliced CPU work 3949 ms in 171 slices (wall 28854 ms)
+BENCH [114.70] global { "what": "global", "label": "race_1", "nodes": 2835.0, "orphans": 0.0, "objects": 8099.0, "resources": 260.0, "mem_static_mb": 0.0, "video_mem_mb": 231.284927368164, "tex_mem_mb": 118.201171875, "buf_mem_mb": 61.6447677612305, "rss_mb": -1.0 }
+BENCH [118.19] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_load_*.csv/json (439 frames)
+=== cpu_menu 320x180 --bench=menu --secs=15 --warm=5 (15:31:30)
+BENCH [34.42] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_menu_*.csv/json (128 frames)
+=== cpu_setup 320x180 --bench=setup --warm=5 (15:32:06)
+BENCH [57.32] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_setup_*.csv/json (134 frames)
+=== cpu_long 320x180 --bench=long --secs=12 --windows=4 --gap=60 (15:33:04)
+BENCH VoxelTrack diag: sliced CPU work 2061 ms in 86 slices (wall 7728 ms)
+BENCH [12.74] race ready in 9400 ms (voxel build 8297 ms)
+BENCH [21.45] world { "what": "world", "label": "window_0", "race_time": 5.06666666666665, "lap": 0, "debris_flying": 0, "debris_settled": 0, "debris_high": 0, "debris_hash_cells": 0, "debris_visible_instances": 0, "rec_ring": 152, "rec_captures": 0, "rec_capture_samples": 0, "rec_launches": 0, "debris_field_total": 0.09258796641446, "node_classes": { "MeshInstance3D": 582, "Sprite2D": 260, "Node3D": 167, "Label": 119, "SpotLight3D": 74, "OmniLight3D": 45, "AudioStreamPlayer2D": 40, "HBoxContainer": 37, "PointLight2D": 34, "TextureRect": 33, "CollisionShape2D": 28, "Line2D": 19, "PanelContainer": 19, "Polygon2D": 17 }, "nodes": 1629.0, "mem_static_mb": 0.0 }
+BENCH [95.48] world { "what": "world", "label": "window_1", "race_time": 52.3999999999983, "lap": 0, "debris_flying": 0, "debris_settled": 9000, "debris_high": 9000, "debris_hash_cells": 533, "debris_visible_instances": 9000, "rec_ring": 181, "rec_captures": 5, "rec_capture_samples": 1757, "rec_launches": 40, "debris_field_total": 171.952601646361, "node_classes": { "Sprite2D": 643, "MeshInstance3D": 608, "Node3D": 167, "Label": 120, "SpotLight3D": 74, "OmniLight3D": 45, "AudioStreamPlayer2D": 40, "HBoxContainer": 38, "PointLight2D": 34, "TextureRect": 33, "CollisionShape2D": 28, "PanelContainer": 20, "Line2D": 19, "Polygon2D": 17 }, "nodes": 2041.0, "mem_static_mb": 0.0 }
+BENCH [169.20] world { "what": "world", "label": "window_2", "race_time": 101.199999999996, "lap": 2, "debris_flying": 0, "debris_settled": 9000, "debris_high": 9000, "debris_hash_cells": 529, "debris_visible_instances": 9000, "rec_ring": 181, "rec_captures": 9, "rec_capture_samples": 3259, "rec_launches": 40, "debris_field_total": 209.727081634518, "node_classes": { "Sprite2D": 1050, "MeshInstance3D": 611, "Node3D": 167, "Label": 119, "SpotLight3D": 74, "OmniLight3D": 45, "AudioStreamPlayer2D": 40, "HBoxContainer": 37, "PointLight2D": 34, "TextureRect": 33, "CollisionShape2D": 28, "Line2D": 19, "PanelContainer": 19, "Polygon2D": 17 }, "nodes": 2448.0, "mem_static_mb": 0.0 }
+BENCH [243.29] world { "what": "world", "label": "window_3", "race_time": 150.533333333345, "lap": 3, "debris_flying": 1, "debris_settled": 8999, "debris_high": 9000, "debris_hash_cells": 564, "debris_visible_instances": 9000, "rec_ring": 180, "rec_captures": 14, "rec_capture_samples": 4929, "rec_launches": 40, "debris_field_total": 217.761402355112, "node_classes": { "Sprite2D": 1465, "MeshInstance3D": 616, "Node3D": 167, "Label": 121, "SpotLight3D": 74, "OmniLight3D": 45, "AudioStreamPlayer2D": 40, "HBoxContainer": 38, "PointLight2D": 34, "TextureRect": 33, "CollisionShape2D": 28, "PanelContainer": 20, "Line2D": 19, "Polygon2D": 17 }, "nodes": 2872.0, "mem_static_mb": 0.0 }
+BENCH [255.61] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/cpu_long_*.csv/json (1291 frames)
+=== gamerace_720 1280x720 --bench=gamerace --secs=15 --warm=4 (15:37:21)
+BENCH VoxelTrack diag: sliced CPU work 1706 ms in 77 slices (wall 13491 ms)
+BENCH [42.69] viewports: [{ "path": "/root/Game/Main/VoxelStage/DecalView", "size": "(1024, 600)", "update": 4, "container_visible": true, "own_world_3d": false, "disable_3d": true }, { "path": "/root/Game/LoadingRace/@Control@2362/@SubViewportContainer@2366/@SubViewport@2367", "size": "(600, 230)", "update": 0, "container_visible": false, "own_world_3d": true, "disable_3d": false }, { "path": "/root/Game/LoadingRace/@Control@2362/@SubViewportContainer@2364/@SubViewport@2365", "size": "(1280, 360)", "update": 0, "container_visible": false, "own_world_3d": true, "disable_3d": false }, { "path": "/root/Game/Garage/Workshop", "size": "(1280, 720)", "update": 0, "container_visible": true, "own_world_3d": true, "disable_3d": false }, { "path": "/root/Game/ChampionshipScreen/@Control@2087/@PanelContainer@2108/@VBoxContainer@2109/@Control@2112/@SubViewport@2113", "size": "(64, 64)", "update": 0, "container_visible": false, "own_world_3d": true, "disable_3d": false }, { "path": "/root/Game/Title/@CanvasLayer@1326/@Control@1327/@Control@1379/@Control@1388/@SubViewport@1389", "size": "(64, 64)", "update": 0, "container_visible": false, "own_world_3d": true, "disable_3d": false }, { "path": "/root/Game/Title/@CanvasLayer@1326/@Control@1327/@SubViewportContainer@1329/@SubViewport@1330", "size": "(520, 220)", "update": 0, "container_visible": false, "own_world_3d": true, "disable_3d": false }]
+BENCH [57.82] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/gamerace_720_*.csv/json (268 frames)
+=== gamerace_720_nohidden 1280x720 --bench=gamerace --secs=15 --warm=4 --iso=no_hidden_vps (15:38:20)
+BENCH VoxelTrack diag: sliced CPU work 1679 ms in 77 slices (wall 13241 ms)
+BENCH [42.88] viewports: [{ "path": "/root/Game/Main/VoxelStage/DecalView", "size": "(1024, 600)", "update": 4, "container_visible": true, "own_world_3d": false, "disable_3d": true }, { "path": "/root/Game/LoadingRace/@Control@2351/@SubViewportContainer@2355/@SubViewport@2356", "size": "(600, 230)", "update": 0, "container_visible": false, "own_world_3d": true, "disable_3d": false }, { "path": "/root/Game/LoadingRace/@Control@2351/@SubViewportContainer@2353/@SubViewport@2354", "size": "(1280, 360)", "update": 0, "container_visible": false, "own_world_3d": true, "disable_3d": false }, { "path": "/root/Game/Garage/Workshop", "size": "(1280, 720)", "update": 0, "container_visible": true, "own_world_3d": true, "disable_3d": false }, { "path": "/root/Game/ChampionshipScreen/@Control@2076/@PanelContainer@2097/@VBoxContainer@2098/@Control@2101/@SubViewport@2102", "size": "(64, 64)", "update": 0, "container_visible": false, "own_world_3d": true, "disable_3d": false }, { "path": "/root/Game/Title/@CanvasLayer@1315/@Control@1316/@Control@1368/@Control@1377/@SubViewport@1378", "size": "(64, 64)", "update": 0, "container_visible": false, "own_world_3d": true, "disable_3d": false }, { "path": "/root/Game/Title/@CanvasLayer@1315/@Control@1316/@SubViewportContainer@1318/@SubViewport@1319", "size": "(520, 220)", "update": 0, "container_visible": false, "own_world_3d": true, "disable_3d": false }]
+BENCH [42.88] disabled hidden viewport /root/Game/LoadingRace/@Control@2351/@SubViewportContainer@2355/@SubViewport@2356
+BENCH [42.88] disabled hidden viewport /root/Game/LoadingRace/@Control@2351/@SubViewportContainer@2353/@SubViewport@2354
+BENCH [42.88] disabled hidden viewport /root/Game/ChampionshipScreen/@Control@2076/@PanelContainer@2097/@VBoxContainer@2098/@Control@2101/@SubViewport@2102
+BENCH [42.88] disabled hidden viewport /root/Game/Title/@CanvasLayer@1315/@Control@1316/@Control@1368/@Control@1377/@SubViewport@1378
+BENCH [42.88] disabled hidden viewport /root/Game/Title/@CanvasLayer@1315/@Control@1316/@SubViewportContainer@1318/@SubViewport@1319
+BENCH [58.08] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/gamerace_720_nohidden_*.csv/json (266 frames)
+=== night_no2d_720 1280x720 --bench=race --night=1 --secs=15 --warm=4 --iso=no_2d_lights (15:39:19)
+BENCH VoxelTrack diag: sliced CPU work 1992 ms in 85 slices (wall 16333 ms)
+BENCH [20.86] race ready in 18050 ms (voxel build 16890 ms)
+BENCH [40.08] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/night_no2d_720_*.csv/json (166 frames)
+=== night_base_720 1280x720 --bench=race --night=1 --secs=15 --warm=4 (15:40:00)
+BENCH VoxelTrack diag: sliced CPU work 2011 ms in 86 slices (wall 16569 ms)
+BENCH [21.43] race ready in 18384 ms (voxel build 17163 ms)
+BENCH [40.78] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/night_base_720_*.csv/json (165 frames)
+=== replay_spec_720 1280x720 --bench=replay (15:40:41)
+=== garage_720 1280x720 --bench=garage --warm=5 (15:55:43)
+BENCH [30.79] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/garage_720_*.csv/json (197 frames)
+=== menu_720 1280x720 --bench=menu --secs=15 --warm=5 (15:56:15)
+BENCH [34.31] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/menu_720_*.csv/json (128 frames)
+=== split_720 1280x720 --bench=split --secs=15 --warm=4 (15:56:51)
+BENCH VoxelTrack diag: sliced CPU work 1988 ms in 84 slices (wall 15917 ms)
+BENCH [23.64] race ready in 20438 ms (voxel build 16551 ms)
+BENCH [43.20] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/split_720_*.csv/json (136 frames)
+=== race_day_720_allvp 1280x720 --bench=race --secs=15 --warm=4 (15:57:35)
+BENCH VoxelTrack diag: sliced CPU work 1942 ms in 83 slices (wall 14055 ms)
+BENCH [19.03] race ready in 15870 ms (voxel build 14639 ms)
+BENCH [38.21] wrote /tmp/claude-0/-home-user-VoxelRacing/3d7bab0a-2953-55c6-9396-31b60e31efa5/scratchpad/perf/raw2/race_day_720_allvp_*.csv/json (170 frames)
+MATRIX2 DONE 15:58:15

@@ -76,7 +76,7 @@ func _on_race_began() -> void:
 	_blast_kills = 0
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process__perf(_delta: float) -> void:
 	if not _open:
 		return
 	_read_events()
@@ -306,3 +306,10 @@ static func _photo_finish(order: Array, times: Dictionary, me: int) -> bool:
 			if other >= 0.0 and absf(other - mine) <= 0.10:
 				return true
 	return false
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _physics_process(_delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_physics_process__perf(_delta)
+	PerfProbe.add(&"sim.achievements", __t)

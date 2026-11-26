@@ -1246,7 +1246,7 @@ func set_menu_choice(choice: Choice) -> void:
 	_show_menu()
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process__perf(_delta: float) -> void:
 	var step := Car.FIXED_STEP
 	if network_lost:
 		if _menu_pressed(PlayerControls.CONFIRM) or _menu_pressed(PlayerControls.BACK):
@@ -1316,17 +1316,37 @@ func _physics_process(_delta: float) -> void:
 					return
 	if session.spectator and not _replaying() and _spectator_input():
 		return
+	var __pt1 := Time.get_ticks_usec()
 	_apply_impacts(step)
+	PerfProbe.add(&"sim.impacts", __pt1)
+	var __pt2 := Time.get_ticks_usec()
 	_update_progress()
+	PerfProbe.add(&"sim.progress", __pt2)
+	var __pt3 := Time.get_ticks_usec()
 	_update_levels()
+	PerfProbe.add(&"sim.levels", __pt3)
+	var __pt4 := Time.get_ticks_usec()
 	_update_jumps(Car.FIXED_STEP)
+	PerfProbe.add(&"sim.jumps", __pt4)
+	var __pt5 := Time.get_ticks_usec()
 	_debris_tick(step)
+	PerfProbe.add(&"sim.debris_traction", __pt5)
+	var __pt6 := Time.get_ticks_usec()
 	_drive_cars(step)
+	PerfProbe.add(&"sim.ai_drive", __pt6)
+	var __pt7 := Time.get_ticks_usec()
 	_update_pits(step)
+	PerfProbe.add(&"sim.pits", __pt7)
 	if combat.enabled:
+		var __pt8 := Time.get_ticks_usec()
 		_combat_tick(step)
+		PerfProbe.add(&"sim.combat", __pt8)
+		var __pt9 := Time.get_ticks_usec()
 		_update_wreck_passes(step)
+		PerfProbe.add(&"sim.wreck_passes", __pt9)
+	var __pt10 := Time.get_ticks_usec()
 	session.tick(step)
+	PerfProbe.add(&"sim.session", __pt10)
 	if race_mode == "knockout":
 		_knockout_tick()
 	if is_two_player():
@@ -1336,7 +1356,9 @@ func _physics_process(_delta: float) -> void:
 		_conclude_race()
 	if session.spectator:
 		_spectator_tick(step)
+	var __pt11 := Time.get_ticks_usec()
 	_update_camera_target(step)
+	PerfProbe.add(&"sim.camera_target", __pt11)
 	if net != null:
 		net.host_after_tick()
 
@@ -1843,7 +1865,7 @@ func _update_camera_target(step: float = 0.0) -> void:
 	camera.zoom = Vector2(0.85, 0.85)
 
 
-func _process(_delta: float) -> void:
+func _process__perf(_delta: float) -> void:
 	if net != null and net.race != null:
 		hud.set_net_quality("" if network_lost else net.quality_text(), net.connection_bad())
 	if lighting != null and Input.is_action_just_pressed(PlayerControls.TOGGLE_LIGHTING):
@@ -1852,8 +1874,12 @@ func _process(_delta: float) -> void:
 	# the finish banner first, so results shown in the same frame wait for it
 	_present_retirements()
 	_present_finishers()
+	var __pt13 := Time.get_ticks_usec()
 	_present_levels()
+	PerfProbe.add(&"pres.levels2d", __pt13)
+	var __pt12 := Time.get_ticks_usec()
 	_refresh_hud()
+	PerfProbe.add(&"ui.hud", __pt12)
 	if _listener != null:
 		var mid := Vector2.ZERO
 		for id in session.human_ids:
@@ -2473,3 +2499,17 @@ func _combat_states() -> Array:
 			states[i]["index"] = progress[i].index
 			states[i]["air"] = cars[i].airborne
 	return states
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _physics_process(_delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_physics_process__perf(_delta)
+	PerfProbe.add(&"sim.main_tick", __t)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(_delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(_delta)
+	PerfProbe.add(&"pres.main_process", __t)

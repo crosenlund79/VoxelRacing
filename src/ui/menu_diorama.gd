@@ -155,7 +155,7 @@ var _v := PackedFloat32Array()
 var _settle := PackedFloat32Array()
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	delta = minf(delta, 0.1)
 	_time += delta
 	var n := _cars.size()
@@ -379,3 +379,10 @@ static func island_mesh() -> ArrayMesh:
 			g.set_v(x, top_y, z, Vox.SOLID, top)
 	_island = VoxelMesher.build_mesh(g, VoxelCars.material(), Vector3(NX * 0.5, depth + 1, NZ * 0.5) * VS, 0.05)
 	return _island
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"menu.diorama", __t)

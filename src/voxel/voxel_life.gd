@@ -620,7 +620,7 @@ func _shout(name: String, p: Vector2, db: float, force := false) -> void:
 	SoundKit.play(self, name, db - d / 1100.0 * 10.0, 0.06)
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if not stage.ready_3d:
 		return
 	_time += delta
@@ -656,7 +656,7 @@ func _process(delta: float) -> void:
 		_murmur.volume_db = lerpf(_murmur.volume_db, want, 1.0 - exp(-dt * 3.0))
 
 
-func _update_people(dt: float) -> void:
+func _update_people__perf(dt: float) -> void:
 	var live: Array = []
 	for pl in _pulses:
 		var age := _time - float(pl[3])
@@ -750,3 +750,17 @@ func excitement_near(at: Vector2, radius: float = 600.0) -> float:
 
 func crowd_size() -> int:
 	return _people.size()
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"pres.life", __t)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _update_people(dt: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_update_people__perf(dt)
+	PerfProbe.add(&"pres.life_people", __t)

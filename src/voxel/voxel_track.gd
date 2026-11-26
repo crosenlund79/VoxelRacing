@@ -68,9 +68,16 @@ func _over_budget() -> bool:
 	return Time.get_ticks_usec() - _slice_start > SLICE_USEC
 
 
+## DIAGNOSTIC (Performance Investigation 001): build work vs frames given back.
+static var diag_work_us := 0
+static var diag_yields := 0
+
+
 func _yield_frame() -> void:
 	if not is_inside_tree():
 		return
+	diag_work_us += Time.get_ticks_usec() - _slice_start
+	diag_yields += 1
 	await get_tree().process_frame
 	_slice_start = Time.get_ticks_usec()
 var _flat_shader: Shader
@@ -178,6 +185,7 @@ func build(p_track: Node2D, decal_layer: Node2D) -> void:
 	progress = 1.0
 	build_msec = Time.get_ticks_msec() - t0
 	print("VoxelTrack: %dx%d cells, render %d ms, heights %d ms, mesh %d ms, total %d ms" % [nx, nz, t1 - t0, t2 - t1, t3 - t2, build_msec])
+	print("BENCH VoxelTrack diag: sliced CPU work %d ms in %d slices (wall %d ms)" % [diag_work_us / 1000, diag_yields, build_msec])
 	built.emit()
 
 

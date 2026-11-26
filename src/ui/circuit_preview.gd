@@ -224,7 +224,7 @@ func _ready() -> void:
 		_dirty = true
 
 
-func show_circuit(p_layout: TrackLayout, p_variant: int, p_night: bool) -> void:
+func show_circuit__perf(p_layout: TrackLayout, p_variant: int, p_night: bool) -> void:
 	arena = null
 	layout = p_layout
 	variant = clampi(p_variant, 1, LOOKS.size())
@@ -260,7 +260,7 @@ func _request() -> void:
 		_apply()
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if _viewport == null:
 		return
 	var on := is_visible_in_tree() and (layout != null or arena != null)
@@ -2032,3 +2032,17 @@ static func _build_prop(kind: String) -> ArrayMesh:
 			g = _pg(2, 2, 2)
 			g.box(Vector3i(0, 0, 0), Vector3i(1, 1, 1), Vox.SOLID, Color.MAGENTA)
 	return _pdone(g)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"menu.preview", __t)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func show_circuit(p_layout: TrackLayout, p_variant: int, p_night: bool) -> void:
+	var __t := Time.get_ticks_usec()
+	show_circuit__perf(p_layout, p_variant, p_night)
+	PerfProbe.add(&"menu.preview_show", __t)

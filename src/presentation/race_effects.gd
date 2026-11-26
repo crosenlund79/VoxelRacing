@@ -115,7 +115,7 @@ func mark_count() -> int:
 	return live
 
 
-func _process(delta: float) -> void:
+func _process__perf(delta: float) -> void:
 	if not enabled:
 		return
 	for i in _cars.size():
@@ -157,3 +157,10 @@ func _stamp(pos: Vector2, rot: float, strength: float, level: int = 0) -> void:
 func celebrate(at: Vector2) -> void:
 	if enabled:
 		celebrated.emit(at)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _process(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	_process__perf(delta)
+	PerfProbe.add(&"legacy2d.race_effects", __t)

@@ -107,7 +107,7 @@ func setup(p_stage: VoxelStage) -> void:
 
 
 ## Called every frame by VoxelStage after the cars were placed.
-func sync(delta: float) -> void:
+func sync__perf(delta: float) -> void:
 	_time += delta
 	_check_new_race()
 	_read_combat_events()
@@ -264,7 +264,7 @@ func _sync_car(i: int, delta: float) -> void:
 
 ## Voxels that broke off a car fly away from the hit (and keep some of the
 ## car's speed), then lie on the track.
-func _spawn_bits(i: int, pieces: Array, dir: Vector3) -> void:
+func _spawn_bits__perf(i: int, pieces: Array, dir: Vector3) -> void:
 	if pieces.is_empty():
 		return
 	var d: Dictionary = stage.cars3d[i]
@@ -289,7 +289,7 @@ func _spawn_bits(i: int, pieces: Array, dir: Vector3) -> void:
 
 ## The car blows apart: chunks of its own model, wheels flying, fire, smoke,
 ## a flash, and a burn mark under it.
-func _explode(i: int) -> void:
+func _explode__perf(i: int) -> void:
 	var d: Dictionary = stage.cars3d[i]
 	var dmg := damage[i]
 	var body: MeshInstance3D = d.body
@@ -582,3 +582,24 @@ static func step_cans(list: Array, dt: float, ground: Callable) -> void:
 		node.position = p
 		if not can.rest:
 			node.rotation += spin * dt
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func sync(delta: float) -> void:
+	var __t := Time.get_ticks_usec()
+	sync__perf(delta)
+	PerfProbe.add(&"pres.race_fx", __t)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _explode(i: int) -> void:
+	var __t := Time.get_ticks_usec()
+	_explode__perf(i)
+	PerfProbe.add(&"pres.car_explode", __t)
+
+
+## DIAGNOSTIC probe (Performance Investigation 001)
+func _spawn_bits(i: int, pieces: Array, dir: Vector3) -> void:
+	var __t := Time.get_ticks_usec()
+	_spawn_bits__perf(i, pieces, dir)
+	PerfProbe.add(&"pres.car_spawn_bits", __t)
