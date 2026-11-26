@@ -55,6 +55,14 @@ var decal_vp: SubViewport
 var ready_3d := false
 var cars3d: Array[Dictionary] = []
 var race_fx: VoxelRaceFx
+## The living circuit: set dressing, spectators, critters (P004).
+var life: VoxelLife
+## The pre-race cinematic and the start lights (P004).
+var intro: RaceIntro
+var _start_lamps: Array[MeshInstance3D] = []
+var _grid_time := 0.0
+var _go_time := -1.0
+var _light_state := -1
 ## Action replays (races only, not Battle Royale).
 var recorder: ReplayRecorder
 var replay: ReplayTheater
@@ -162,6 +170,15 @@ func _build() -> void:
 	if not is_inside_tree():
 		return
 	_build_lamps()
+	# P004: the living circuit (set dressing, spectators, critters)
+	life = VoxelLife.new()
+	add_child(life)
+	life.setup(self)
+	if recorder != null:
+		_build_start_lights()
+		intro = RaceIntro.new()
+		add_child(intro)
+		intro.setup(self)
 	vtrack.terrain_material.set_shader_parameter("decal_tex", decal_vp.get_texture())
 	vtrack.terrain_material.set_shader_parameter("decal_on", 1.0)
 	ready_3d = true
@@ -394,6 +411,8 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 	tail.visible = false
 	root.add_child(tail)
 	lights.append(tail)
+	# P004: the driver's own touches - number, exhausts, rims, a gadget
+	var flair := _add_flair(i, tilt, VoxelCars.body_grid(c.sprite.texture, layout, body_logical), spins)
 	# the driver, for the overtaking taunt (hidden until a head pops out)
 	var head := Node3D.new()
 	head.name = "Driver"
@@ -411,6 +430,7 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 	shoulder.add_child(arm)
 	return {
 		"tick_pos": c.global_position, "tick_prev": c.global_position, "tick_rot": c.global_rotation, "rot_prev": c.global_rotation,
+		"exhausts": flair.exhausts, "key": flair.key, "rev_clock": 1.0 + float(i) * 0.37, "rev": 0.0, "h_prev": 0.0,
 		"tick_v": Vector2.ZERO, "slope": 0.0, "acc_long": 0.0, "acc_lat": 0.0, "pitch_v": 0.0, "roll_v": 0.0, "wheelspin": 0.0, "spin_rear": 0.0,
 		"head_node": head, "head": 0.0, "head_side": 1.0, "head_box": body.mesh.get_aabb() if body.mesh != null else AABB(),
 		"root": root, "tilt": tilt, "body": body, "wheels": wheels, "spins": spins, "lights": lights,
@@ -481,6 +501,28 @@ func _sync_cars(delta: float) -> void:
 		d.roll_v = float(d.roll_v) + (SPRING_K * (roll_target - float(d.roll)) - SPRING_C * float(d.roll_v)) * dt
 		d.roll = float(d.roll) + float(d.roll_v) * dt
 		(d.tilt as Node3D).rotation = Vector3(d.roll, 0.0, d.pitch)
+		# P004: engines idling shake the body; on the grid the drivers blip
+		# the throttle (the nose rises, the exhausts puff); kerbs bump
+		var spd: float = vel.length()
+		var tnow := Time.get_ticks_msec() * 0.001
+		var idle := clampf(1.0 - spd / 40.0, 0.0, 1.0) if c.visible else 0.0
+		(d.tilt as Node3D).position = Vector3(0.0, 0.007 * idle * sin(tnow * 58.0 + i * 1.7), 0.004 * idle * sin(tnow * 43.0 + i))
+		var on_grid: bool = main.get("session") != null and main.session.state == RaceSession.State.MODE_SELECT
+		d.rev = maxf(0.0, float(d.rev) - dt)
+		if on_grid:
+			d.rev_clock = float(d.rev_clock) - dt
+			if float(d.rev_clock) <= 0.0:
+				d.rev_clock = _rng.randf_range(1.6, 4.2)
+				d.rev = 0.3
+				d.pitch_v = float(d.pitch_v) + 0.55
+				d.roll_v = float(d.roll_v) + _rng.randf_range(-0.25, 0.25)
+		var dh: float = d.h - float(d.h_prev)
+		if absf(dh) > 1.5 and absf(dh) < 12.0 and moved < 60.0 and not on_deck:
+			d.pitch_v = float(d.pitch_v) + clampf(dh, -4.0, 4.0) * 0.12
+			d.roll_v = float(d.roll_v) + _rng.randf_range(-0.2, 0.2)
+		d.h_prev = d.h
+		if d.key != null:
+			(d.key as Node3D).rotation.x += dt * 2.2
 		# wheelspin: hard throttle at low speed spins the rear wheels (and the
 		# race fx puts tyre smoke under them); strongest from a standstill
 		var along := vel.dot(fwd)
@@ -573,6 +615,151 @@ const ROLL_PER_ACC := 0.00011
 const ROLL_MAX := 0.1
 const SPRING_K := 140.0
 const SPRING_C := 15.0
+
+
+## Number plate on the bonnet, exhaust pipes at the tail, rims in the
+## driver's colour and their signature gadget (VoxelFlair). Positions come
+## from the car's own voxel grid (roof and bonnet heights, nose and tail).
+func _add_flair(i: int, tilt: Node3D, g: VoxelGrid, spins: Array) -> Dictionary:
+	var out := {"exhausts": [], "key": null}
+	if g == null:
+		return out
+	var vs := VoxelCars.voxel_size()
+	var piv := VoxelCars.pivot()
+	var sz := g.size()
+	var zc := sz.z / 2
+	var top_at := func(gx: int) -> float:
+		for gy in range(sz.y - 1, -1, -1):
+			if g.get_m(clampi(gx, 0, sz.x - 1), gy, zc) != Vox.AIR:
+				return (gy + 1) * vs
+		return 0.0
+	var nose := 0
+	var tail := sz.x - 1
+	for gx in sz.x:
+		for gy in range(1, 5):
+			if g.get_m(gx, gy, zc) != Vox.AIR:
+				nose = maxi(nose, gx)
+				tail = mini(tail, gx)
+	var mx := func(gx: float) -> float:
+		return (gx + 0.5) * vs - piv.x
+	var id := i % VoxelFlair.NUMBERS.size()
+	var plate := MeshInstance3D.new()
+	plate.mesh = VoxelFlair.number_plate(VoxelFlair.NUMBERS[id])
+	var hood := nose - 5
+	plate.position = Vector3(mx.call(hood), top_at.call(hood) + 0.004, 0.0)
+	tilt.add_child(plate)
+	for side in [-1.0, 1.0]:
+		var ex := MeshInstance3D.new()
+		ex.mesh = VoxelFlair.exhaust()
+		ex.position = Vector3(mx.call(tail) - vs * 1.2, vs * 1.0, side * sz.z * 0.2 * vs)
+		tilt.add_child(ex)
+		(out.exhausts as Array).append(ex)
+	for w in spins:
+		(w as GeometryInstance3D).set_instance_shader_parameter("tint", VoxelFlair.RIMS[id])
+	var gd := VoxelFlair.gadget(id)
+	if not gd.is_empty():
+		var gm := MeshInstance3D.new()
+		gm.mesh = gd[0]
+		var roof_x := (nose + tail) / 2 - 2
+		match String(gd[1]):
+			"roof":
+				gm.position = Vector3(mx.call(roof_x), top_at.call(roof_x), 0.0)
+			"tail_roof":
+				gm.position = Vector3(mx.call(tail + 3), top_at.call(tail + 3), sz.z * 0.28 * vs)
+			"sides":
+				gm.position = Vector3(mx.call(roof_x), vs * 3.0, 0.0)
+			"nose":
+				gm.position = Vector3(mx.call(nose) + vs * 0.6, vs * 0.5, 0.0)
+			"key":
+				gm.position = Vector3(mx.call(tail) - vs * 1.0, vs * 3.0, 0.0)
+				out.key = gm
+		tilt.add_child(gm)
+	return out
+
+
+## A start-light gantry over the start line (P004): five lamps facing the
+## grid; they light red one by one while the grid waits and flash green at
+## the start (presentation of the existing start: nothing waits for them).
+func _build_start_lights() -> void:
+	var cl = main.track.get("centerline")
+	if cl == null or (cl as PackedVector2Array).size() < 8:
+		return
+	var start: Vector2 = main.track.checkpoint_transform(0).origin
+	var n := (cl as PackedVector2Array).size()
+	var k0 := 0
+	var bd := INF
+	for k in n:
+		var d := (cl[k] as Vector2).distance_squared_to(start)
+		if d < bd:
+			bd = d
+			k0 = k
+	var t: Vector2 = ((cl[(k0 + 2) % n] as Vector2) - (cl[(k0 - 2 + n) % n] as Vector2)).normalized()
+	var r := Vector2(-t.y, t.x)
+	var lw := 75.0
+	var rw := 75.0
+	if main.track.get("left_widths") != null and k0 < main.track.left_widths.size():
+		lw = main.track.left_widths[k0]
+		rw = main.track.right_widths[k0]
+	var a := start - r * (lw + 26.0)
+	var b := start + r * (rw + 26.0)
+	var cells := int(round(a.distance_to(b) / Vox.CELL_PX))
+	var g := VoxelGrid.new(Vector3i(cells, 15, 3), Vox.CELL_PX * Vox.PX, Vector3.ZERO)
+	var steel := Color(0.24, 0.25, 0.3)
+	for side in [0, cells - 2]:
+		g.box(Vector3i(side, 0, 0), Vector3i(side + 1, 14, 2), Vox.METAL, steel)
+	g.box(Vector3i(0, 11, 0), Vector3i(cells - 1, 14, 2), Vox.SOLID, steel.lightened(0.1))
+	for x in cells:
+		var cc := VrStyle.RED if (x / 3) % 2 == 0 else VrStyle.PAPER
+		g.set_v(x, 14, 0, Vox.SOLID, cc)
+		g.set_v(x, 14, 2, Vox.SOLID, cc)
+	var gantry := MeshInstance3D.new()
+	gantry.name = "StartLights"
+	gantry.mesh = VoxelMesher.build_mesh(g, VoxelCars.material(), Vector3(cells * 0.5, 0.0, 1.5) * Vox.CELL_PX * Vox.PX, 0.02)
+	var mid := (a + b) * 0.5
+	gantry.position = Vox.to3(mid, vtrack.height_px_at(mid))
+	var x3 := Vector3(r.x, 0.0, r.y)
+	var z3 := -Vector3(t.x, 0.0, t.y)
+	gantry.basis = Basis(x3, Vector3.UP, z3)
+	add_child(gantry)
+	var lamp_grid := VoxelGrid.new(Vector3i(3, 3, 1), Vox.CELL_PX * Vox.PX, Vector3.ZERO)
+	lamp_grid.box(Vector3i.ZERO, Vector3i(2, 2, 0), Vox.GLOW, Color.WHITE)
+	var lamp_mesh := VoxelMesher.build_mesh(lamp_grid, VoxelCars.material(), Vector3(1.5, 1.5, 0.0) * Vox.CELL_PX * Vox.PX, 0.0)
+	for k in 5:
+		var lamp := MeshInstance3D.new()
+		lamp.mesh = lamp_mesh
+		lamp.position = Vector3((k - 2) * 5.0 * Vox.CELL_PX * Vox.PX, 12.5 * Vox.CELL_PX * Vox.PX, 1.6 * Vox.CELL_PX * Vox.PX)
+		lamp.set_instance_shader_parameter("tint", Color(0.25, 0.08, 0.08))
+		gantry.add_child(lamp)
+		_start_lamps.append(lamp)
+
+
+func _sync_start_lights(delta: float) -> void:
+	if _start_lamps.is_empty() or main.get("session") == null:
+		return
+	var state: int = main.session.state
+	if state == RaceSession.State.MODE_SELECT:
+		if _light_state != 0:
+			_light_state = 0
+			_grid_time = 0.0
+		_grid_time += delta
+		var lit := clampi(int(_grid_time / 0.8), 0, 5)
+		for k in 5:
+			var on := k < lit
+			_start_lamps[k].set_instance_shader_parameter("tint", Color(1.0, 0.12, 0.08) if on else Color(0.25, 0.08, 0.08))
+			_start_lamps[k].set_instance_shader_parameter("lamp_glow", 1.0 if on else 0.0)
+	elif _light_state == 0:
+		_light_state = 1
+		_go_time = 1.4
+		for l in _start_lamps:
+			l.set_instance_shader_parameter("tint", Color(0.2, 1.0, 0.3))
+			l.set_instance_shader_parameter("lamp_glow", 1.0)
+	elif _light_state == 1:
+		_go_time -= delta
+		if _go_time <= 0.0:
+			_light_state = 2
+			for l in _start_lamps:
+				l.set_instance_shader_parameter("tint", Color(0.18, 0.2, 0.18))
+				l.set_instance_shader_parameter("lamp_glow", 0.0)
 
 
 ## Helmet colours of the drivers (the player first, then the rivals).
@@ -908,6 +1095,7 @@ func _sync(delta: float) -> void:
 	_tilt_shift(0.0 if watching or replaying_now else float(view[3]) * TILT_SCALE)
 	_sync_cars(delta)
 	race_fx.sync(delta)
+	_sync_start_lights(delta)
 	# an action replay hides the live race (which carries on underneath)
 	var replaying := replay != null and replay.playing
 	_cars_holder.visible = not replaying

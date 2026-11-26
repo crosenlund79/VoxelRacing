@@ -8,6 +8,8 @@ extends CanvasLayer
 
 const SHOW_TIME := 3.2
 const Icons = preload("res://src/ui/achievement_icons.gd")
+const UiJuice := preload("res://src/ui/ui_juice.gd")
+const SoundKit := preload("res://src/audio/sound_kit.gd")
 
 var _resolver: AssetResolver
 var _panel: PanelContainer
@@ -102,6 +104,11 @@ func _next() -> void:
 	_panel.position = Vector2(1280 + 10, TOP)
 	_sfx.stream = _resolver.get_audio("ui/achievement")
 	_sfx.play()
+	# the badge pops in with a little bounce (and a soft pop) as the panel lands
+	UiJuice.pop_in(_icon, 0.2, 0.2, 0.42)
+	var pop := create_tween()
+	pop.tween_interval(0.2)
+	pop.tween_callback(func() -> void: SoundKit.play(self, "pop", -9.0, 0.04))
 	var tw := create_tween()
 	_tween = tw
 	tw.tween_property(_panel, "position:x", 1280 - w - 18, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

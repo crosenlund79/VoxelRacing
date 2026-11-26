@@ -12,6 +12,7 @@ signal abandon_requested
 signal done
 
 const ROW_H := 30
+const UiJuice := preload("res://src/ui/ui_juice.gd")
 
 var _resolver: AssetResolver
 var _root: Control
@@ -149,6 +150,7 @@ func _button(text: String, action: Callable) -> Button:
 	b.add_theme_font_size_override("font_size", 22)
 	b.pressed.connect(action)
 	b.mouse_entered.connect(b.grab_focus)
+	UiJuice.button(b)  # (style_button juices it too; once is enough)
 	return b
 
 
@@ -214,13 +216,18 @@ func show_standings(champ: Championship, reward: String = "", reward_car: Textur
 	for c in _rows.get_children():
 		c.queue_free()
 	var order := champ.standings()
+	var new_rows: Array[Control] = []
 	for k in order.size():
 		var id: int = order[k]
 		var last := champ.position_in(done_rounds - 1, id) if done_rounds > 0 else 0
 		var name := "YOU" if id == Championship.PLAYER else RivalRoster.full_name(id)
 		var color := HyperTheme.GOLD if id == Championship.PLAYER else HyperTheme.CREAM
-		_rows.add_child(_row_box([str(k + 1), "", name, ("P%d" % last) if last > 0 else "DNF",
-			str(champ.wins(id)), str(champ.points[id])], false, _icons.get(id), color))
+		var row := _row_box([str(k + 1), "", name, ("P%d" % last) if last > 0 else "DNF",
+			str(champ.wins(id)), str(champ.points[id])], false, _icons.get(id), color)
+		_rows.add_child(row)
+		new_rows.append(row)
+		if id == Championship.PLAYER:
+			UiJuice.pulse_highlight(row, HyperTheme.GOLD)  # your row breathes gently
 	if _final:
 		var winner := champ.champion()
 		_next_title.text = "CHAMPION:  %s" % ("YOU!" if winner == Championship.PLAYER else RivalRoster.full_name(winner).to_upper())
@@ -265,6 +272,7 @@ func show_standings(champ: Championship, reward: String = "", reward_car: Textur
 	_accent_rule.color = Color(accent, 0.8)
 	visible = true
 	HyperTheme.reveal(_root)
+	UiJuice.reveal_rows(new_rows, 0.04, 24.0, 0.1, _rows)  # the table fills in, row by row
 	_continue.grab_focus()
 
 

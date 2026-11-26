@@ -5,6 +5,8 @@ extends RefCounted
 ## and panels from VrStyle, the VoxelRacing palette. Screens use the constants
 ## below, which now carry VoxelRacing's colours.
 
+const UiJuice := preload("res://src/ui/ui_juice.gd")
+
 const CREAM := VrStyle.PAPER
 const CREAM_DIM := VrStyle.PAPER_DIM
 const OUTLINE := VrStyle.INK
@@ -143,13 +145,15 @@ const SHADE := Color(0.06, 0.06, 0.16, 0.66)
 
 
 ## Styles a button like the main menu's: 24 px type (32 for the primary
-## action), voxel-block heights.
+## action), voxel-block heights, and the shared button juice (focus pop,
+## pressed squash, pulsing focus edge: UiJuice).
 static func style_button(b: Button, primary: bool = false, width: float = 380.0) -> Button:
 	b.custom_minimum_size = Vector2(width, 64 if primary else 50)
 	b.add_theme_font_size_override("font_size", 32 if primary else 24)
 	if primary:
 		b.add_theme_stylebox_override("normal", VrStyle.block(VrStyle.RED))
 		b.add_theme_color_override("font_color", CREAM)
+	UiJuice.button(b)
 	return b
 
 

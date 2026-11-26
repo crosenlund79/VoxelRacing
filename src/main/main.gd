@@ -1017,6 +1017,22 @@ func _client_stats() -> void:
 			stats.on_retired(id, session.elapsed, true)
 
 
+# ------------------------------------------------ P004: the race intro
+
+var _intro_playing := false
+
+
+## The short cinematic over the grid (VoxelStage's RaceIntro), skippable;
+## single-screen races only. The grid waits as before; Fire then starts.
+func play_intro() -> void:
+	if voxel == null or voxel.intro == null or net != null or is_two_player() or player_views != null:
+		return
+	_intro_playing = true
+	await voxel.intro.play()
+	_intro_playing = false
+	_grid_input_delay = 12  # (the key that skipped it does not also start the race)
+
+
 # ------------------------------------------------ P003: action replays
 
 var _highlights_shown := false
@@ -1163,7 +1179,7 @@ func _physics_process(_delta: float) -> void:
 	_watch_tick(step)
 	match session.state:
 		RaceSession.State.MODE_SELECT:
-			if garage_open:
+			if garage_open or _intro_playing:
 				return
 			if _grid_input_delay > 0:
 				_grid_input_delay -= 1

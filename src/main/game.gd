@@ -271,6 +271,12 @@ func start_race(choice: int, with_garage: bool = false, devices: Array[int] = []
 		race.race_began.connect(_on_career_race_began)
 		race.race_concluded.connect(_on_career_concluded)
 	await _await_world()
+	if race != null and race.has_method("play_intro") and race.voxel != null and race.voxel.intro != null:
+		await _fade_to(0.0)
+		await race.play_intro()  # P004: the grid, cinematically (skippable)
+	if race == null:
+		_starting = false
+		return
 	if choice == 2:
 		race.start_race()  # spectating starts straight away
 	elif with_garage and not _garage_just_seen:
@@ -303,8 +309,12 @@ func _open_garage() -> void:
 ## The garage's centrepiece: the car being prepared, as it races (CarArt).
 func _show_garage_car(car: int) -> void:
 	var owned := car > 0 and cars.owns(car)
-	garage_screen.set_car(CarArt.icon(resolver, AssetCatalog.ai_car(car) if owned else AssetCatalog.CAR_PLAYER),
+	var car_logical := AssetCatalog.ai_car(car) if owned else AssetCatalog.CAR_PLAYER
+	garage_screen.set_car(CarArt.icon(resolver, car_logical),
 		("%s'S CAR" % RivalRoster.short_name(car).to_upper()) if owned else "YOUR OWN CAR")
+	# the same car as a voxel model on the workshop's turntable (the race's own artwork rule)
+	var look := CarArt.look(resolver, car_logical)
+	garage_screen.set_car_model(look.body, look.body_logical, look.wheels)
 	music.play("music/music_menu")
 
 

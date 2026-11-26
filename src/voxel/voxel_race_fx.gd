@@ -49,6 +49,10 @@ var _taunts: Array = []
 var _taunt_cool := PackedFloat32Array()
 var _taunt_last := -100.0
 var cans: Array = []
+## Backfire chance on a lift-off at speed, by racer id (show-offs pop more).
+const BACKFIRE := [0.3, 0.12, 0.55, 0.25, 0.2, 0.15, 0.6, 0.1, 0.4, 0.3]
+var _last_accel := PackedFloat32Array()
+signal backfired(i: int)
 
 
 func setup(p_stage: VoxelStage) -> void:
@@ -84,6 +88,7 @@ func setup(p_stage: VoxelStage) -> void:
 	_was_wrecked.resize(damage.size())
 	_was_air.resize(damage.size())
 	_smoke_clock.resize(damage.size())
+	_last_accel.resize(damage.size())
 	_taunt_cool.resize(damage.size())
 	_taunt_cool.fill(-100.0)
 
@@ -186,6 +191,34 @@ func _sync_car(i: int, delta: float) -> void:
 				var at: Vector3 = root.global_transform * Vector3(-2.3, 0.4, side)
 				fx.puff(at, Vector3(_rng.randf_range(-0.7, 0.7), 0.5, _rng.randf_range(-0.7, 0.7)) - root.global_transform.basis.x * 1.6,
 					Color(0.97, 0.96, 0.94), _rng.randf_range(0.6, 0.9) * (0.8 + ws * 0.4), _rng.randf_range(0.7, 1.2), 0.55 + 0.4 * ws)
+		# P004: exhausts - idle puffs, a dark cough under hard throttle,
+		# bursts when the drivers blip on the grid, pops lifting off at speed
+		var exs: Array = d.get("exhausts", [])
+		if not exs.is_empty() and not wrecked and c.model != null:
+			var a_long: float = d.get("acc_long", 0.0)
+			var spd := c.model.velocity.length()
+			var revving: bool = float(d.get("rev", 0.0)) > 0.0
+			var ex_rate := 0.0
+			if revving:
+				ex_rate = 26.0
+			elif a_long > 150.0:
+				ex_rate = 7.0
+			elif spd < 30.0:
+				ex_rate = 1.3
+			var back: Vector3 = -root.global_transform.basis.x
+			if ex_rate > 0.0 and _rng.randf() < delta * ex_rate:
+				var ex: Node3D = exs[_rng.randi() % exs.size()]
+				var g := 0.32 if (revving or a_long > 150.0) else 0.62
+				fx.puff(ex.global_transform * Vector3(-0.2, 0.06, 0.0), back * 0.9 + Vector3(0, 0.35, 0), Color(g, g, g * 1.03),
+					_rng.randf_range(0.13, 0.2), _rng.randf_range(0.5, 0.8), 0.5)
+			if _last_accel[i] > 120.0 and a_long < -80.0 and spd > 150.0 and _rng.randf() < BACKFIRE[i % BACKFIRE.size()]:
+				for ex in exs:
+					var at: Vector3 = (ex as Node3D).global_transform * Vector3(-0.25, 0.06, 0.0)
+					for k in 3:
+						fx.spark(at, back * _rng.randf_range(2.0, 3.5) + Vector3(_rng.randf_range(-0.4, 0.4), _rng.randf_range(0.1, 0.5), _rng.randf_range(-0.4, 0.4)),
+							Color(1.0, _rng.randf_range(0.45, 0.7), 0.15), 0.1, 0.16, 1.6, 0.0)
+				backfired.emit(i)
+			_last_accel[i] = a_long
 		# tyre smoke and dust from RaceEffects' own rules
 		var eff: RaceEffects = _main.effects
 		if eff != null and i < eff.smoking.size():

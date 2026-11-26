@@ -14,6 +14,9 @@ extends Node
 ## kinds: destroyed, wreck, hit, mine_blast, fire, crash, pileup, overtake,
 ##        finish, taunt, air
 
+## Every event as it happens (the crowd reacts to them, P004).
+signal moment(e: Dictionary)
+
 const RATE := 1.0 / 30.0
 const RING := 6.0
 const PRE := 3.6
@@ -181,6 +184,7 @@ func _is_wrecked(i: int) -> bool:
 ## Adds an event; worthy ones open (or extend) a captured moment.
 func add_event(e: Dictionary) -> void:
 	e.t = t
+	moment.emit(e)
 	var score: float = e.score
 	if player_id >= 0 and (int(e.get("car", -9)) == player_id or int(e.get("by", -9)) == player_id):
 		score += 2.0

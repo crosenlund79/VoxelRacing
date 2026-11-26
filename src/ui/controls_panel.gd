@@ -25,6 +25,7 @@ const TABS := [
 	["SPECTATOR", [PlayerControls.SIM_SPEED, PlayerControls.TOGGLE_PANEL]],
 ]
 const MENUS_TAB := 3
+const UiJuice := preload("res://src/ui/ui_juice.gd")
 ## Names for the fixed (not remappable) actions.
 const FIXED_LABELS := {"camera_view": "Camera view", "replay": "Watch the replay"}
 
@@ -131,6 +132,7 @@ func setup() -> void:
 	buttons.add_child(_defaults)
 	select_tab(0)
 	refresh()
+	UiJuice.tree(self)  # tabs, slots and buttons: the shared focus pop / press squash
 	_wire_focus.call_deferred()
 
 

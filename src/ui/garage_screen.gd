@@ -9,10 +9,15 @@ extends CanvasLayer
 ## picture as everywhere: own car, a won rival car, user artwork, Artwork
 ## Mode), standing in a spotlight with a gentle sway; buying, selling and
 ## repairing answer with a pulse and the money changing hands.
+## 2026-11-26: the garage is a miniature voxel workshop (GarageWorkshop, a 3D
+## viewport behind the panels): the car stands on a turntable as its voxel
+## model with its current damage, a mechanic potters about, and repairs pop
+## the missing voxels back with sparks. Presentation only.
 
 signal race_requested
 signal closed
 
+const Workshop := preload("res://src/ui/garage_workshop.gd")
 const W := WeaponRules.Weapon
 ## Disabled buttons (cannot buy / sell): a dimmed plate and faint text.
 const DISABLED_PLATE := Color(0.55, 0.5, 0.47, 0.5)
@@ -43,10 +48,12 @@ var _armour_label: Label
 var _armour_button: Button
 var _car_note: Label
 var _sfx: AudioStreamPlayer
-var _showcase: Control
+## The workshop behind the panels (its own 3D world) and the picture showing it.
+var _workshop: Workshop
+var _workshop_view: TextureRect
+## The car's CarArt picture (kept for car_texture(); the workshop shows the car).
 var _car_rect: TextureRect
 var _car_name: Label
-var _time := 0.0
 
 
 func setup(p_garage: PlayerGarage, resolver: AssetResolver) -> void:
@@ -58,31 +65,27 @@ func setup(p_garage: PlayerGarage, resolver: AssetResolver) -> void:
 	_root.theme = HyperTheme.build(resolver)
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_root)
-	var bg := TextureRect.new()
-	bg.texture = VrStyle.backdrop()
-	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bg.stretch_mode = TextureRect.STRETCH_SCALE
-	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	bg.size = Vector2(1280, 720)
-	_root.add_child(bg)
+	# the workshop: a voxel diorama in its own world, filling the screen
+	_workshop = Workshop.new()
+	_workshop.name = "Workshop"
+	_workshop.setup(resolver)
+	add_child(_workshop)
+	_workshop_view = TextureRect.new()
+	_workshop_view.texture = _workshop.get_texture()
+	_workshop_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_workshop_view.stretch_mode = TextureRect.STRETCH_SCALE
+	_workshop_view.size = Vector2(1280, 720)
+	_workshop_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_workshop_view)
+	_root.add_child(_shade())
+	visibility_changed.connect(func() -> void: _workshop.set_active(visible))
 
 	var title := HyperTheme.label("GARAGE", 60, HyperTheme.GOLD, 700)
 	title.position = Vector2(40, 90)
 	_root.add_child(title)
-	# the car being prepared, centre stage in a spotlight
-	_showcase = Control.new()
-	_showcase.position = Vector2(300, 6)
-	_showcase.size = Vector2(440, 190)
-	_showcase.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_showcase.draw.connect(_draw_spotlight)
-	_root.add_child(_showcase)
 	_car_rect = TextureRect.new()
-	_car_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_car_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_car_rect.size = Vector2(300, 150)
-	_car_rect.position = Vector2(70, 14)
-	_car_rect.pivot_offset = _car_rect.size * 0.5
-	_showcase.add_child(_car_rect)
+	_car_rect.visible = false
+	_root.add_child(_car_rect)
 	_car_name = HyperTheme.label("", 18, HyperTheme.CREAM, 700)
 	_car_name.position = Vector2(42, 156)
 	_root.add_child(_car_name)
@@ -181,6 +184,7 @@ func set_garage(g: PlayerGarage) -> void:
 
 
 func open() -> void:
+	_workshop.set_condition(garage.condition, false)  # as it is: no repair show on arrival
 	visible = true
 	refresh()
 	HyperTheme.reveal(_root)
@@ -193,25 +197,46 @@ func set_car(texture: Texture2D, car_name: String) -> void:
 	_car_name.text = car_name
 
 
+## The car's voxel model on the workshop's turntable: its body drawing, body
+## logical name and whether it wears the shared wheels (CarArt.look()).
+func set_car_model(texture: Texture2D, body_logical: String, wheels: bool = true) -> void:
+	_workshop.set_car(texture, body_logical, wheels, garage.condition if garage != null else 100.0)
+
+
 func car_texture() -> Texture2D:
 	return _car_rect.texture
 
 
-func _draw_spotlight() -> void:
-	var c := Vector2(220, 150)
-	_showcase.draw_set_transform(c, 0.0, Vector2(1.0, 0.28))
-	_showcase.draw_circle(Vector2.ZERO, 200.0, Color(1.0, 0.86, 0.55, 0.10))
-	_showcase.draw_circle(Vector2.ZERO, 150.0, Color(1.0, 0.86, 0.55, 0.14))
-	_showcase.draw_circle(Vector2.ZERO, 110.0, Color(0.0, 0.0, 0.0, 0.25))  # the car's shadow
-	_showcase.draw_set_transform(Vector2.ZERO)
-
-
-func _process(delta: float) -> void:
-	if not visible or _car_rect == null:
-		return
-	_time += delta
-	_car_rect.rotation = sin(_time * 0.7) * 0.025  # a gentle sway on the stand
-	_car_rect.position.y = 14.0 + sin(_time * 1.4) * 1.5
+## A soft shade over the workshop so every label reads: darker at the sides
+## (behind the title and the money), along the top edge and behind the panels;
+## the band where the car stands stays clear.
+func _shade() -> Control:
+	var holder := Control.new()
+	holder.size = Vector2(1280, 720)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ink := VrStyle.INK
+	for horizontal in [true, false]:
+		var g := Gradient.new()
+		if horizontal:
+			g.offsets = PackedFloat32Array([0.0, 0.3, 0.6, 1.0])
+			g.colors = PackedColorArray([Color(ink, 0.7), Color(ink, 0.0), Color(ink, 0.0), Color(ink, 0.75)])
+		else:
+			g.offsets = PackedFloat32Array([0.0, 0.07, 0.24, 0.34, 1.0])
+			g.colors = PackedColorArray([Color(ink, 0.5), Color(ink, 0.0), Color(ink, 0.0), Color(ink, 0.42), Color(ink, 0.6)])
+		var tex := GradientTexture2D.new()
+		tex.gradient = g
+		tex.width = 256 if horizontal else 4
+		tex.height = 4 if horizontal else 256
+		tex.fill_from = Vector2.ZERO
+		tex.fill_to = Vector2(1, 0) if horizontal else Vector2(0, 1)
+		var r := TextureRect.new()
+		r.texture = tex
+		r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		r.stretch_mode = TextureRect.STRETCH_SCALE
+		r.size = Vector2(1280, 720)
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(r)
+	return holder
 
 
 ## A short pulse on a control (a card, the money, the car row).
@@ -248,6 +273,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func refresh() -> void:
+	_workshop.set_condition(garage.condition, visible)  # a repair: the workshop's show
 	_money.text = "$ %d" % garage.money
 	if garage.races_settled == 0:
 		_last.text = "Starting money. Top five finishers win prize money; longer races pay more."

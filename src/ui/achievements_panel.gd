@@ -7,6 +7,7 @@ extends PanelContainer
 signal closed
 
 const Icons = preload("res://src/ui/achievement_icons.gd")
+const UiJuice := preload("res://src/ui/ui_juice.gd")
 
 var store: AchievementStore
 var _resolver: AssetResolver
@@ -83,6 +84,7 @@ func setup(p_store: AchievementStore, resolver: AssetResolver) -> void:
 		_cancel_reset()
 		_reset.grab_focus())
 	_confirm_row.add_child(no)
+	UiJuice.tree(buttons)
 
 
 func refresh() -> void:
@@ -117,6 +119,8 @@ func refresh() -> void:
 			var date := Time.get_date_string_from_unix_time(store.unlocked_at[e.id])
 			row.add_child(HyperTheme.label(date, 14, HyperTheme.CREAM_DIM, 500))
 		_list.add_child(row)
+	# the list fills in quickly from the top as the page opens
+	UiJuice.reveal_rows(_list.get_children(), 0.025, 18.0, 0.05, _list, 10)
 	for c in _rivals.get_children():
 		c.free()
 	for h in ["RIVAL", "RACES", "WINS", "PODIUMS", "WINLESS"]:

@@ -66,6 +66,7 @@ signal career_requested
 signal credits_requested
 
 const LAYOUT := preload("res://src/track/circuit_01.tres")
+const UiJuice := preload("res://src/ui/ui_juice.gd")
 
 var resolver: AssetResolver
 var settings: AudioSettings
@@ -213,6 +214,8 @@ func setup(p_resolver: AssetResolver, p_settings: AudioSettings) -> void:
 	for panel in [_settings_panel, _controls_panel]:
 		panel.reset_size()
 		panel.position = Vector2((1280 - panel.size.x) * 0.5, 250 if panel == _settings_panel else (720 - panel.size.y) * 0.5 - 10)
+	for panel in [_settings_panel, _controls_panel, _achievements_panel, _join_panel, lan_panel]:
+		UiJuice.tree(panel)  # the same button feel on every page
 	footer = HyperTheme.label("", 15, HyperTheme.CREAM_DIM, 500)
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer.size = Vector2(1280, 24)
@@ -317,12 +320,12 @@ func _build_setup(root: Control) -> void:
 	go.add_theme_font_size_override("font_size", 24)
 	go.pressed.connect(_setup_start)
 	go.focus_entered.connect(func() -> void: _sfx_play("ui/ui_move"))
-	_setup_rows.add_child(go)
+	_setup_rows.add_child(UiJuice.button(go))
 	var back := Button.new()
 	back.text = "BACK"
 	back.custom_minimum_size = Vector2(520, 38)
 	back.pressed.connect(_open_modes)
-	_setup_rows.add_child(back)
+	_setup_rows.add_child(UiJuice.button(back))
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 10)
 	h.add_child(right)
@@ -346,6 +349,7 @@ func _setup_row(_tag: String, cycle: Callable) -> Button:
 	b.pressed.connect(func() -> void: cycle.call(1))
 	b.focus_entered.connect(func() -> void: _sfx_play("ui/ui_move"))
 	b.mouse_entered.connect(b.grab_focus)
+	UiJuice.button(b)
 	_setup_rows.add_child(b)
 	return b
 
@@ -704,8 +708,39 @@ func _show_only(node: Control) -> void:
 	for n in [_main_menu, _mode_menu, _setup, _race_menu, _settings_panel, _controls_panel, _achievements_panel, _join_panel, lan_panel]:
 		n.visible = n == node
 	_logo.visible = node != _controls_panel and node != _achievements_panel and node != _setup
+	_page_in(node)
+
+
+## The page transition: the page fades in while sliding a few pixels into
+## place; a button menu's buttons follow one after another.
+var _page_tween: Tween
+var _paged: Control
+var _paged_home := Vector2.ZERO
+
+
+func _page_in(node: Control) -> void:
+	if _page_tween != null and _page_tween.is_valid():
+		_page_tween.kill()
+	if _paged != null and is_instance_valid(_paged):  # a transition cut short lands where it belongs
+		_paged.position = _paged_home
+		for c in _paged.get_children():
+			if c is Control:
+				c.modulate.a = 1.0
+	_paged = node
+	_paged_home = node.position
 	node.modulate.a = 0.0
-	create_tween().tween_property(node, "modulate:a", 1.0, 0.18)
+	node.position.x = _paged_home.x + 18.0
+	var tw := create_tween().set_parallel(true)
+	_page_tween = tw
+	tw.tween_property(node, "modulate:a", 1.0, 0.18)
+	tw.tween_property(node, "position:x", _paged_home.x, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if node in [_main_menu, _mode_menu, _race_menu]:
+		var k := 0
+		for c in node.get_children():
+			if c is Control and c.visible:
+				c.modulate.a = 0.0
+				tw.tween_property(c, "modulate:a", 1.0, 0.14).set_delay(0.03 * k)
+				k += 1
 
 
 func _menu(root: Control, items: Array, width: int = 380, button_height: int = 38, gap: int = 4) -> VBoxContainer:
@@ -722,7 +757,7 @@ func _menu(root: Control, items: Array, width: int = 380, button_height: int = 3
 		b.pressed.connect(item[1])
 		b.focus_entered.connect(func() -> void: _sfx_play("ui/ui_move"))
 		b.mouse_entered.connect(b.grab_focus)
-		box.add_child(b)
+		box.add_child(UiJuice.button(b))
 	box.reset_size()
 	box.position = Vector2(64, 262)
 	return box

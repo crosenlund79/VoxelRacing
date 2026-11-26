@@ -5,6 +5,7 @@ extends CanvasLayer
 ## spectator history. Presentation only: it displays race state it is given.
 
 const PLAYER_ID := 0
+const UiJuice := preload("res://src/ui/ui_juice.gd")
 ## GO! / FINISH! banner: top of the screen, clear of the starting grid and the
 ## cars around the camera centre; low between the views in split-screen.
 const BANNER_Y := 56.0
@@ -802,6 +803,9 @@ func show_results(standings: Array[RacerState], footer: String = "{confirm}: rac
 	# Already on screen (another car finished, a footer or the exact network
 	# times arrived): update in place, without fading out and in again.
 	var update := _results_up and _message.visible and not _results_key.is_empty()
+	# rows slide in when the card first appears (also when it is still waiting
+	# for the banner); an in-place update shows its rows at once
+	var animate := not update or _message_waiting
 	_results_key = key
 	set_results_up(true)
 	_menu_key = ""
@@ -842,7 +846,13 @@ func show_results(standings: Array[RacerState], footer: String = "{confirm}: rac
 		var grid := HBoxContainer.new()
 		grid.add_theme_constant_override("separation", 14)
 		panel.add_child(grid)
-		grid.add_child(_position_marker(i + 1))
+		var marker := _position_marker(i + 1)
+		grid.add_child(marker)
+		if animate:
+			_reveal_rows.append(panel)
+			if i == 0 and r.is_finished() and not r.dnf:
+				_reveal_winner = panel
+				_reveal_marker = marker
 		var icon := TextureRect.new()
 		icon.texture = _car_textures.get(r.id)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -880,7 +890,12 @@ func show_results(standings: Array[RacerState], footer: String = "{confirm}: rac
 		name_width = maxf(name_width, l.get_combined_minimum_size().x)
 	for l in names:
 		l.custom_minimum_size.x = name_width
-	_message_box.add_child(_centered(HyperTheme.label(footer, 17, HyperTheme.CREAM_DIM, 500)))
+	var foot := _centered(HyperTheme.label(footer, 17, HyperTheme.CREAM_DIM, 500))
+	_message_box.add_child(foot)
+	if animate:
+		_reveal_rows.append(foot)
+		for c in _reveal_rows:
+			c.modulate.a = 0.0  # (until the card fades in)
 	_present_message(Vector2(640, 0), true, update)
 
 
@@ -916,13 +931,18 @@ func flash_banner(text: String, color: Color = HyperTheme.GOLD, hold: float = BA
 	_banner.text = text
 	_banner.add_theme_color_override("font_color", color)
 	_banner.add_theme_font_size_override("font_size", font_size if font_size > 0 else 96)
-	_banner.modulate.a = 1.0
-	_banner.scale = Vector2(0.6, 0.6)
-	var tw := create_tween()
+	# a punchy entrance: from small and white-hot to full size with an overshoot,
+	# settling into its colour; then it fades while drifting a little larger
+	# (same timing as before: 0.25 s in, the hold, 0.4 s out)
+	_banner.modulate = Color(1.9, 1.9, 1.9, 1.0)
+	_banner.scale = Vector2(0.35, 0.35)
+	var tw := create_tween().set_parallel(true)
 	_banner_tween = tw
 	tw.tween_property(_banner, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(hold)
-	tw.tween_property(_banner, "modulate:a", 0.0, 0.4)
+	tw.tween_property(_banner, "modulate", Color.WHITE, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(hold)
+	tw.chain().tween_property(_banner, "modulate:a", 0.0, 0.4).set_ease(Tween.EASE_IN)
+	tw.tween_property(_banner, "scale", Vector2(1.12, 1.12), 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.finished.connect(_release_message)
 
 
@@ -959,6 +979,11 @@ func _centered(l: Label) -> Label:
 
 
 func _clear_message() -> void:
+	if _reveal_tween != null and _reveal_tween.is_valid():
+		_reveal_tween.kill()
+	_reveal_rows.clear()
+	_reveal_winner = null
+	_reveal_marker = null
 	for c in _message_box.get_children():
 		c.free()
 
@@ -1008,6 +1033,33 @@ func _release_message() -> void:
 func _fade_in_message() -> void:
 	_message_tween = create_tween()
 	_message_tween.tween_property(_message, "modulate:a", 1.0, 0.2)
+	_reveal_results()
+
+
+## The results card's rows, waiting to slide in (empty for other panels), and
+## the winner's row and star.
+var _reveal_rows: Array[Control] = []
+var _reveal_winner: Control
+var _reveal_marker: Control
+var _reveal_tween: Tween
+
+
+## Results rows slide and fade in one after another (40 ms apart) as the card
+## appears; the winner's star bounces and a gold glint crosses their row.
+func _reveal_results() -> void:
+	if _reveal_rows.is_empty():
+		return
+	var rows := _reveal_rows.duplicate()
+	_reveal_rows.clear()
+	_reveal_tween = UiJuice.reveal_rows(rows, 0.04, 26.0, 0.06, self)
+	if _reveal_tween == null:  # (not in a tree: just show them)
+		for c in rows:
+			c.modulate.a = 1.0
+	if _reveal_winner != null and is_instance_valid(_reveal_winner):
+		UiJuice.bounce(_reveal_marker, 0.2, 1.45)
+		UiJuice.shimmer(_reveal_winner, 0.28, 0.75, HyperTheme.GOLD)
+	_reveal_winner = null
+	_reveal_marker = null
 
 
 ## "1 LAP", "3 LAPS".

@@ -10,6 +10,7 @@ signal closed
 
 const CREATOR_CAPTION := "CREATED, DESIGNED AND DIRECTED BY"
 const CREATOR := "THE VOXELRACING CREATOR"
+const UiJuice := preload("res://src/ui/ui_juice.gd")
 
 ## The credits, in three columns of cards: [heading, accent, lines]; a line is
 ## [text, dim]. Keep it true: placeholder artwork is credited as the templates
@@ -144,6 +145,7 @@ func setup(resolver: AssetResolver) -> void:
 	_back.custom_minimum_size = Vector2(160, 0)
 	_back.add_theme_font_size_override("font_size", 24)
 	_back.pressed.connect(_close)
+	UiJuice.button(_back)
 	root.add_child(_back)
 	_back.reset_size()
 	_back.position = Vector2(1280 - MARGIN - _back.size.x, 720 - _back.size.y - 10)
