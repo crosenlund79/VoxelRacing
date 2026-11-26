@@ -8,7 +8,7 @@ investigation can be repeated on a real Windows PC with a real graphics card.
 1. Extract this folder anywhere.
 2. Close other programs (browsers, launchers, recording software).
 3. Double-click run_benchmarks.bat and do not touch the PC until it says
-   "Done" (about 25 minutes; windows open and close by themselves, races
+   "Done" (about 30 minutes; windows open and close by themselves, races
    are driven by the computer).
 4. Zip the "results" folder that appears next to the .bat and send it back.
 
