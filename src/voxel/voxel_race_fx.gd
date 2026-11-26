@@ -198,12 +198,12 @@ func _sync_car(i: int, delta: float) -> void:
 				_rng.randf_range(0.35, 0.6), _rng.randf_range(1.0, 1.8), 0.6)
 		# wheelspin: smoke from under the rear wheels (a burnout off the line)
 		var ws: float = d.get("wheelspin", 0.0)
-		if ws > 0.06 and _rng.randf() < delta * 46.0 * ws:
+		if ws > 0.06 and _rng.randf() < delta * 30.0 * ws:
 			for side in [-0.8, 0.8]:
 				# behind the rear wheels (not hidden under the body), rolling back
 				var at: Vector3 = root.global_transform * Vector3(-2.3, 0.4, side)
 				fx.puff(at, Vector3(_rng.randf_range(-0.7, 0.7), 0.5, _rng.randf_range(-0.7, 0.7)) - root.global_transform.basis.x * 1.6,
-					Color(0.97, 0.96, 0.94), _rng.randf_range(0.6, 0.9) * (0.8 + ws * 0.4), _rng.randf_range(0.7, 1.2), 0.55 + 0.4 * ws)
+					Color(0.97, 0.96, 0.94), _rng.randf_range(0.45, 0.7) * (0.8 + ws * 0.4), _rng.randf_range(0.55, 0.95), 0.45 + 0.35 * ws)
 		# P004: exhausts - idle puffs, a dark cough under hard throttle,
 		# bursts when the drivers blip on the grid, pops lifting off at speed
 		var exs: Array = d.get("exhausts", [])
