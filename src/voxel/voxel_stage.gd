@@ -369,6 +369,7 @@ func make_car(i: int, holder: Node3D) -> Dictionary:
 	var body_logical: String = look.get("body_logical", "")
 	var root := Node3D.new()
 	root.name = "Car%d" % i
+	root.scale = Vector3.ONE * Car.SIZE  # P007: a little smaller (collision follows)
 	holder.add_child(root)
 	var tilt := Node3D.new()
 	root.add_child(tilt)

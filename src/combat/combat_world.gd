@@ -240,13 +240,13 @@ func request(id: int, slot: int, cars: Array) -> bool:
 	var fwd := Vector2.from_angle(c.heading)
 	match weapon:
 		W.FRONT_MISSILE, W.HOMING_MISSILE:
-			var p := {"type": weapon, "owner": id, "pos": c.position + fwd * 36.0, "dir": fwd, "age": 0.0, "target": -1}
+			var p := {"type": weapon, "owner": id, "pos": c.position + fwd * 36.0 * Car.SIZE, "dir": fwd, "age": 0.0, "target": -1}
 			_launch_level(p, c)
 			if weapon == W.HOMING_MISSILE:
 				p.target = nearest_car(id, cars)
 			projectiles.append(p)
 		W.REAR_MISSILE:
-			var p := {"type": weapon, "owner": id, "pos": c.position - fwd * 36.0, "dir": -fwd, "age": 0.0, "target": -1}
+			var p := {"type": weapon, "owner": id, "pos": c.position - fwd * 36.0 * Car.SIZE, "dir": -fwd, "age": 0.0, "target": -1}
 			_launch_level(p, c)
 			projectiles.append(p)
 		W.SUPER_MISSILE:
@@ -255,7 +255,7 @@ func request(id: int, slot: int, cars: Array) -> bool:
 			_launch_level(p, c)
 			projectiles.append(p)
 		W.MINE:
-			var m := {"owner": id, "pos": c.position - fwd * 34.0, "age": 0.0}
+			var m := {"owner": id, "pos": c.position - fwd * 34.0 * Car.SIZE, "age": 0.0}
 			if layout != null:  # a mine stays on the road level where it was dropped
 				m.level = c.get("level", 0)
 				m.band = c.get("band", false)
@@ -322,7 +322,7 @@ func step(dt: float, cars: Array) -> Dictionary:
 						# destroyed again (_destroy ignores it), so the orbit passing over it
 						# is not a new hit: no repeated explosion event every tick
 						if j != p.owner and cars[j].present and not is_wrecked(j) and grace_left[j] <= 0.0 \
-								and p.pos.distance_to(cars[j].position) < rules.super_hit_radius \
+								and p.pos.distance_to(cars[j].position) < rules.super_hit_radius * Car.SIZE \
 								and (layout == null or _meets(p, cars[j])):
 							_hit(j, p, destroyed)
 			_:
@@ -338,7 +338,7 @@ func step(dt: float, cars: Array) -> Dictionary:
 					keep = false
 					events.append({"kind": "explode", "type": p.type, "pos": p.pos, "car": -1, "owner": p.owner})
 				else:
-					var hit := _car_at(p.pos, rules.hit_radius, cars, p.owner if p.age < 0.25 else -1, p)
+					var hit := _car_at(p.pos, rules.hit_radius * Car.SIZE, cars, p.owner if p.age < 0.25 else -1, p)
 					if hit >= 0:
 						keep = false
 						_hit(hit, p, destroyed)

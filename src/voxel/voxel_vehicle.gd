@@ -1192,10 +1192,11 @@ static func _coupe(b: B, cp: Color) -> void:
 
 ## Dante "Showboat": an Italian mid-engined exotic - a low, long wedge,
 ## high front fenders, a long raked windscreen, deep side intakes, a slatted
-## engine cover and a big rear wing on endplates; burgundy with gold.
+## engine cover and a big rear wing on endplates; purple with gold racing
+## stripes (Prototype 007; was burgundy).
 static func _exotic(b: B, cp: Color) -> void:
-	var paint := cp if cp.a > 0.0 else Color(0.5, 0.08, 0.17)
-	var gold := Color(0.94, 0.74, 0.27)
+	var paint := cp if cp.a > 0.0 else Color(0.4, 0.15, 0.62)
+	var gold := Color(1.0, 0.77, 0.2)
 	var peaks := func(u: int, zc: int) -> int:
 		return 1 if u >= 31 and u <= 42 and absi(zc) >= 9 else 0
 	_body(b, {
@@ -1213,6 +1214,7 @@ static func _exotic(b: B, cp: Color) -> void:
 	b.face(true, 4, 6, 0, 9, TRIM, "bumper_F")
 	_bumper(b, true, 3, 3, 11, TRIM)
 	b.stripe_top(2, 3, gold)
+	b.stripe_side(6, 6, gold, 2, 44)
 	for u in range(3, 15, 2):
 		b.paint_box(u, u, 0, NY - 1, 0, 7, TRIM, true, "trunk")
 	b.paint_box(11, 15, 5, 9, 11, 13, TRIM, true)
@@ -1221,6 +1223,7 @@ static func _exotic(b: B, cp: Color) -> void:
 	_bumper(b, false, 3, 4, 11, TRIM)
 	_wing(b, 0, 3, 14, 12, paint, 0, 0, true, 1)
 	b.box(0, 2, 12, 13, 12, 12, Vox.SOLID, paint.darkened(0.2), "wing", true)
+	b.paint_box(0, 3, 14, 14, 2, 3, gold, true, "wing")
 	_mirrors(b, 31, 12, 10, paint)
 
 

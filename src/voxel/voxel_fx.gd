@@ -211,7 +211,7 @@ func piece(mesh: Mesh, xf: Transform3D, vel: Vector3, spin: Vector3, mass: float
 	node.set_instance_shader_parameter("tint", tint)
 	node.set_instance_shader_parameter("charred", charred)
 	var ab := mesh.get_aabb()
-	p.ext = ab.size * 0.5
+	p.ext = ab.size * 0.5 * xf.basis.get_scale()
 	p.off = ab.get_center()
 	p.vel = vel
 	p.spin = spin
@@ -228,7 +228,7 @@ func piece(mesh: Mesh, xf: Transform3D, vel: Vector3, spin: Vector3, mass: float
 func throw_parts(model: VoxelVehicle.Model, ids: Array, body_xf: Transform3D, carv: Vector3, out_dir: Vector3,
 		floor_y: float, blast: bool) -> void:
 	var centre := body_xf * Vector3(0, 0.45, 0)
-	var basis := body_xf.basis.orthonormalized()
+	var basis := body_xf.basis.orthonormalized().scaled(body_xf.basis.get_scale())
 	for id in ids:
 		var p: Dictionary = model.parts[int(id)]
 		var mass := float(p.n)
@@ -570,7 +570,8 @@ func _step_pieces(dt: float) -> void:
 		var b := xf.basis
 		if spin.length() > 0.01:
 			b = Basis(spin.normalized(), spin.length() * dt) * b
-		var half := absf(b.x.y) * ext.x + absf(b.y.y) * ext.y + absf(b.z.y) * ext.z
+		var bn := b.orthonormalized()
+		var half := absf(bn.x.y) * ext.x + absf(bn.y.y) * ext.y + absf(bn.z.y) * ext.z
 		var old_floor := _piece_floor(p, xf.origin)
 		var nf := _piece_floor(p, pos)
 		if nf > old_floor + 0.3 and pos.y - half < nf:  # a wall / barrier side: bounce back

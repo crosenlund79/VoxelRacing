@@ -753,7 +753,7 @@ func update_tower(standings: Array[RacerState]) -> void:
 		parts[1].text = ("! %d" if r.id == danger_id else "%d") % (i + 1)
 		parts[1].add_theme_color_override("font_color", HyperTheme.RED if r.id == danger_id else HyperTheme.CREAM)
 		parts[2].texture = _car_textures.get(r.id)
-		parts[3].text = r.display_name + (("  OUT" if r.knockout_lap > 0 or r.result_note.begins_with("OUT") else "  DNF") if r.dnf else "")
+		parts[3].text = _tower_name(r) + (("  OUT" if r.knockout_lap > 0 or r.result_note.begins_with("OUT") else "  DNF") if r.dnf else "")
 		if stats != null and r.id < stats.kills.size():
 			var line := stats.line(r.id)
 			for k in parts[4].size():
@@ -774,6 +774,16 @@ func update_tower(standings: Array[RacerState]) -> void:
 		var size := _tower_box.get_combined_minimum_size()
 		_tower_box.position = Vector2(_tower_right_width - size.x - 12.0 if _tower_right_width > 0.0 else 12.0,
 			720.0 - size.y - 12.0)
+
+
+## The tower shows the drivers' nicknames (P007): the quoted part of a
+## rival's full name ('Victor "The Professor"' -> THE PROFESSOR); players and
+## anyone without one keep their display name.
+func _tower_name(r: RacerState) -> String:
+	var full := String(_full_names.get(r.id, ""))
+	if full.count("\"") >= 2:
+		return full.get_slice("\"", 1)
+	return r.display_name
 
 
 ## Spectator follow controls: clickable rows, arrows and the highlighted

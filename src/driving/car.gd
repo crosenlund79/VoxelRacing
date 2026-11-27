@@ -13,6 +13,11 @@ const MAX_SLIDES := 4
 ## normal and accelerated simulation perform identical calculations. Matches
 ## the project's 60 physics ticks per second at normal speed.
 const FIXED_STEP := 1.0 / 60.0
+## Prototype 007: the cars are a little smaller than HyperCars' (more room to
+## race side by side on the same circuits). Scales the collision capsule here;
+## the voxel cars (VoxelStage), weapon launch points and hit radii
+## (CombatWorld) follow the same factor.
+const SIZE := 0.9
 
 var model: CarModel
 var steer := 0.0
@@ -26,6 +31,15 @@ var airborne := false
 var racer_id := 0
 
 @onready var sprite: Sprite2D = $Sprite
+
+
+func _ready() -> void:
+	var shape_node := get_node_or_null("Shape") as CollisionShape2D
+	if shape_node != null and shape_node.shape is CapsuleShape2D:
+		var cap := (shape_node.shape as CapsuleShape2D).duplicate() as CapsuleShape2D
+		cap.radius *= SIZE
+		cap.height *= SIZE
+		shape_node.shape = cap
 
 
 func setup(params: DrivingParams, mode: CarModel.ControlMode, texture: Texture2D) -> void:
