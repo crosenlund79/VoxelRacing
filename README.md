@@ -91,6 +91,17 @@ Extract it and run `VoxelRacing.exe`.
   Maya's lamps high on her fenders; Finn's square flares). All novelty
   gadgets are gone. Screenshots: `docs/screenshots/cartoon/`. Sound
   effects inventory: `docs/SOUND_INVENTORY.md`.
+- **Prototype 007 - Fine Tuning** (previous state on branch
+  `checkpoint/before-prototype-007`): Dante's car in purple with gold
+  stripes; nicknames in the position tower; cars 10% smaller (collision,
+  weapon launch points and hit radii follow); cleaner action-replay
+  framing (cameras avoid or hide obstructing scenery, HUD hidden); a
+  Graphics & Display row in Settings (Low / Medium / High / Ultra quality,
+  resolution, windowed / fullscreen / borderless), readable tooltip
+  settings, the obsolete Custom Artwork switch removed (custom art and
+  audio replacement still work); a loading-screen race without cars
+  driving through each other; and Tabletop Mayhem filled with oversized
+  voxel toys, on circuits and around the Battle Royale arena.
 
 <p align="center">
 <img src="docs/screenshots/p005/01_main_menu_logo_cars.jpg" width="49%" alt="Main menu">

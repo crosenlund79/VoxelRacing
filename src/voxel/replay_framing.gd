@@ -91,6 +91,12 @@ func build() -> void:
 				_items.append({"mm": mm, "i": i, "xf": xf})
 				# seated spectators belong to their stand: never hidden
 				_add_box((xf * mm.mesh.get_aabb()).grow(0.08), person.has("seat"), item)
+		# Tabletop Mayhem's toys (VoxelToybox, P007): tall ones are scenery the
+		# camera works around, little ones are clutter it may hide
+		var toys := life.get_node_or_null("Toybox")
+		if toys != null:
+			for n in toys.get_children():
+				_add_toys(n)
 
 
 ## VoxelProps kind of each prop mesh (from its mesh cache, keyed by the
@@ -116,6 +122,24 @@ func _add_node(mi: MeshInstance3D, big: bool, by_size := true) -> void:
 	var item := _items.size()
 	_items.append({"node": mi})
 	_add_box(box, big, item)
+
+
+func _add_toys(n: Node) -> void:
+	var gxf := (n as Node3D).global_transform if n is Node3D else Transform3D.IDENTITY
+	if n is MultiMeshInstance3D:
+		var mm := (n as MultiMeshInstance3D).multimesh
+		if mm == null or mm.mesh == null:
+			return
+		for i in mm.instance_count:
+			var xf := mm.get_instance_transform(i)
+			var box := gxf * (xf * mm.mesh.get_aabb())
+			var item := _items.size()
+			_items.append({"mm": mm, "i": i, "xf": xf})
+			_add_box(box.grow(0.05), box.size.y > 0.9 or maxf(box.size.x, box.size.z) > BIG_SIZE, item)
+	elif n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		_add_node(n, false)
+	for c in n.get_children():
+		_add_toys(c)
 
 
 ## The start gantry is an arch: its two posts and the beam, not one box
