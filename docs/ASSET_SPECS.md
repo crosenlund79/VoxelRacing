@@ -2,7 +2,7 @@
 
 Generated from `src/assets/asset_catalog.gd` (the authoritative contract). Override rules: `assets/README.md`.
 
-Lookup order for graphics: `custom/` override > your drawing added as `assets/graphics/<name>.png` (plain name) > Claude's `template_` fallback; Settings > ORIGINAL TEMPLATE ARTWORK shows the templates only (after a restart). The artist's guide with pictures: `docs/ARTWORK_MASTER_LIST.md`.
+Lookup order for graphics: `custom/` override > your drawing added as `assets/graphics/<name>.png` (plain name) > Claude's `template_` fallback; the Artwork Mode (VoxelRacing: `artwork_mode = "original"` in `user://settings.cfg` [video], no longer in Settings) shows the templates only (after a restart). The artist's guide with pictures: `docs/ARTWORK_MASTER_LIST.md`.
 
 Put your file at the **override path** inside `custom/` (project folder while developing; next to the executable in an exported Windows/Linux game). Restart the game to see it. A missing or invalid file falls back to the packaged `template_` asset. Never edit files in `custom/` from tools; they are yours.
 

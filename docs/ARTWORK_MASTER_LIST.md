@@ -19,8 +19,9 @@ The game looks for each picture in this order (graphics):
 
 `template_` files are never your files and are only used where you have not drawn
 something. Files without the prefix (in `custom/` or `assets/`) are yours.
-**Settings > ORIGINAL TEMPLATE ARTWORK** (the Artwork Mode, applied at the next
-start) shows only the templates, to compare; switch it off to see your drawings
+The Artwork Mode (HyperCars' Settings > ORIGINAL TEMPLATE ARTWORK; in VoxelRacing
+only `artwork_mode = "original"` in `user://settings.cfg` [video], applied at the
+next start) shows only the templates, to compare; remove it to see your drawings
 again. Music and voices are not affected.
 
 Pick one of two places; restart the game to see it.

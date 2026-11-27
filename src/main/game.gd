@@ -92,6 +92,8 @@ func _ready() -> void:
 	settings.load_settings()
 	settings.apply()
 	AssetResolver.templates_only = settings.original_artwork  # Artwork Mode (graphics; read at start)
+	GraphicsSettings.load_prefs(settings.path)  # quality preset, resolution, display mode
+	GraphicsSettings.apply_all()  # before the first frame and before any 3D view is built
 	ControlBindings.load_saved()  # the player's remapped controls (CONTROLS screen)
 	PlayerControls.load_device(settings.path)  # the chosen input device (prompts show only its bindings)
 	resolver = AssetResolver.new()
