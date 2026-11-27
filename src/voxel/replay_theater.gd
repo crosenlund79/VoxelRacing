@@ -7,12 +7,20 @@ extends Node3D
 ## for each moment: chase, missile-mounted, mine, trackside, sweeping
 ## overtake, side-on and an orbiting destruction camera, with a little slow
 ## motion where it pays off. Confirm / Fire: next moment; Back: skip all.
+## A clear view (P007): every camera position is checked against the voxel
+## scenery (replay_framing.gd). Fixed cameras pick a spot that sees the whole
+## moment, moving cameras slide in closer or rise over anything big in the
+## way, small clutter in front of the lens is tidied away for the shot, and
+## impacts are framed with the cars involved. The race HUD stays hidden.
 
 signal finished
 
 const W := WeaponRules.Weapon
 const LETTERBOX := 64
 const TITLE_HOLD := 3.2
+const Framing := preload("res://src/voxel/replay_framing.gd")
+## Seconds between sight-line checks of a running shot.
+const PROBE_EVERY := 0.12
 
 var stage: VoxelStage
 var main: Node2D
@@ -53,6 +61,13 @@ var _engine: AudioStreamPlayer
 var _focus := Vector2.ZERO
 var _saved_env := {}
 var _input_grace := 0.0
+# a clear view (P007)
+var _view: Framing
+var _dodge := Vector3.ZERO
+var _dodge_want := Vector3.ZERO
+var _probe_left := 0.0
+var _clear_for := 0.0
+var _overlays: Array = []
 # overlay
 var _ui: CanvasLayer
 var _title: Label
@@ -75,6 +90,8 @@ func setup(p_stage: VoxelStage, p_recorder: ReplayRecorder) -> void:
 	name = "ReplayTheater"
 	_rng.seed = 5150
 	visible = false
+	_view = Framing.new()
+	_view.setup(stage)
 	fx = VoxelFx.new()
 	fx.name = "ReplayFx"
 	add_child(fx)
@@ -146,10 +163,10 @@ func _begin() -> void:
 	_input_grace = 0.35
 	cam.make_current()
 	_env_on(true)
+	_view.build()
+	_overlays_on(false)
 	if main.get("race_audio") != null and main.race_audio != null:
 		main.race_audio.fast = true  # the live race goes quiet behind the replay
-	if main.get("hud") != null and main.hud != null:
-		main.hud.visible = false
 	_burns.visible = true
 	# P004: the replay arrives with a little ceremony - bars slide in, a
 	# flash, a whoosh and the jingle
@@ -177,6 +194,7 @@ func _next_clip() -> void:
 	_prev_tau = _tau
 	_event_cursor = 0
 	fx.clear()
+	_view.restore_all()
 	for b in _burns.get_children():
 		b.queue_free()
 	for can in _cans:
@@ -218,12 +236,12 @@ func stop() -> void:
 		(can.node as Node3D).queue_free()
 	_cans.clear()
 	_env_on(false)
+	_view.restore_all()
+	_overlays_on(true)
 	if stage.camera != null:
 		stage.camera.make_current()
 	if main.get("race_audio") != null and main.race_audio != null:
 		main.race_audio.fast = int(main.get("sim_speed")) > 1 if main.get("sim_speed") != null else false
-	if main.get("hud") != null and main.hud != null:
-		main.hud.visible = true
 	finished.emit()
 
 
@@ -581,6 +599,7 @@ func _plan(c: Dictionary) -> void:
 	var victim := int(e.get("car", -1))
 	var by := int(e.get("by", -1))
 	var pos: Vector2 = e.pos
+	var rival := _others([by], victim)  # the other car in the moment, framed with the victim
 	match String(e.kind):
 		"destroyed", "hit":
 			var type := int(e.get("type", -1))
@@ -590,45 +609,46 @@ func _plan(c: Dictionary) -> void:
 				var mine_from := maxf(cs, tk - 2.6)
 				_add_shot("chase", cs, mine_from, {"car": victim})
 				_add_shot("mine", mine_from, tk + 1.0, {"car": victim, "pos": pos})
-				_add_shot("destruction", tk + 1.0, ce, {"car": victim, "pos": pos})
+				_add_shot("destruction", tk + 1.0, ce, {"car": victim, "pos": pos, "others": rival})
 				_slow.append([tk - 0.15, tk + 0.9, 0.3])
 			elif rid >= 0 and launch >= cs and by >= 0 and by != victim:
 				var lt := launch + 0.05
 				_add_shot("chase", cs, lt, {"car": by})
 				_add_shot("missile", lt, tk + 0.25, {"rid": rid, "car": victim})
-				_add_shot("destruction", tk + 0.25, ce, {"car": victim, "pos": pos})
+				_add_shot("destruction", tk + 0.25, ce, {"car": victim, "pos": pos, "others": rival})
 				_slow.append([lt, tk + 1.3, 0.26])  # the flight and the hit, slowly
 			else:
 				var watcher := by if by >= 0 and by != victim else victim
 				_add_shot("chase", cs, tk - 0.7, {"car": watcher})
-				_add_shot("trackside", tk - 0.7, tk + 1.4, {"car": victim, "pos": pos})
-				_add_shot("destruction", tk + 1.4, ce, {"car": victim, "pos": pos})
+				_add_shot("trackside", tk - 0.7, tk + 1.4, {"car": victim, "pos": pos, "others": rival, "key": tk})
+				_add_shot("destruction", tk + 1.4, ce, {"car": victim, "pos": pos, "others": rival})
 				_slow.append([tk - 0.2, tk + 1.0, 0.32])
 		"wreck":
 			_add_shot("chase", cs, tk - 0.8, {"car": victim})
-			_add_shot("trackside", tk - 0.8, tk + 1.3, {"car": victim, "pos": pos})
+			_add_shot("trackside", tk - 0.8, tk + 1.3, {"car": victim, "pos": pos, "key": tk})
 			_add_shot("destruction", tk + 1.3, ce, {"car": victim, "pos": pos})
 			_slow.append([tk - 0.2, tk + 1.0, 0.32])
 		"pileup":
 			_add_shot("chase", cs, tk - 1.4, {"car": victim})
-			_add_shot("trackside", tk - 1.4, tk + 1.6, {"car": victim, "pos": pos})
-			_add_shot("destruction", tk + 1.6, ce, {"car": victim, "pos": pos})
+			var pile := _others(e.get("cars", []) as Array, victim)
+			_add_shot("trackside", tk - 1.4, tk + 1.6, {"car": victim, "pos": pos, "others": pile, "key": tk})
+			_add_shot("destruction", tk + 1.6, ce, {"car": victim, "pos": pos, "others": pile})
 			_slow.append([tk - 0.4, tk + 0.8, 0.4])
 		"overtake":
 			if bool(e.get("final", false)):
 				_add_shot("chase", cs, tk - 1.1, {"car": by})
-				_add_shot("trackside", tk - 1.1, ce, {"car": by, "pos": pos, "low": true, "ahead": 1.0})
+				_add_shot("trackside", tk - 1.1, ce, {"car": by, "pos": pos, "low": true, "ahead": 1.0, "others": _others([victim], by), "key": tk})
 				_slow.append([tk - 0.3, tk + 0.5, 0.45])
 			elif bool(e.get("corner", false)):
 				_add_shot("chase", cs, tk - 1.0, {"car": victim})
 				_add_shot("sweep", tk - 1.0, ce, {"car": by, "other": victim})
 			else:
 				_add_shot("chase", cs, tk - 0.6, {"car": victim})
-				_add_shot("trackside", tk - 0.6, ce, {"car": by, "pos": pos})
+				_add_shot("trackside", tk - 0.6, ce, {"car": by, "pos": pos, "others": _others([victim], by), "key": tk})
 		"finish":
 			var line: Vector2 = main.track.checkpoint_transform(0).origin if main.get("track") != null else pos
 			_add_shot("chase", cs, tk - 1.3, {"car": victim})
-			_add_shot("trackside", tk - 1.3, ce, {"car": victim, "pos": line, "low": true, "fixed_look": true})
+			_add_shot("trackside", tk - 1.3, ce, {"car": victim, "pos": line, "low": true, "fixed_look": true, "key": tk})
 			_slow.append([tk - 0.45, tk + 0.35, 0.22])
 		"taunt":
 			_add_shot("chase", cs, tk - 0.5, {"car": victim})
@@ -638,11 +658,21 @@ func _plan(c: Dictionary) -> void:
 		"air":
 			var dur := float(e.get("dur", 0.8))
 			_add_shot("chase", cs, tk - dur - 0.4, {"car": victim})
-			_add_shot("trackside", tk - dur - 0.4, ce, {"car": victim, "pos": pos, "low": true})
+			_add_shot("trackside", tk - dur - 0.4, ce, {"car": victim, "pos": pos, "low": true, "key": tk - dur * 0.5})
 			_slow.append([tk - dur, tk - 0.1, 0.45])
 		_:
 			_add_shot("chase", cs, tk - 0.5, {"car": maxi(victim, 0)})
-			_add_shot("trackside", tk - 0.5, ce, {"car": maxi(victim, 0), "pos": pos})
+			_add_shot("trackside", tk - 0.5, ce, {"car": maxi(victim, 0), "pos": pos, "others": _others([by], maxi(victim, 0)), "key": tk})
+
+
+## Valid car ids from `ids`, without `except`.
+func _others(ids: Array, except: int) -> Array:
+	var out: Array = []
+	for v in ids:
+		var i := int(v)
+		if i >= 0 and i < _cars.size() and i != except and not out.has(i):
+			out.append(i)
+	return out
 
 
 func _add_shot(type: String, from: float, to: float, params: Dictionary) -> void:
@@ -707,6 +737,11 @@ func _direct(c: Dictionary, delta: float) -> void:
 		_cut = true
 		_shot_clock = 0.0
 		_cam_label.text = _cam_name(String(_shots[_shot][0]))
+	if _cut:
+		_view.restore_all()  # the last shot's tidying comes back
+		_probe_left = 0.0
+		_clear_for = 0.0
+		_dodge_want = Vector3.ZERO
 	_shot_clock += delta
 	var shot: Array = _shots[_shot]
 	var type := String(shot[0])
@@ -733,34 +768,31 @@ func _direct(c: Dictionary, delta: float) -> void:
 				want_pos = mp - md * 1.5 + Vector3(0, 0.42, 0)
 				want_look = mp + md * 8.0 - Vector3(0, 0.25, 0)
 				smooth = 30.0
+				# P007: close to its target the lens peels off to one side and
+				# watches the hit (instead of flying on into the car's bodywork)
+				if car >= 0 and car < _cars.size() and not prm.has("watch"):
+					var vp := _car_pos(car) + Vector3(0, 0.5 * _car_scale(car), 0)
+					if want_pos.distance_to(vp) < _car_r(car) + 3.2:
+						var side := Vector3(-md.z, 0.0, md.x)
+						prm["watch"] = mp.lerp(vp, 0.5) - md * 1.2 + side * (_car_r(car) + 2.6) + Vector3(0, 1.5, 0)
 			else:
 				want_look = _car_pos(car) + Vector3(0, 0.4, 0)
+			if prm.has("watch"):
+				want_pos = prm.watch
+				want_look = _car_pos(car) + Vector3(0, 0.45 * _car_scale(car), 0)
+				smooth = 10.0
 			fov = 70.0
 		"mine":
 			var mp := _ground3(prm.pos)
 			if _cut:
-				var approach: Vector3 = mp - _car_pos(car)
-				approach.y = 0.0
-				approach = approach.normalized() if approach.length() > 0.1 else Vector3.RIGHT
-				var side := Vector3(-approach.z, 0, approach.x)
-				prm["cam"] = mp + approach * 2.6 + side * 0.7 + Vector3(0, 0.45, 0)
+				prm["cam"] = _mine_spot(prm, shot)
 			want_pos = prm.cam
 			want_look = mp.lerp(_car_pos(car), 0.55) + Vector3(0, 0.35, 0)
 			fov = 62.0
 			smooth = 9.0
 		"trackside":
 			if _cut:
-				var anchor: Vector2 = prm.pos
-				var tdir := _track_dir(anchor)
-				var side := Vector2(-tdir.y, tdir.x)
-				var cp := _car_pos(car)
-				if side.dot(Vector2(cp.x, cp.z) / Vox.PX - anchor) > 0.0:
-					side = -side  # stand on the far side from the car: see it come past
-				var ahead := float(prm.get("ahead", 0.5))
-				var low := bool(prm.get("low", false))
-				var spot := anchor + side * (150.0 if low else 210.0) + tdir * 120.0 * ahead
-				prm["cam"] = _ground3(spot) + Vector3(0, 0.9 if low else 2.2, 0)
-				prm["anchor3"] = _ground3(anchor) + Vector3(0, 0.4, 0)
+				_trackside_spot(prm, shot)
 			want_pos = prm.cam
 			if bool(prm.get("fixed_look", false)):
 				want_look = (prm.anchor3 as Vector3).lerp(_car_pos(car) + Vector3(0, 0.4, 0), 0.35)
@@ -793,19 +825,23 @@ func _direct(c: Dictionary, delta: float) -> void:
 		"destruction":
 			var centre: Vector3
 			if _cut:
-				var cp := _car_pos(car)
-				prm["centre"] = cp + Vector3(0, 0.5, 0)
-				var f := _car_fwd(car)
-				prm["a0"] = atan2(f.z, f.x) + PI * 0.55
+				_destruction_spot(prm, shot)
 			centre = prm.centre
 			var a := float(prm.a0) + _shot_clock * 0.32
-			want_pos = centre + Vector3(cos(a), 0, sin(a)) * 7.2 + Vector3(0, 3.0, 0)
+			want_pos = centre + Vector3(cos(a), 0, sin(a)) * float(prm.rad) + Vector3(0, float(prm.h), 0)
 			want_look = centre
 			fov = 50.0
 			smooth = 4.0
 	# keep the camera above the ground
 	var g := stage.vtrack.height_px_at(Vector2(want_pos.x, want_pos.z) / Vox.PX) * Vox.PX if stage.vtrack != null else 0.0
 	want_pos.y = maxf(want_pos.y, g + 0.35)
+	# P007: nothing between the lens and the moment, the cars involved in frame
+	var subj := _subjects(type, prm)
+	var movers := _movers(car, -1.0)
+	want_pos = _clear_view(want_pos, want_look, fov, subj, movers, delta, type != "missile" or prm.has("watch"))
+	var fit := _frame(type, prm, want_pos, want_look, fov)
+	want_look = fit[0]
+	fov = fit[1]
 	if _cut:
 		_cam_pos = want_pos
 		_cam_look = want_look
@@ -821,6 +857,426 @@ func _direct(c: Dictionary, delta: float) -> void:
 		cam.look_at(_cam_look, Vector3.UP)
 	cam.fov = _cam_fov
 	_focus = Vector2(_cam_look.x, _cam_look.z) / Vox.PX
+
+
+# ------------------------------------------------------------ a clear view (P007)
+
+## Where a car was at replay time t (from the recorded samples), and its
+## heading; [] while it was not on the track.
+func _car_at(i: int, t: float) -> Array:
+	if i < 0 or i >= _cars.size() or _clip < 0:
+		return []
+	var samples: Array = clips[_clip].samples
+	var ia := _index(samples, t)
+	var ib := mini(ia + 1, samples.size() - 1)
+	var ta := float(samples[ia][0])
+	var tb := float(samples[ib][0])
+	var u := clampf((t - ta) / (tb - ta), 0.0, 1.0) if tb > ta else 0.0
+	var ca: PackedFloat32Array = samples[ia][1]
+	var cb: PackedFloat32Array = samples[ib][1]
+	var o := i * ReplayRecorder.K
+	if (int(ca[o + 9]) & ReplayRecorder.F_VISIBLE) == 0:
+		return []
+	var pa := Vector3(ca[o], ca[o + 1], ca[o + 2])
+	var pb := Vector3(cb[o], cb[o + 1], cb[o + 2])
+	var yaw := lerp_angle(ca[o + 3], cb[o + 3], u)
+	return [pa if pa.distance_to(pb) > 4.0 else pa.lerp(pb, u), Vector3(cos(-yaw), 0.0, sin(-yaw))]
+
+
+## [box, id] round every car but the shot's own (live, or at replay time
+## t >= 0): they block the view like a wall, so the camera moves round them.
+## (The other car of the moment too - but never the view of itself.)
+func _movers(skip: int, t: float) -> Array:
+	var out: Array = []
+	for i in _cars.size():
+		if i == skip:
+			continue
+		var p: Vector3
+		if t < 0.0:
+			if not (_cars[i].root as Node3D).visible:
+				continue
+			p = _car_pos(i)
+		else:
+			var at := _car_at(i, t)
+			if at.is_empty():
+				continue
+			p = at[0]
+		var s := _car_scale(i)
+		var body: MeshInstance3D = _cars[i].body
+		var h := (body.mesh.get_aabb().size.y if body.mesh != null else 1.0) * s
+		var r := _car_r(i) * 0.7
+		out.append([AABB(p - Vector3(r, 0.0, r), Vector3(r * 2.0, h, r * 2.0)), i])
+	return out
+
+
+func _car_scale(i: int) -> float:
+	return maxf((_cars[i].root as Node3D).scale.x, 0.2) if i >= 0 and i < _cars.size() else 1.0
+
+
+## Rough radius of a car (half its length).
+func _car_r(i: int) -> float:
+	if i < 0 or i >= _cars.size():
+		return 1.0
+	var body: MeshInstance3D = _cars[i].body
+	var r := body.mesh.get_aabb().size.x * 0.5 if body.mesh != null else 1.2
+	return clampf(r, 0.6, 2.5) * _car_scale(i)
+
+
+## Sight-line targets on a car: [point, weight] (its middle, roof, nose, tail).
+func _car_pts(i: int, p: Vector3, fwd: Vector3, w: float, out: Array) -> void:
+	if i < 0 or i >= _cars.size():
+		return
+	var s := _car_scale(i)
+	var half := _car_r(i) * 0.8
+	out.append([p + Vector3(0, 0.45 * s, 0), w, i])
+	out.append([p + Vector3(0, 0.85 * s, 0), w * 0.5, i])
+	out.append([p + fwd * half + Vector3(0, 0.4 * s, 0), w * 0.2, i])
+	out.append([p - fwd * half + Vector3(0, 0.4 * s, 0), w * 0.2, i])
+
+
+func _live_car_pts(i: int, w: float, out: Array) -> void:
+	if i >= 0 and i < _cars.size() and (_cars[i].root as Node3D).visible:
+		_car_pts(i, _car_pos(i), _car_fwd(i), w, out)
+
+
+## What the running shot must see: [point, weight], the main subject first.
+func _subjects(type: String, prm: Dictionary) -> Array:
+	var out: Array = []
+	var car := int(prm.get("car", -1))
+	match type:
+		"missile":
+			var m := _missile_at(int(prm.get("rid", -1)))
+			if not m.is_empty():
+				out.append([m[0], 1.0])
+			_live_car_pts(car, 0.5, out)
+		"mine":
+			out.append([_ground3(prm.pos) + Vector3(0, 0.15, 0), 1.0])
+			_live_car_pts(car, 1.0, out)
+		"destruction":
+			out.append([prm.centre, 1.0])
+			_live_car_pts(car, 0.7, out)
+			for o in prm.get("others", []):
+				if _car_pos(int(o)).distance_to(prm.centre) < 10.0:
+					_live_car_pts(int(o), 0.35, out)
+		"sweep":
+			_live_car_pts(car, 1.0, out)
+			_live_car_pts(int(prm.get("other", car)), 0.8, out)
+		_:
+			_live_car_pts(car, 1.0, out)
+			for o in prm.get("others", []):
+				if _car_pos(int(o)).distance_to(_car_pos(car)) < 14.0:
+					_live_car_pts(int(o), 0.4, out)
+	return out
+
+
+## The camera position with any dodge round big obstacles (smoothed), and
+## the small clutter in the way tidied away. Re-checked every PROBE_EVERY.
+func _clear_view(base: Vector3, look: Vector3, fov: float, subj: Array, movers: Array, delta: float, may_move: bool) -> Vector3:
+	_probe_left -= delta
+	if (_probe_left <= 0.0 or _cut) and not subj.is_empty():
+		_probe_left = PROBE_EVERY
+		if may_move:
+			var here: Dictionary = _view.probe(base, subj, look, fov, false, movers)
+			if float(here.cost) < 0.5:
+				_clear_for += PROBE_EVERY
+				if _clear_for > 0.45 or _cut:
+					_dodge_want = Vector3.ZERO  # clear again: ease back to the shot's own spot
+			else:
+				_clear_for = 0.0
+				var keep := _dodge_want != Vector3.ZERO \
+					and float(_view.probe(base + _dodge_want, subj, look, fov, false, movers).cost) < 0.5
+				if not keep:
+					_dodge_want = _best_dodge(base, look, fov, subj, movers, float(here.cost))
+		var eye := base + (_dodge_want if _cut else _dodge)
+		_view.hide_items(_view.probe(eye, subj, look, fov, true).small)
+	if _cut:
+		_dodge = _dodge_want
+	else:
+		_dodge = _dodge.lerp(_dodge_want, 1.0 - exp(-delta * 3.0))
+	return base + _dodge
+
+
+## A nearby camera position that sees past something big: in closer, a
+## little higher, or both (as low and close to the shot's own as works).
+func _best_dodge(base: Vector3, look: Vector3, fov: float, subj: Array, movers: Array, base_cost: float) -> Vector3:
+	var c: Vector3 = subj[0][0]
+	var back := base - c
+	var best := Vector3.ZERO
+	var best_cost := base_cost
+	for o in [[back * 0.62, 0.15], [back + Vector3(0, 1.2, 0), 0.2], [back * 0.62 + Vector3(0, 0.9, 0), 0.25],
+			[back * 0.42 + Vector3(0, 0.6, 0), 0.35], [back + Vector3(0, 2.6, 0), 0.4], [back * 0.8 + Vector3(0, 4.2, 0), 0.6]]:
+		var p: Vector3 = c + (o[0] as Vector3)
+		if p.distance_to(c) < 1.8:
+			continue
+		p.y = maxf(p.y, _ground_y(p) + 0.35)
+		var cost := float(_view.probe(p, subj, look, fov, false, movers).cost) + float(o[1])
+		if cost < best_cost:
+			best_cost = cost
+			best = p - base
+	return best
+
+
+func _ground_y(p: Vector3) -> float:
+	return stage.vtrack.height_px_at(Vector2(p.x, p.z) / Vox.PX) * Vox.PX if stage.vtrack != null else 0.0
+
+
+## The subjects of a fixed camera at a few moments of its shot, from the
+## recording: [[[point, weight], ...], moment weight].
+func _moments(car: int, others: Array, from: float, to: float, key: float, extra: Array = []) -> Array:
+	var times: Array = []
+	if key > from and key < to:
+		times = [[from + (key - from) * 0.25, 0.4], [key - 0.3, 0.8], [key, 1.0], [key + 0.35, 0.8], [to - 0.1, 0.4]]
+	else:
+		var d := to - from
+		times = [[from + d * 0.15, 0.5], [from + d * 0.4, 1.0], [from + d * 0.65, 1.0], [from + d * 0.9, 0.6]]
+	var out: Array = []
+	for tw in times:
+		var t := clampf(float(tw[0]), from, to)
+		var pts: Array = extra.duplicate()
+		var at := _car_at(car, t)
+		if not at.is_empty():
+			_car_pts(car, at[0], at[1], 1.0, pts)
+			for o in others:
+				var ot := _car_at(int(o), t)
+				if not ot.is_empty() and (ot[0] as Vector3).distance_to(at[0]) < 14.0:
+					_car_pts(int(o), ot[0], ot[1], 0.4, pts)
+		if not pts.is_empty():
+			out.append([pts, float(tw[1]), t])
+	return out
+
+
+## The best of some fixed camera positions ([eye, penalty], the shot's own
+## first) for the whole of a shot; its clutter is tidied away at once.
+func _pick(cands: Array, moments: Array, fov: float, car: int) -> Vector3:
+	cands.sort_custom(func(a: Array, b: Array) -> bool: return float(a[1]) < float(b[1]))
+	var movers: Array = []
+	for m in moments:
+		movers.append(_movers(car, float(m[2])))
+	var best: Vector3 = cands[0][0]
+	var best_total := INF
+	var best_small: Array = []
+	for cd in cands:
+		if float(cd[1]) >= best_total:
+			break  # (sorted: nothing further can do better)
+		var eye: Vector3 = cd[0]
+		eye.y = maxf(eye.y, _ground_y(eye) + 0.35)
+		var total := float(cd[1])
+		var small: Array = []
+		for k in moments.size():
+			var m: Array = moments[k]
+			var pts: Array = m[0]
+			var r: Dictionary = _view.probe(eye, pts, pts[0][0], fov, true, movers[k])
+			# (all that clutter to tidy away: a spot with a natural clear view is better)
+			total += (float(r.cost) + 0.02 * (r.small as Array).size()) * float(m[1])
+			small.append_array(r.small)
+			if total >= best_total:
+				break
+		if total < best_total:
+			best_total = total
+			best = eye
+			best_small = small
+	_view.hide_items(best_small)
+	return best
+
+
+## Trackside: a spot beside the road that sees the cars come past and the
+## moment itself; low where it can be.
+func _trackside_spot(prm: Dictionary, shot: Array) -> void:
+	var anchor: Vector2 = prm.pos
+	var tdir := _track_dir(anchor)
+	var side := Vector2(-tdir.y, tdir.x)
+	var car := int(prm.get("car", -1))
+	var cp := _car_pos(car)
+	if side.dot(Vector2(cp.x, cp.z) / Vox.PX - anchor) > 0.0:
+		side = -side  # stand on the far side from the car: see it come past
+	var ahead := float(prm.get("ahead", 0.5))
+	var low := bool(prm.get("low", false))
+	var dist := 150.0 if low else 210.0
+	var h := 0.9 if low else 2.2
+	var cands: Array = []
+	# [distance scale, extra height, extra ahead, penalty]
+	for v in [[1.0, 0.0, 0.0, 0.0], [0.72, 0.0, 0.0, 0.12], [1.0, 0.6, 0.0, 0.15], [1.0, 0.0, 0.6, 0.15],
+			[1.0, 0.0, -0.6, 0.2], [0.72, 0.6, 0.0, 0.25], [0.55, 1.0, 0.0, 0.35], [1.0, 1.5, 0.0, 0.4],
+			[1.35, 0.7, 0.0, 0.3], [0.8, 1.2, 0.7, 0.45], [1.25, 2.6, 0.0, 0.6], [0.8, 3.4, 0.4, 0.8]]:
+		for sg in [1.0, -1.0]:
+			var spot: Vector2 = anchor + side * sg * dist * float(v[0]) + tdir * 120.0 * (ahead + float(v[2]))
+			cands.append([_ground3(spot) + Vector3(0, h + float(v[1]), 0), float(v[3]) + (0.0 if sg > 0.0 else 0.3)])
+	var key := float(prm.get("key", -1.0))
+	prm["cam"] = _pick(cands, _moments(car, prm.get("others", []), float(shot[1]), float(shot[2]), key), 42.0, car)
+	prm["anchor3"] = _ground3(anchor) + Vector3(0, 0.4, 0)
+
+
+## Destruction: where the orbit starts, how far out and how high, so the
+## wreck stays in view for the whole orbit.
+func _destruction_spot(prm: Dictionary, shot: Array) -> void:
+	var car := int(prm.get("car", -1))
+	var centre := _car_pos(car) + Vector3(0, 0.5, 0)
+	prm["centre"] = centre
+	var f := _car_fwd(car)
+	var a0 := atan2(f.z, f.x) + PI * 0.55
+	var from := float(shot[1])
+	var to := float(shot[2])
+	var spin := clampf(to - from, 1.0, 5.0) * 1.3 * 0.32  # (how far it turns in the shot)
+	var best := [a0, 7.2, 3.0]
+	var best_total := INF
+	var best_small: Array = []
+	var cands: Array = []
+	for da in [[0.0, 0.0], [0.55, 0.1], [-0.55, 0.1], [1.1, 0.2], [-1.1, 0.2], [1.8, 0.3], [-1.8, 0.3], [PI, 0.35]]:
+		for rh in [[7.2, 3.0, 0.0], [5.6, 2.6, 0.12], [7.2, 4.6, 0.45], [5.0, 5.2, 0.7]]:
+			cands.append([a0 + float(da[0]), float(rh[0]), float(rh[1]), float(da[1]) + float(rh[2])])
+	cands.sort_custom(func(a: Array, b: Array) -> bool: return float(a[3]) < float(b[3]))
+	var movers: Array = []
+	for k in 3:
+		movers.append(_movers(car, lerpf(from, to, k * 0.5)))
+	for cd in cands:
+		if float(cd[3]) >= best_total:
+			break
+		var total := float(cd[3])
+		var small: Array = []
+		for k in 3:
+			var a := float(cd[0]) + spin * k * 0.5
+			var eye := centre + Vector3(cos(a), 0, sin(a)) * float(cd[1]) + Vector3(0, float(cd[2]), 0)
+			eye.y = maxf(eye.y, _ground_y(eye) + 0.35)
+			var pts: Array = [[centre, 1.0]]
+			var at := _car_at(car, lerpf(from, to, k * 0.5))
+			if not at.is_empty():
+				_car_pts(car, at[0], at[1], 0.6, pts)
+			var r: Dictionary = _view.probe(eye, pts, centre, 50.0, false, movers[k])
+			total += float(r.cost) * (1.0 if k == 0 else 0.7)
+			small.append_array(r.small)
+			if total >= best_total:
+				break
+		if total < best_total:
+			best_total = total
+			best = [cd[0], cd[1], cd[2]]
+			best_small = small
+	prm["a0"] = best[0]
+	prm["rad"] = best[1]
+	prm["h"] = best[2]
+	_view.hide_items(best_small)
+
+
+## Mine: low beside the mine, looking back at the car that will find it.
+func _mine_spot(prm: Dictionary, shot: Array) -> Vector3:
+	var car := int(prm.get("car", -1))
+	var mp := _ground3(prm.pos)
+	var approach: Vector3 = mp - _car_pos(car)
+	approach.y = 0.0
+	approach = approach.normalized() if approach.length() > 0.1 else Vector3.RIGHT
+	var cands: Array = []
+	for rot in [[0.0, 0.0], [0.45, 0.15], [-0.45, 0.15], [0.9, 0.3], [-0.9, 0.3]]:
+		var ap := approach.rotated(Vector3.UP, float(rot[0]))
+		var side := Vector3(-ap.z, 0, ap.x)
+		for sd in [[0.7, 0.0], [-0.7, 0.1]]:
+			for hh in [[2.6, 0.45, 0.0], [2.0, 0.8, 0.15], [2.6, 1.3, 0.3]]:
+				cands.append([mp + ap * float(hh[0]) + side * float(sd[0]) + Vector3(0, float(hh[1]), 0),
+					float(rot[1]) + float(sd[1]) + float(hh[2])])
+	var from := float(shot[1])
+	var to := float(shot[2])
+	var key := to - 1.0  # (the shot runs a second past the blast)
+	return _pick(cands, _moments(car, [], from, to, key, [[mp + Vector3(0, 0.15, 0), 1.0]]), 62.0, car)
+
+
+## Look and field of view that keep the moment in frame with a margin (inside
+## the letterbox): the main subject always, the other car where it fits.
+func _frame(type: String, prm: Dictionary, eye: Vector3, look: Vector3, fov: float) -> Array:
+	var car := int(prm.get("car", -1))
+	var prim: Array = []
+	var sec: Array = []
+	var max_fov := fov
+	var near := 14.0
+	match type:
+		"trackside":
+			max_fov = 60.0
+		"destruction":
+			prim.append([prm.centre, 1.3])
+			max_fov = 68.0
+			near = 9.0
+		"mine":
+			prim.append([_ground3(prm.pos) + Vector3(0, 0.15, 0), 0.5])
+			max_fov = 74.0
+		"sweep":
+			var o := int(prm.get("other", car))
+			if o != car and o >= 0 and (_cars[o].root as Node3D).visible:
+				prim.append([_car_pos(o) + Vector3(0, 0.4, 0), _car_r(o)])
+			max_fov = 68.0
+		_:
+			return [look, fov]
+	if car >= 0 and car < _cars.size() and (_cars[car].root as Node3D).visible:
+		prim.append([_car_pos(car) + Vector3(0, 0.4, 0), _car_r(car)])
+	if prim.is_empty():
+		return [look, fov]
+	var c0: Vector3 = prim[0][0]
+	var mid := Vector3.ZERO
+	var wsum := 0.0
+	for pr in prim:
+		mid += (pr[0] as Vector3)
+		wsum += 1.0
+	for o in prm.get("others", []):
+		var i := int(o)
+		if i < 0 or i >= _cars.size() or not (_cars[i].root as Node3D).visible:
+			continue
+		var op := _car_pos(i) + Vector3(0, 0.4, 0)
+		var w := 1.0 - smoothstep(near * 0.6, near, op.distance_to(c0))
+		if w <= 0.0:
+			continue
+		mid += op * 0.5 * w
+		wsum += 0.5 * w
+		if w > 0.5:
+			sec.append([op, _car_r(i)])
+	mid /= wsum
+	# lean the look towards the middle of everyone involved
+	if not sec.is_empty() or prim.size() > 1:
+		look = look.lerp(mid, 0.5)
+	var need := _need_fov(eye, look, prim + sec)
+	if need > max_fov and not sec.is_empty():
+		need = _need_fov(eye, look, prim)
+	if need > max_fov:
+		look = look.lerp(mid, 0.5)  # (too wide even so: centre on them)
+		need = _need_fov(eye, look, prim)
+	return [look, clampf(need, fov, max_fov)]
+
+
+## The vertical field of view (degrees) that shows every [point, radius]
+## inside the letterbox with a margin, looking from eye at look.
+func _need_fov(eye: Vector3, look: Vector3, pts: Array) -> float:
+	var f := look - eye
+	if f.length() < 0.01:
+		return 0.0
+	f = f.normalized()
+	var r := f.cross(Vector3.UP)
+	r = r.normalized() if r.length() > 0.01 else Vector3.RIGHT
+	var u := r.cross(f)
+	var vis := float(720 - 2 * LETTERBOX) / 720.0 * 0.86  # (the bars, and a margin)
+	var tv := 0.0
+	for pr in pts:
+		var v: Vector3 = (pr[0] as Vector3) - eye
+		var z := v.dot(f)
+		if z < 0.4:
+			return 180.0
+		var x := (absf(v.dot(r)) + float(pr[1])) / z
+		var y := (absf(v.dot(u)) + float(pr[1])) / z
+		tv = maxf(tv, maxf(y / vis, x / (16.0 / 9.0 * 0.86)))
+	return rad_to_deg(2.0 * atan(tv))
+
+
+## The race HUD and its overlays (kill feed, popups, stage hints) are hidden
+## while the highlights play; the replay's own titles stay.
+func _overlays_on(on: bool) -> void:
+	if on:
+		for n in _overlays:
+			if is_instance_valid(n):
+				(n as CanvasLayer).visible = true
+		_overlays.clear()
+		return
+	var list: Array = [main.get("hud"), main.get("kill_feed"), main.get("defeat_popup")]
+	var hint = stage.get("_hint")
+	if hint is Node and is_instance_valid(hint) and (hint as Node).get_parent() is CanvasLayer:
+		list.append((hint as Node).get_parent())
+	for n in list:
+		if n is CanvasLayer and is_instance_valid(n) and (n as CanvasLayer).visible:
+			(n as CanvasLayer).visible = false
+			_overlays.append(n)
 
 
 static func _cam_name(type: String) -> String:
