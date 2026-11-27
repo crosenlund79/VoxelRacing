@@ -84,9 +84,11 @@ func setup(p_stage: VoxelStage) -> void:
 	_gather_occupied()
 	var cl = main.track.get("centerline")
 	if cl == null or (cl as PackedVector2Array).size() < 8:
-		return  # (the Battle Royale arena: no circuit to dress)
+		_add_toybox()  # (the Battle Royale arena: no circuit, but a desk to dress)
+		return
 	_dress()
 	_spawn_crowd()
+	_add_toybox()
 	_spawn_critters()
 	if stage.recorder != null:
 		stage.recorder.moment.connect(_on_moment)
@@ -97,6 +99,16 @@ func setup(p_stage: VoxelStage) -> void:
 		_murmur.volume_db = -60.0
 		add_child(_murmur)
 		_murmur.play()
+
+
+## Tabletop Mayhem: the desk round the circuit or the arena gets its toys
+## (after the spectators, who keep their places by the road).
+func _add_toybox() -> void:
+	if theme_variant != 5:
+		return
+	var toys := VoxelToybox.new()
+	add_child(toys)
+	toys.setup(self)
 
 
 # ------------------------------------------------------------ placement

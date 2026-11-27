@@ -6,12 +6,29 @@ extends CanvasLayer
 ## The leader follows the real build progress (never ahead of it): it only
 ## crosses the line once the world is ready, then the screen hands over to
 ## the race. Fast loads cross fast; nothing waits on purpose.
+##
+## A proper little race: the cars keep to lanes (as many as the road holds
+## for their size, measured from the models), each has its own pace that
+## surges and fades, they follow at a distance when boxed in, pull out to
+## overtake only when the next lane is clear (a smooth lane change), and
+## never drive through each other. The pack spreads out and crosses the line
+## one by one; the hand-over to the race still follows the leader alone.
 
 signal finished
 
 const START_X := -10.5
 const FINISH_X := 10.5
-const LANES := [-2.5, -1.25, 0.0, 1.25, 2.5]
+## The road's half width (units; the strip's asphalt between the kerbs).
+const ROAD_HALF := 4.5
+## Clearances (units): bumper to bumper when following, side to side.
+const FOLLOW_GAP := 0.8
+const SIDE_GAP := 0.3
+## Each car's pace: how far behind the progress it likes to run (base, surge
+## amplitude, surge rate) and its top speed (units / s).
+## (The second row is quicker on average than the front row: they have to
+## find a way past.)
+const PACE := [[2.0, 4.0, 0.33, 14.0], [3.0, 4.0, 0.27, 15.5], [1.5, 4.0, 0.41, 13.0],
+	[0.3, 4.4, 0.23, 14.5], [1.0, 4.6, 0.37, 12.5]]
 const CARS := ["cars/body_player", "cars/body_ai_2", "cars/body_ai_4", "cars/body_ai_9", "cars/body_ai_6"]
 const TIPS := [
 	"{camera_view} cycles the camera: miniature, high, low and top-down.",
@@ -32,6 +49,17 @@ var _cars: Array[Node3D] = []
 var _wheels: Array = []
 var _offset_phase := PackedFloat32Array()
 var _x := PackedFloat32Array()
+var _z := PackedFloat32Array()
+var _v := PackedFloat32Array()
+var _yaw := PackedFloat32Array()
+var _lane := PackedInt32Array()
+var _stuck := PackedFloat32Array()
+## Car size (units, the largest of the five, as shown) and the lane centres.
+var _len := 4.2
+var _wid := 2.4
+var _lanes: Array[float] = []
+var _lead_prev := START_X
+var _lead_v := 0.0
 var _shown := 0.0
 var _done := false
 var _finishing := false
@@ -144,8 +172,10 @@ func begin(title: String, sub: String, source: Callable = Callable()) -> void:
 	_finishing = false
 	_time = 0.0
 	_fx.clear()
-	for k in _cars.size():
-		_x[k] = START_X - 0.2 - k * 0.15
+	_measure()
+	_grid()
+	_lead_prev = START_X
+	_lead_v = 0.0
 	_active = true
 	visible = true
 	_logo.animate = true
@@ -166,6 +196,8 @@ func _process(delta: float) -> void:
 	if not _active:
 		return
 	delta = minf(delta, 0.1)
+	if delta <= 0.0:
+		return
 	_time += delta
 	var real := 0.0
 	if progress_source.is_valid():
@@ -184,31 +216,158 @@ func _process(delta: float) -> void:
 			_finish_time = _time
 			_celebrate()
 		lead_x = FINISH_X + (_time - _finish_time) * 16.0
-	for k in _cars.size():
-		# personalities: each car surges and drops back on its own rhythm (overtakes)
-		var off := -1.6 - 1.4 * sin(_time * (1.1 + k * 0.37) + _offset_phase[k])
-		if k == 0:
-			off = -0.9 - 1.2 * sin(_time * 0.8 + 1.3)
-		var target := lead_x + off
-		if not _finishing:
-			target = minf(target, lead_x)
-		var nx := lerpf(_x[k], target, 1.0 - exp(-delta * 2.2))
-		var moved := nx - _x[k]
-		_x[k] = nx
-		var car := _cars[k]
-		car.position = Vector3(nx, absf(sin(_time * 14.0 + k)) * 0.03, LANES[k])
-		car.rotation.y = sin(_time * (2.0 + k * 0.5)) * 0.04
-		for w in (_wheels[k] as Array):
-			(w as Node3D).rotation.z -= moved / (VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX * Vox.PX)
+	_lead_v = lerpf(_lead_v, maxf(0.0, (lead_x - _lead_prev) / delta), 1.0 - exp(-delta * 6.0))
+	_lead_prev = lead_x
+	_drive(delta, lead_x)
 	_puff_clock += delta
 	if _puff_clock > 0.07:
 		_puff_clock = 0.0
 		for k in _cars.size():
-			var back := _cars[k].global_position + Vector3(-2.1, 0.25, _rng.randf_range(-0.3, 0.3))
+			if _v[k] < 0.4 and _rng.randf() < 0.7:
+				continue
+			var back := _cars[k].global_position + Vector3(-_len * 0.5 - 0.1, 0.25, _rng.randf_range(-0.3, 0.3))
 			_fx.puff(back, Vector3(-1.5, 0.6, 0), Color(0.9, 0.86, 0.8), _rng.randf_range(0.18, 0.3), 0.5, 0.5)
 	if _finishing and _time - _finish_time > 0.9:
 		_active = false
 		finished.emit()
+
+
+# ------------------------------------------------------------ the race
+
+## The cars' size as shown (their models' bounds times the roots' scale, so a
+## change of car scale keeps the race sound) and the lanes the road holds.
+func _measure() -> void:
+	var l := 0.0
+	var w := 0.0
+	for car in _cars:
+		var body := car.get_child(0) as MeshInstance3D
+		if body == null or body.mesh == null:
+			continue
+		var a := body.mesh.get_aabb()
+		l = maxf(l, a.size.x * absf(car.scale.x))
+		w = maxf(w, a.size.z * absf(car.scale.z))
+	if l > 0.0:
+		_len = l
+		_wid = w
+	var usable := ROAD_HALF * 2.0 - 0.3
+	var n := clampi(int(floor(usable / (_wid + SIDE_GAP + 0.05))), 2, 3)  # (the strip paints three)
+	_lanes.clear()
+	for i in n:
+		_lanes.append(-usable * 0.5 + usable / n * (i + 0.5))
+
+
+## The grid: rows across the lanes behind the start line, pole in the middle.
+func _grid() -> void:
+	var n := _lanes.size()
+	var order: Array = [[0, 1], [1, 0, 2]][n - 2]
+	for k in _cars.size():
+		var row := k / n
+		_lane[k] = order[k % n]
+		_x[k] = START_X - 0.2 - row * (_len + FOLLOW_GAP + 0.2) - (k % n) * 0.35
+		_z[k] = _lanes[_lane[k]]
+		_v[k] = 0.0
+		_yaw[k] = 0.0
+		_stuck[k] = 0.0
+		_cars[k].position = Vector3(_x[k], 0.0, _z[k])
+		_cars[k].rotation = Vector3.ZERO
+
+
+## Whether car k's footprint at (x, z) would touch another car's.
+func _hits(k: int, x: float, z: float) -> bool:
+	for m in _cars.size():
+		if m != k and absf(_x[m] - x) < _len + 0.2 and absf(_z[m] - z) < _wid + 0.15:
+			return true
+	return false
+
+
+## Room in lane c for car k to pull into: nobody there (or heading there)
+## alongside, just ahead, or closing from behind.
+func _lane_free(k: int, c: int) -> bool:
+	var zc: float = _lanes[c]
+	for m in _cars.size():
+		if m == k or (absf(_z[m] - zc) >= _wid + SIDE_GAP and _lane[m] != c):
+			continue
+		var dx := _x[m] - _x[k]
+		if dx > 0.0 and dx < _len + FOLLOW_GAP + 0.9:
+			return false
+		if dx <= 0.0 and -dx < _len + FOLLOW_GAP + 0.5 + maxf(0.0, _v[m] - _v[k]) * 0.8:
+			return false
+	return true
+
+
+## One step of the little race. Each car wants to run a little behind the
+## real progress (its own surging pace, never ahead of the leader's mark),
+## follows the car in front when boxed in, and overtakes through a free lane.
+func _drive(delta: float, lead_x: float) -> void:
+	var order: Array = range(_cars.size())
+	order.sort_custom(func(a: int, b: int) -> bool: return _x[a] > _x[b])  # front to back
+	for k in order:
+		var pace: Array = PACE[k % PACE.size()]
+		var off := -(float(pace[0]) + float(pace[1]) * (0.5 + 0.5 * sin(_time * float(pace[2]) + _offset_phase[k])))
+		var want := lead_x + off
+		var top := maxf(float(pace[3]), _lead_v * 1.05)
+		var v_want := clampf(_lead_v + (want - _x[k]) * 1.6, 0.0, top)
+		# the car ahead in this lane (or in the way)
+		var ahead := -1
+		for m in _cars.size():
+			if m != k and _x[m] > _x[k] and absf(_z[m] - _z[k]) < _wid + SIDE_GAP:
+				if ahead < 0 or _x[m] < _x[ahead]:
+					ahead = m
+		var changing := absf(_z[k] - float(_lanes[_lane[k]])) > 0.05
+		if ahead >= 0:
+			var gap := _x[ahead] - _x[k] - _len
+			if not changing and gap < 3.5 + _v[k] * 0.4 and (want > _x[ahead] - _len * 0.8 or v_want > _v[ahead] + 0.2):
+				# boxed in and quicker: pull out if a neighbouring lane is clear
+				var cands: Array = [_lane[k] - 1, _lane[k] + 1]
+				if _rng.randf() < 0.5:
+					cands.reverse()
+				for c in cands:
+					if c >= 0 and c < _lanes.size() and _lane_free(k, c):
+						_lane[k] = c
+						changing = true
+						break
+			v_want = minf(v_want, maxf(0.0, _v[ahead] + (gap - FOLLOW_GAP) * 2.5))
+		var acc := 9.0 if v_want > _v[k] else 16.0
+		_v[k] = move_toward(_v[k], v_want, acc * delta)
+		var nx := _x[k] + _v[k] * delta
+		nx = minf(nx, lead_x)  # (never ahead of the real progress)
+		for m in _cars.size():  # hard rule: never into the car in front
+			if m != k and _x[m] > _x[k] and absf(_z[m] - _z[k]) < _wid + 0.15:
+				nx = minf(nx, _x[m] - _len - FOLLOW_GAP * 0.5)
+		nx = maxf(nx, _x[k])  # (no reversing)
+		# lateral: ease towards the lane centre, only into free space
+		var zc: float = _lanes[_lane[k]]
+		var nz := _z[k] + clampf((zc - _z[k]) * 3.0, -2.4, 2.4) * delta
+		if absf(nz - _z[k]) > 0.0001 and _hits(k, nx, nz) and not _hits(k, _x[k], _z[k]):
+			nz = _z[k]
+			_stuck[k] += delta
+			if _stuck[k] > 1.0:  # give up the move: back to the nearest lane
+				_stuck[k] = 0.0
+				_lane[k] = _nearest_lane(_z[k])
+		else:
+			_stuck[k] = 0.0
+		var moved := nx - _x[k]
+		var slide := nz - _z[k]
+		_x[k] = nx
+		_z[k] = nz
+		_v[k] = moved / delta
+		var heading := clampf(-atan2(slide, maxf(moved, 0.02)), -0.3, 0.3) if moved > 0.0005 or absf(slide) > 0.0005 else 0.0
+		_yaw[k] = lerpf(_yaw[k], heading, 1.0 - exp(-delta * 8.0))
+		var car := _cars[k]
+		var bounce := absf(sin(_time * 14.0 + k)) * 0.03 * clampf(_v[k] / 4.0, 0.0, 1.0)
+		car.position = Vector3(nx, bounce, nz)
+		car.rotation.y = _yaw[k] + sin(_time * (2.0 + k * 0.5)) * 0.02 * clampf(_v[k] / 4.0, 0.0, 1.0)
+		var wr := VoxelCars.WHEEL_R * Vox.CAR_VOXEL_PX * Vox.PX * maxf(0.01, absf(car.scale.x))
+		for w in (_wheels[k] as Array):
+			(w as Node3D).rotation.z -= moved / wr
+
+
+func _nearest_lane(z: float) -> int:
+	var best := 0
+	for i in _lanes.size():
+		if absf(_lanes[i] - z) < absf(_lanes[best] - z):
+			best = i
+	return best
 
 
 func _celebrate() -> void:
@@ -271,13 +430,18 @@ func _build_world() -> void:
 		_wheels.append(ws)
 		_offset_phase.append(k * 1.7)
 		_x.append(START_X)
+		_z.append(0.0)
+		_v.append(0.0)
+		_yaw.append(0.0)
+		_lane.append(0)
+		_stuck.append(0.0)
 	# props: trees and flags along the verges
-	for k in 7:
+	for k in 9:
 		var tree := MeshInstance3D.new()
 		var logical := "scenery/tree_round" if k % 2 == 0 else "scenery/tree_bloom"
 		var spec: Dictionary = AssetCatalog.SPECS[logical]
 		tree.mesh = VoxelProps.mesh_for(logical, resolver.get_texture(logical), spec.display_size)
-		tree.position = Vector3(-13.0 + k * 4.3 + _rng.randf_range(-0.6, 0.6), 0, -6.2 - _rng.randf_range(0.0, 1.2))
+		tree.position = Vector3(-17.2 + k * 4.3 + _rng.randf_range(-0.6, 0.6), 0, -6.2 - _rng.randf_range(0.0, 1.2))
 		tree.scale = Vector3.ONE * _rng.randf_range(0.6, 0.85)
 		tree.set_instance_shader_parameter("sway", 0.004)
 		_world.add_child(tree)
@@ -289,16 +453,17 @@ func _build_world() -> void:
 	cam.make_current()
 
 
-## The strip: grass, kerbs, asphalt with a dashed line, the start line and a
-## gantry with lights on the left, the chequered finish and its arch on the
-## right (voxels of 0.25 units).
+## The strip: grass, kerbs, three lanes of asphalt with dashed lines, the
+## start line and a gantry with lights on the left, the chequered finish and
+## its arch on the right (voxels of 0.25 units; the road is 2 * ROAD_HALF).
 static func _strip_mesh() -> ArrayMesh:
 	var vs := 0.25
-	var nx := 112
+	var ox := 20  # (the strip runs on past the gantry and the arch)
+	var nx := 112 + ox * 2
 	var nz := 48
 	var g := VoxelGrid.new(Vector3i(nx, 22, nz), vs, Vector3.ZERO)
-	var road0 := 9
-	var road1 := 39
+	var road0 := 6
+	var road1 := 42
 	for z in nz:
 		for x in nx:
 			var h := Vox.hash3(x, 1, z)
@@ -316,11 +481,11 @@ static func _strip_mesh() -> ArrayMesh:
 			else:
 				var asphalt := Color(0.25, 0.26, 0.3).lightened(0.05 * h)
 				g.set_v(x, 0, z, Vox.SOLID, asphalt)
-				if z == (road0 + road1) / 2 and (x / 4) % 2 == 0:
+				if (z == 18 or z == 29) and (x / 4) % 2 == 0:
 					asphalt = VrStyle.PAPER.darkened(0.1)
 				g.set_v(x, 1, z, Vox.SOLID, asphalt)
 	# start line (left) with a gantry of red lights
-	var sx := 12
+	var sx := 12 + ox
 	for z in range(road0, road1):
 		g.set_v(sx, 1, z, Vox.SOLID, VrStyle.PAPER)
 	for y in range(1, 16):
@@ -330,9 +495,9 @@ static func _strip_mesh() -> ArrayMesh:
 		g.set_v(sx, 16, z, Vox.METAL, Color(0.18, 0.18, 0.2))
 		g.set_v(sx, 17, z, Vox.METAL, Color(0.18, 0.18, 0.2))
 	for k in 5:
-		g.set_v(sx + 1, 16, road0 + 2 + k * 3, Vox.GLOW, Color(1.0, 0.2, 0.12))
+		g.set_v(sx + 1, 16, (road0 + road1) / 2 - 6 + k * 3, Vox.GLOW, Color(1.0, 0.2, 0.12))
 	# finish line (right): chequered band and an arch with a chequered banner
-	var fx := nx - 16
+	var fx := nx - 16 - ox
 	for z in range(road0, road1):
 		for dx in 2:
 			g.set_v(fx + dx, 1, z, Vox.SOLID, VrStyle.PAPER if (z + dx) % 2 == 0 else VrStyle.INK)
