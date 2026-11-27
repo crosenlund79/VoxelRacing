@@ -19,7 +19,8 @@ var vehicle_lights := true
 var headlight_color := 0
 ## Artwork Mode: false = Custom (the user's drawings where present, else the
 ## templates); true = Original templates (Claude's template_ graphics only).
-## Applies at the next game start.
+## Applies at the next game start. VoxelRacing: no longer in Settings (only
+## the [video] artwork_mode key in settings.cfg).
 var original_artwork := false
 
 

@@ -15,7 +15,7 @@ For a logical asset `player` or `footstep`, use this order:
 2. **The user's packaged drawing** (graphics, HyperCars): the user's own image added to the project under the plain logical name, e.g. `res://assets/graphics/ui/star_gold.png`. It replaces Claude's template in the packaged game; files without the `template_` prefix are the user's and Claude never edits them.
 3. **Claude fallback** packaged with the game, e.g. `res://assets/graphics/template_player.png` or `res://assets/audio/template_footstep.ogg`. `template_` files are only fallbacks.
 
-**Artwork Mode** (HyperCars, Settings > ORIGINAL TEMPLATE ARTWORK, saved, applied at the next start): uses only layer 3 for graphics, to compare with the original templates. Audio is not affected.
+**Artwork Mode** (HyperCars; in VoxelRacing no longer in Settings, only the key `artwork_mode = "original"` in `[video]` of `user://settings.cfg`, applied at the next start): uses only layer 3 for graphics, to compare with the original templates. Audio is not affected.
 
 **Cars** (HyperCars): the packaged cars are wheel-free bodies (`cars/template_body_*.png`) plus one shared wheel (`cars/template_wheel.png`). The flattened `cars/car_*` names (wheels painted in) are legacy, for the user's older drawings only; they have no template.
 
