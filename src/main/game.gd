@@ -91,7 +91,9 @@ func _ready() -> void:
 	settings = AudioSettings.new()
 	settings.load_settings()
 	settings.apply()
-	AssetResolver.templates_only = settings.original_artwork  # Artwork Mode (graphics; read at start)
+	# Artwork Mode left Settings in P007: always the normal lookup (custom/ art
+	# and audio overrides first), even if an old settings.cfg asked for originals.
+	AssetResolver.templates_only = false
 	GraphicsSettings.load_prefs(settings.path)  # quality preset, resolution, display mode
 	GraphicsSettings.apply_all()  # before the first frame and before any 3D view is built
 	ControlBindings.load_saved()  # the player's remapped controls (CONTROLS screen)
