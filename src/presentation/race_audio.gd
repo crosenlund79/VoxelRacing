@@ -49,10 +49,14 @@ func setup(cars: Array[Car], resolver: AssetResolver, sound_parent: Node2D) -> v
 	AudioSettings.ensure_buses()
 	_cars = cars
 	_resolver = resolver
-	var engine := resolver.get_audio("vehicles/engine_loop", true)
-	var load := resolver.get_audio("vehicles/engine_load", true)
-	var squeal := resolver.get_audio("vehicles/tire_squeal", true)
 	for i in cars.size():
+		# each car keeps its own engine recording for the race (loop n with
+		# load n: a matched pair), by racer id so a driver always sounds alike;
+		# a tyre squeal variation per car
+		var v := engine_variant(cars[i].racer_id)
+		var engine := resolver.get_audio_variant("vehicles/engine_loop", v, true)
+		var load := resolver.get_audio_variant("vehicles/engine_load", v, true)
+		var squeal := resolver.get_audio("vehicles/tire_squeal", true)
 		_engines.append(_player2d(sound_parent, engine, "Engine", -80.0))
 		_loads.append(_player2d(sound_parent, load, "Engine", -80.0))
 		_squeals.append(_player2d(sound_parent, squeal, "Effects", -80.0))
@@ -79,6 +83,19 @@ func setup(cars: Array[Car], resolver: AssetResolver, sound_parent: Node2D) -> v
 	_ambience = _player(resolver, "ambience/ambience", "Effects", -10.0)
 	_cue = _player(resolver, "", "Effects", -2.0)
 	_ambience.play()
+
+
+## Base pitch per sound where two sounds share recordings: the supplied
+## homing launch recordings are the missile launch ones, so the homing
+## missile is played a little higher to keep the two apart.
+const PITCH := {"weapons/homing_launch": 1.12}
+
+
+## Which engine recording a racer drives with (Audio Integration 001): the
+## same for a racer in every race and in the replays (wraps round however
+## many recordings there are).
+static func engine_variant(racer_id: int) -> int:
+	return [0, 2, 1, 3, 0, 1, 2, 3, 1, 2][posmod(racer_id, 10)]
 
 
 ## "menu", "race" or "battle" (fades over; the same piece keeps playing).
@@ -145,7 +162,7 @@ func play_at(logical: String, pos: Vector2) -> void:
 	p.stream = _resolver.get_audio(logical)
 	p.global_position = pos
 	p.volume_db = -2.0
-	p.pitch_scale = _rng.randf_range(0.95, 1.05)
+	p.pitch_scale = _rng.randf_range(0.95, 1.05) * float(PITCH.get(logical, 1.0))
 	p.play()
 
 

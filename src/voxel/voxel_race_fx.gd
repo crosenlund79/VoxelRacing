@@ -51,7 +51,23 @@ var _taunt_last := -100.0
 var cans: Array = []
 ## Backfire chance on a lift-off at speed, by racer id (show-offs pop more).
 const BACKFIRE := [0.3, 0.12, 0.55, 0.25, 0.2, 0.15, 0.6, 0.1, 0.4, 0.3]
+## Turbo spit (Audio Integration 001): anti-lag bangs when a car lifts off
+## after a long pull - chance by racer id; these drivers' cars favour the
+## anti-lag bangs over a plain backfire (Maya's turbo coupe, Dante's exotic,
+## Greta's single-seater, Finn's rally car, Nina's supercar, a little for the
+## player's GT). 0: never. Purely sound and sparks; nothing about the engine.
+const TURBO_SPIT := [0.18, 0.0, 0.0, 0.0, 0.0, 0.45, 0.4, 0.3, 0.6, 0.45]
+## Seconds of hard acceleration before a lift-off can spit, and the quiet
+## time per car afterwards.
+const SPIT_PULL := 1.1
+const SPIT_COOLDOWN := 3.5
 var _last_accel := PackedFloat32Array()
+var _pull := PackedFloat32Array()
+var _spit_ready := PackedFloat32Array()
+## Pending anti-lag bangs: [time, car index].
+var _spits: Array = []
+## Own generator for the exhaust sounds (never the race's randomness).
+var _ex_rng := RandomNumberGenerator.new()
 const SoundKit := preload("res://src/audio/sound_kit.gd")
 var _last_rattle := -10.0
 
@@ -101,6 +117,9 @@ func setup(p_stage: VoxelStage) -> void:
 	_was_air.resize(damage.size())
 	_smoke_clock.resize(damage.size())
 	_last_accel.resize(damage.size())
+	_pull.resize(damage.size())
+	_spit_ready.resize(damage.size())
+	_ex_rng.randomize()
 	_taunt_cool.resize(damage.size())
 	_taunt_cool.fill(-100.0)
 
@@ -113,6 +132,7 @@ func sync(delta: float) -> void:
 	_rebuilds_left = 3
 	for i in damage.size():
 		_sync_car(i, delta)
+	_sync_spits()
 	_sync_weapons(delta)
 	_sync_taunts(delta)
 	step_cans(cans, delta, fx.ground)
@@ -128,6 +148,7 @@ func _check_new_race() -> void:
 	_state = state
 	if not fresh:
 		return
+	_spits.clear()
 	fx.clear()
 	for b in _burns.get_children():
 		b.queue_free()
@@ -216,14 +237,27 @@ func _sync_car(i: int, delta: float) -> void:
 				var g := 0.32 if (revving or a_long > 150.0) else 0.62
 				fx.puff(ex.global_transform * Vector3(-0.2, 0.06, 0.0), back * 0.9 + Vector3(0, 0.35, 0), Color(g, g, g * 1.03),
 					_rng.randf_range(0.13, 0.2), _rng.randf_range(0.5, 0.8), 0.5)
-			if _last_accel[i] > 120.0 and a_long < -80.0 and spd > 150.0 and _rng.randf() < BACKFIRE[i % BACKFIRE.size()]:
+			var rid := c.racer_id % TURBO_SPIT.size()
+			_pull[i] = _pull[i] + delta if a_long > 120.0 else maxf(0.0, _pull[i] - delta * 3.0)
+			var lift := _last_accel[i] > 120.0 and a_long < -80.0 and spd > 150.0
+			var spat := false
+			if lift and _pull[i] >= SPIT_PULL and _time >= _spit_ready[i] and _ex_rng.randf() < TURBO_SPIT[rid]:
+				spat = true
+				_spit_ready[i] = _time + SPIT_COOLDOWN + _ex_rng.randf_range(0.0, 2.0)
+				var at_t := _time
+				for k in _ex_rng.randi_range(1, 3):  # a short, irregular burst
+					_spits.append([at_t, i])
+					at_t += _ex_rng.randf_range(0.07, 0.19)
+			if lift:
+				_pull[i] = 0.0
+			if lift and not spat and _rng.randf() < BACKFIRE[i % BACKFIRE.size()]:
 				for ex in exs:
 					var at: Vector3 = (ex as Node3D).global_transform * Vector3(-0.25, 0.06, 0.0)
 					for k in 3:
 						fx.spark(at, back * _rng.randf_range(2.0, 3.5) + Vector3(_rng.randf_range(-0.4, 0.4), _rng.randf_range(0.1, 0.5), _rng.randf_range(-0.4, 0.4)),
 							Color(1.0, _rng.randf_range(0.45, 0.7), 0.15), 0.1, 0.16, 1.6, 0.0)
 				backfired.emit(i)
-				_sound("pop", root.global_position, -10.0, 0.25)
+				_sound("backfire", root.global_position, -10.0, 0.12)
 			_last_accel[i] = a_long
 		# tyre smoke and dust from RaceEffects' own rules
 		var eff: RaceEffects = _main.effects
@@ -252,6 +286,33 @@ func _sync_car(i: int, delta: float) -> void:
 		if kicked >= 5 and _time - _last_rattle > 0.35:
 			_last_rattle = _time
 			_sound("debris_rattle", root.global_position, -6.0)
+
+
+## Anti-lag bangs that are due: a sharp crack and a spit of flame from the
+## exhausts (Audio Integration 001).
+func _sync_spits() -> void:
+	if _spits.is_empty():
+		return
+	var keep: Array = []
+	for sp in _spits:
+		if float(sp[0]) > _time:
+			keep.append(sp)
+			continue
+		var i := int(sp[1])
+		if i >= stage.cars3d.size() or _was_wrecked[i] == 1:
+			continue
+		var d: Dictionary = stage.cars3d[i]
+		var root: Node3D = d.root
+		if not root.visible:
+			continue
+		var back: Vector3 = -root.global_transform.basis.x
+		for ex in (d.get("exhausts", []) as Array):
+			var at: Vector3 = (ex as Node3D).global_transform * Vector3(-0.25, 0.06, 0.0)
+			for k in 4:
+				fx.spark(at, back * _ex_rng.randf_range(2.5, 4.5) + Vector3(_ex_rng.randf_range(-0.4, 0.4), _ex_rng.randf_range(0.1, 0.5), _ex_rng.randf_range(-0.4, 0.4)),
+					Color(1.0, _ex_rng.randf_range(0.5, 0.8), 0.2), 0.1, 0.14, 1.8, 0.0)
+		_sound("turbo_spit", root.global_position, -11.0, 0.1)
+	_spits = keep
 
 
 ## Voxels that broke off a car fly away from the hit (and keep some of the

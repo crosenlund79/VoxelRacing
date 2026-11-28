@@ -371,7 +371,7 @@ func _apply(c: Dictionary, delta: float) -> void:
 			fx.scatter_near(p, moved / maxf(delta, 0.001), 1.9)
 		if i == focus_car:
 			var spd := lerpf(ca[o + 10], cb[o + 10], u)
-			_engine_sound(spd)
+			_engine_sound(spd, i)
 	_apply_weapons(sa, sb, u, delta)
 	_apply_events(c)
 	_update_cans(delta * _rate)
@@ -537,13 +537,21 @@ func _sound(logical: String, at: Vector3, gain_db: float) -> void:
 	p.stream = stream
 	var dist := cam.global_position.distance_to(at)
 	p.volume_db = gain_db - clampf((dist - 6.0) * 0.35, 0.0, 18.0)
-	p.pitch_scale = clampf(lerpf(0.75, 1.0, _rate), 0.6, 1.05) * _rng.randf_range(0.95, 1.05)
+	p.pitch_scale = clampf(lerpf(0.75, 1.0, _rate), 0.6, 1.05) * _rng.randf_range(0.95, 1.05) * float(RaceAudio.PITCH.get(logical, 1.0))
 	p.play()
 
 
-func _engine_sound(speed: float) -> void:
-	if _engine.stream == null and main.resolver != null:
-		_engine.stream = main.resolver.get_audio("vehicles/engine_loop", true)
+var _engine_rid := -1
+
+
+func _engine_sound(speed: float, car: int) -> void:
+	# the focus car's own engine recording (as in the race)
+	var rid: int = main.cars[car].racer_id if car >= 0 and car < main.cars.size() else 0
+	if (_engine.stream == null or rid != _engine_rid) and main.resolver != null:
+		_engine_rid = rid
+		var s: AudioStream = main.resolver.get_audio_variant("vehicles/engine_loop", RaceAudio.engine_variant(rid), true)
+		if s != _engine.stream:
+			_engine.stream = s
 	if _engine.stream == null:
 		return
 	if not _engine.playing:

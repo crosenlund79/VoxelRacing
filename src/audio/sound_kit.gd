@@ -27,8 +27,42 @@ static var _cache := {}
 static var _jitter := RandomNumberGenerator.new()
 
 
-## The named sound (generated once, then cached); null for an unknown name.
-static func stream(name: String) -> AudioStreamWAV:
+## Audio Integration 001: the logical sound each kit name stands for. When a
+## recording exists for it (the user's custom/audio/ override, else the
+## packaged ElevenLabs recordings: AssetResolver.get_audio_variants), that is
+## played - a random variation per call - and the synthesised sound below is
+## only the placeholder for sounds still without a recording.
+const LOGICAL := {
+	"crowd_loop": "crowd/crowd_loop", "cheer": "crowd/cheer", "applause": "crowd/applause", "gasp": "crowd/gasp",
+	"tool_clink": "garage/tool_clink", "ratchet": "garage/ratchet", "air_wrench": "garage/air_wrench",
+	"debris_rattle": "vehicles/debris_rattle", "whoosh": "ui/whoosh", "pop": "ui/pop", "tick": "ui/tick",
+	"stinger": "ui/stinger", "backfire": "vehicles/backfire", "turbo_spit": "vehicles/turbo_spit",
+}
+## Kit names without a synthesised version of their own: the placeholder used.
+const STAND_IN := {"backfire": "pop", "turbo_spit": "pop"}
+
+
+## The named sound: a recording when one exists (a random variation, looping
+## for crowd_loop), else the synthesised placeholder (generated once, then
+## cached); null for an unknown name.
+static func stream(name: String) -> AudioStream:
+	var logical := String(LOGICAL.get(name, ""))
+	if not logical.is_empty():
+		var res := AssetResolver.shared()
+		if res.has_audio(logical):
+			return res.get_audio(logical, name == "crowd_loop")
+	if STAND_IN.has(name):
+		name = STAND_IN[name]
+	return _synth(name)
+
+
+## True when the named sound is played from a recording (not synthesised).
+static func is_recorded(name: String) -> bool:
+	var logical := String(LOGICAL.get(name, ""))
+	return not logical.is_empty() and AssetResolver.shared().has_audio(logical)
+
+
+static func _synth(name: String) -> AudioStreamWAV:
 	if _cache.has(name):
 		return _cache[name]
 	var s: PackedFloat32Array
@@ -57,7 +91,7 @@ static func stream(name: String) -> AudioStreamWAV:
 ## Generates every sound now, so a first play never waits for synthesis.
 static func warm_up() -> void:
 	for n in NAMES:
-		stream(n)
+		_synth(n)
 
 
 ## Plays a sound once on a new AudioStreamPlayer under `parent` (on `bus`,

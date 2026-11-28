@@ -37,6 +37,14 @@ static var templates_only := false
 var _cache: Dictionary = {}
 var _overridden: Dictionary = {}
 var _audio_cache: Dictionary = {}
+## Audio variations (get_audio_variants): override root | logical -> streams.
+static var _variants: Dictionary = {}
+static var _last_pick: Dictionary = {}
+static var _audio_rng := RandomNumberGenerator.new()
+static var _rng_ready := false
+static var _shared: AssetResolver
+## Numbered variations looked for per sound: <logical>_1 .. _<MAX_VARIANTS>.
+const MAX_VARIANTS := 12
 
 
 func _init(p_override_root: String = "") -> void:
@@ -141,17 +149,113 @@ func _load_fallback(logical_name: String) -> Texture2D:
 
 
 ## Audio stream for a logical name such as "vehicles/engine_loop". When loop is
-## true the stream is set to loop over its whole length (override or template).
+## true the stream is set to loop over its whole length.
+##
+## Audio Integration 001: a sound may come in several recordings (variations)
+## and each call picks one of them at random (never the same one twice in a
+## row where there is a choice): one-shots get a fresh pick per play, loops a
+## pick per player. Lookup order (get_audio_variants):
+##   1. the user's custom overrides  custom/audio/<logical>.<ext> and/or
+##      custom/audio/<logical>_<n>.<ext> (ogg / wav / mp3, no rebuild needed)
+##   2. the packaged recordings  res://assets/audio/<logical>_<n>.wav (the
+##      user's ElevenLabs sounds) or res://assets/audio/<logical>.<ext>
+##   3. the packaged template_ fallback (Claude's placeholder), if any.
+## Null when nothing exists (SoundKit then synthesises its placeholder).
 func get_audio(logical_name: String, loop: bool = false) -> AudioStream:
-	if not _audio_cache.has(logical_name):
-		var stream := _load_audio_override(logical_name)
-		if stream == null:
-			stream = _load_audio_fallback(logical_name)
-		_audio_cache[logical_name] = stream
-	var result: AudioStream = _audio_cache[logical_name]
+	var variants := get_audio_variants(logical_name)
+	if variants.is_empty():
+		return null
+	var result: AudioStream = variants[pick_variant(logical_name, variants.size())]
 	if loop and result != null:
 		set_looping(result)
 	return result
+
+
+## One particular variation (index wraps round): e.g. a car's own engine
+## recording, kept for the whole race.
+func get_audio_variant(logical_name: String, index: int, loop: bool = false) -> AudioStream:
+	var variants := get_audio_variants(logical_name)
+	if variants.is_empty():
+		return null
+	var result: AudioStream = variants[posmod(index, variants.size())]
+	if loop and result != null:
+		set_looping(result)
+	return result
+
+
+## Every recording available for a sound, in lookup order 1 > 2 > 3 (only the
+## first level that has any is used). Decoded / loaded once per session and
+## shared by all resolvers.
+func get_audio_variants(logical_name: String) -> Array:
+	var key := override_root + "|" + logical_name
+	if _variants.has(key):
+		return _variants[key]
+	var out: Array = []
+	# 1. the user's own files in custom/audio/
+	for name in [logical_name] + _numbered(logical_name):
+		for extension in AUDIO_EXTENSIONS:
+			var path := audio_override_path(name, extension)
+			if not FileAccess.file_exists(path):
+				continue
+			var stream := _stream_from_bytes(FileAccess.get_file_as_bytes(path), extension)
+			if stream == null:
+				push_warning("AssetResolver: invalid audio override '%s'; ignored." % path)
+				continue
+			out.append(stream)
+			break
+	# 2. packaged recordings (plain or numbered names, no template_ prefix)
+	if out.is_empty():
+		for name in [logical_name] + _numbered(logical_name):
+			for extension in AUDIO_EXTENSIONS:
+				var path := AUDIO_FALLBACK_ROOT.path_join(name + "." + extension)
+				if ResourceLoader.exists(path):
+					var stream := load(path) as AudioStream
+					if stream != null:
+						out.append(stream)
+					break
+	# 3. Claude's template placeholder
+	if out.is_empty():
+		var path := audio_fallback_path(logical_name)
+		if not path.is_empty():
+			out.append(load(path) as AudioStream)
+	_variants[key] = out
+	return out
+
+
+## True when any recording or template exists for the sound (else SoundKit
+## falls back to its synthesised placeholder).
+func has_audio(logical_name: String) -> bool:
+	return not get_audio_variants(logical_name).is_empty()
+
+
+## A random variation index for a sound, avoiding the one picked last time.
+## Its own generator: audio never touches gameplay or race randomness.
+static func pick_variant(logical_name: String, count: int) -> int:
+	if count <= 1:
+		return 0
+	if not _rng_ready:
+		_rng_ready = true
+		_audio_rng.randomize()
+	var last := int(_last_pick.get(logical_name, -1))
+	var k := _audio_rng.randi_range(0, count - 2)
+	if k >= last and last >= 0:
+		k += 1
+	_last_pick[logical_name] = k
+	return k
+
+
+static func _numbered(logical_name: String) -> Array:
+	var out := []
+	for n in range(1, MAX_VARIANTS + 1):
+		out.append("%s_%d" % [logical_name, n])
+	return out
+
+
+## A shared resolver for code without one of its own (SoundKit).
+static func shared() -> AssetResolver:
+	if _shared == null:
+		_shared = AssetResolver.new()
+	return _shared
 
 
 ## Voice recordings (VoiceCatalog): the user's override in custom/audio/voice/
